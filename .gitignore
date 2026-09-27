@@ -1,0 +1,14 @@
+build/
+data/
+weights/
+logs/
+downloads/
+.worktrees/
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+*.log
+*.part
