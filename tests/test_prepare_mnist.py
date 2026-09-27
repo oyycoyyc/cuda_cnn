@@ -196,6 +196,56 @@ class PrepareMnistTest(unittest.TestCase):
 
         with open(output_path, "rb") as existing:
             self.assertEqual(b"previous complete output", existing.read())
+        self.assertEqual([], [name for name in os.listdir(self.directory)
+                              if name.endswith(".part")])
+
+    def test_requirements_include_exact_target_wheel_hashes(self):
+        expected = {
+            "numpy": ("1.19.5", {
+                "8b5e972b43c8fc27d56550b4120fe6257fdc15f9301914380b27f74856299fea",
+                "a4646724fba402aa7504cd48b4b50e783296b5e10a524c7a6da62e4a8ac9698d",
+            }),
+            "pillow": ("8.4.0", {
+                "25a49dc2e2f74e65efaa32b153527fc5ac98508d502fa46e74fa4fd678ed6645",
+            }),
+            "pyarrow": ("6.0.1", {
+                "02baee816456a6e64486e587caaae2bf9f084fa3a891354ff18c3e945a1cb72f",
+                "fab8132193ae095c43b1e8d6d7f393451ac198de5aaf011c6b576b1442966fec",
+            }),
+            "requests": ("2.27.1", {
+                "f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d",
+            }),
+            "certifi": ("2021.10.8", {
+                "d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569",
+            }),
+            "charset-normalizer": ("2.0.12", {
+                "6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df",
+            }),
+            "idna": ("3.3", {
+                "84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff",
+            }),
+            "urllib3": ("1.26.18", {
+                "34b97092d7e0a3a8cf7cd10e386f401b3737364026c45e622aa02903dffe0f07",
+            }),
+        }
+        requirements_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "requirements-py36.txt")
+
+        actual = {}
+        current_name = None
+        with open(requirements_path, "r") as requirements_file:
+            for raw_line in requirements_file:
+                line = raw_line.strip().rstrip("\\").strip()
+                if "==" in line:
+                    current_name, remainder = line.split("==", 1)
+                    current_name = current_name.lower()
+                    actual[current_name] = (remainder.split()[0], set())
+                if "--hash=sha256:" in line:
+                    actual[current_name][1].add(
+                        line.split("--hash=sha256:", 1)[1])
+
+        self.assertEqual(expected, actual)
 
     def test_explicit_conversion_cli(self):
         parquet_path = self.write_table([encoded_image(value=8)], [8],
