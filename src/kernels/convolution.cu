@@ -252,17 +252,18 @@ __global__ void ConvolutionInputGradientKernel(
 // Computes dWeight[oc,ic,kr,kc]=sum_n,orow,ocol
 // input[n,ic,orow+kr,ocol+kc]*dOutput[n,oc,orow,ocol]. Threads grid-stride
 // over weight_index=((oc*IC+ic)*KH+kr)*KW+kc and decode by IC*KH*KW,
-// KH*KW, and KW. weight_index<weight_count handles tails; n,orow,ocol increase
-// in CPU-reference order across the complete valid output domain. Each weight
-// gradient has one gather owner, eliminating write races without barriers,
-// atomic operations, or synchronization. Its serial FP32 reduction is
-// deterministic in loop order and subject only to standard accumulation and
-// contraction rounding.
+// KH*KW, and KW; each sample's output stride is OC*OH*OW. The explicit OC
+// parameter is the validated output-channel extent supplied by the launcher.
+// weight_index<weight_count handles tails; n,orow,ocol increase in CPU-reference
+// order across the complete valid output domain. Each weight gradient has one
+// gather owner, eliminating write races without barriers, atomic operations, or
+// synchronization. Its serial FP32 reduction is deterministic in loop order
+// and subject only to standard accumulation and contraction rounding.
 __global__ void ConvolutionWeightGradientKernel(
     const float* input, const float* output_gradient, float* weight_gradient,
     std::size_t weight_count, int batch_size, int input_channels,
-    int input_height, int input_width, int kernel_height, int kernel_width,
-    int output_height, int output_width) {
+    int input_height, int input_width, int output_channels, int kernel_height,
+    int kernel_width, int output_height, int output_width) {
   const std::size_t start =
       static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   const std::size_t stride =
@@ -409,8 +410,8 @@ void LaunchConvolutionBackward(
                                     kThreadsPerBlock, 0, stream>>>(
       input, output_gradient, weight_gradient, shape.weight_count,
       shape.batch_size, shape.input_channels, shape.input_height,
-      shape.input_width, shape.kernel_height, shape.kernel_width,
-      shape.output_height, shape.output_width);
+      shape.input_width, shape.output_channels, shape.kernel_height,
+      shape.kernel_width, shape.output_height, shape.output_width);
   CUDA_KERNEL_CHECK();
   ConvolutionBiasGradientKernel<<<BlockCount(shape.output_channels),
                                   kThreadsPerBlock, 0, stream>>>(
