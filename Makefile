@@ -31,6 +31,7 @@ DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
 PARAMETERS_OBJECT := $(HOST_OBJECT_DIR)/parameters.o
+CHECKPOINT_OBJECT := $(HOST_OBJECT_DIR)/checkpoint.o
 HOST_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/host/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
@@ -39,7 +40,8 @@ CUDA_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/cuda/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
-  $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d)
+  $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
+  $(CHECKPOINT_OBJECT:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -74,6 +76,7 @@ endif
 $(BUILD_DIR)/dataset_tests$(EXEEXT): $(DATASET_OBJECT)
 $(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
 $(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
+$(BUILD_DIR)/checkpoint_tests$(EXEEXT): $(CHECKPOINT_OBJECT) $(PARAMETERS_OBJECT)
 
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
@@ -83,6 +86,7 @@ $(BUILD_DIR)/dataset_tests: $(BUILD_DIR)/dataset_tests$(EXEEXT)
 $(BUILD_DIR)/dataset_probe: $(BUILD_DIR)/dataset_probe$(EXEEXT)
 $(BUILD_DIR)/random_tests: $(BUILD_DIR)/random_tests$(EXEEXT)
 $(BUILD_DIR)/parameters_tests: $(BUILD_DIR)/parameters_tests$(EXEEXT)
+$(BUILD_DIR)/checkpoint_tests: $(BUILD_DIR)/checkpoint_tests$(EXEEXT)
 endif
 
 ifneq ($(strip $(CUDA_UNIQUE_NAMES)),)
@@ -107,6 +111,9 @@ $(RANDOM_OBJECT): src/random.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(PARAMETERS_OBJECT): src/parameters.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(CHECKPOINT_OBJECT): src/checkpoint.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
