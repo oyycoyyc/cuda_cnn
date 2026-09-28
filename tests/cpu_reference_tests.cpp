@@ -19,13 +19,13 @@ void ExpectVectorNear(const std::vector<float>& expected,
 
 TEST_CASE(convolution_forward_matches_hand_calculated_valid_result) {
   const std::vector<float> input{1, 2, 3, 4, 5, 6, 7, 8, 9};
-  const std::vector<float> weight{1, 0, 0, -1};
+  const std::vector<float> weight{1, 2, 3, 4};
   const std::vector<float> bias{0.5F};
 
   const std::vector<float> output = cpu_reference::ConvolutionForward(
       input, weight, bias, 1, 1, 3, 3, 1, 2, 2);
 
-  ExpectVectorNear({-3.5F, -3.5F, -3.5F, -3.5F}, output, 0.0F);
+  ExpectVectorNear({37.5F, 47.5F, 67.5F, 77.5F}, output, 0.0F);
 }
 
 TEST_CASE(convolution_backward_matches_hand_calculated_gather_gradients) {
@@ -86,19 +86,19 @@ TEST_CASE(linear_forward_and_backward_match_hand_calculated_results) {
 }
 
 TEST_CASE(softmax_cross_entropy_is_stable_and_uses_actual_batch_mean) {
-  const std::vector<float> logits{1000, 1000, -1000, -1000, 1000, 1000};
-  const std::vector<std::uint8_t> labels{1, 2};
+  const std::vector<float> logits{1000, 1000, -1000, -1000, 1000, 999};
+  const std::vector<std::uint8_t> labels{0, 2};
 
   const cpu_reference::SoftmaxCrossEntropyResult result =
       cpu_reference::SoftmaxCrossEntropy(logits, labels, 2, 3);
 
-  ExpectVectorNear({0.5F, 0.5F, 0.0F, 0.0F, 0.5F, 0.5F},
-                   result.probabilities, 0.0F);
-  ExpectVectorNear({0.69314718F, 0.69314718F}, result.per_sample_losses,
-                   1e-7F);
-  EXPECT_NEAR(0.69314718F, result.mean_loss, 1e-7F);
-  ExpectVectorNear({0.25F, -0.25F, 0.0F, 0.0F, 0.25F, -0.25F},
-                   result.logits_gradient, 0.0F);
+  ExpectVectorNear({0.5F, 0.5F, 0.0F, 0.0F, 0.73105860F, 0.26894143F},
+                   result.probabilities, 1e-7F);
+  ExpectVectorNear({0.69314718F, 1.31326169F}, result.per_sample_losses,
+                   1e-6F);
+  EXPECT_NEAR(1.00320444F, result.mean_loss, 1e-6F);
+  ExpectVectorNear({-0.25F, 0.25F, 0.0F, 0.0F, 0.36552930F, -0.36552930F},
+                   result.logits_gradient, 1e-7F);
   EXPECT_TRUE(std::isfinite(result.mean_loss));
 }
 

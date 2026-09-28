@@ -53,15 +53,15 @@ TEST_CASE(device_buffer_is_move_only) {
 }
 
 TEST_CASE(device_buffer_zero_count_does_not_allocate) {
-  const std::size_t before = DeviceBuffer<float>::AllocationCountForTests();
+  const std::size_t before = DeviceBufferAllocationCountForTests();
   const DeviceBuffer<float> empty(0);
   EXPECT_EQ(nullptr, empty.get());
   EXPECT_EQ(std::size_t{0}, empty.size());
-  EXPECT_EQ(before, DeviceBuffer<float>::AllocationCountForTests());
+  EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
 }
 
 TEST_CASE(device_buffer_move_transfers_one_allocation) {
-  const std::size_t before = DeviceBuffer<float>::AllocationCountForTests();
+  const std::size_t before = DeviceBufferAllocationCountForTests();
   {
     DeviceBuffer<float> source(4);
     float* const pointer = source.get();
@@ -70,9 +70,28 @@ TEST_CASE(device_buffer_move_transfers_one_allocation) {
     EXPECT_EQ(std::size_t{0}, source.size());
     EXPECT_EQ(pointer, destination.get());
     EXPECT_EQ(std::size_t{4}, destination.size());
-    EXPECT_EQ(before + 1, DeviceBuffer<float>::AllocationCountForTests());
+    EXPECT_EQ(before + 1, DeviceBufferAllocationCountForTests());
   }
-  EXPECT_EQ(before, DeviceBuffer<float>::AllocationCountForTests());
+  EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
+}
+
+TEST_CASE(device_buffer_move_assignment_releases_destination_then_transfers) {
+  const std::size_t before = DeviceBufferAllocationCountForTests();
+  {
+    DeviceBuffer<float> source(4);
+    DeviceBuffer<float> destination(2);
+    float* const source_pointer = source.get();
+    EXPECT_EQ(before + 2, DeviceBufferAllocationCountForTests());
+
+    destination = std::move(source);
+
+    EXPECT_EQ(nullptr, source.get());
+    EXPECT_EQ(std::size_t{0}, source.size());
+    EXPECT_EQ(source_pointer, destination.get());
+    EXPECT_EQ(std::size_t{4}, destination.size());
+    EXPECT_EQ(before + 1, DeviceBufferAllocationCountForTests());
+  }
+  EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
 }
 
 TEST_CASE(device_buffer_round_trips_257_elements) {

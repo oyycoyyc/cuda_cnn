@@ -11,30 +11,25 @@
 
 namespace device_buffer_detail {
 
-#ifdef CUDA_LENET_ENABLE_TEST_HOOKS
-// Returns the test-only internal live-allocation counter shared by DeviceBuffer
-// specializations in this process. The reference is implementation-owned and
-// retained for program lifetime.
+// Returns the internal live-allocation counter shared by all DeviceBuffer
+// specializations and translation units in this process. The reference is
+// implementation-owned, retained for program lifetime, and not exposed by the
+// public DeviceBuffer interface.
 inline std::size_t& LiveAllocationCount() noexcept {
   static std::size_t count = 0;
   return count;
 }
-#endif
 
-// Records one successful allocation for test instrumentation when enabled.
+// Records one successful allocation in the implementation-owned accounting.
 // It owns no storage, retains no caller data, and cannot fail or synchronize.
 inline void RecordAllocation() noexcept {
-#ifdef CUDA_LENET_ENABLE_TEST_HOOKS
   ++LiveAllocationCount();
-#endif
 }
 
-// Records one ownership release for test instrumentation when enabled. It
+// Records one ownership release in the implementation-owned accounting. It
 // owns no storage, retains no caller data, and cannot fail or synchronize.
 inline void RecordRelease() noexcept {
-#ifdef CUDA_LENET_ENABLE_TEST_HOOKS
   --LiveAllocationCount();
-#endif
 }
 
 // Allocates exactly requested_bytes of device storage and returns unique
@@ -127,13 +122,6 @@ class DeviceBuffer {
   // zero for empty and moved-from buffers and cannot fail.
   std::size_t size() const noexcept;
 
-#ifdef CUDA_LENET_ENABLE_TEST_HOOKS
-  // Returns the process-local number of currently owned cudaMalloc
-  // allocations made by DeviceBuffer in this translation unit. This test-only,
-  // single-host-thread observer performs no CUDA call or ownership transfer.
-  static std::size_t AllocationCountForTests() noexcept;
-#endif
-
  private:
   T* data_;
   std::size_t count_;
@@ -194,8 +182,11 @@ std::size_t DeviceBuffer<T>::size() const noexcept {
 }
 
 #ifdef CUDA_LENET_ENABLE_TEST_HOOKS
-template <typename T>
-std::size_t DeviceBuffer<T>::AllocationCountForTests() noexcept {
+// Returns the process-wide number of currently owned cudaMalloc allocations
+// made by all DeviceBuffer specializations. This test-only single-host-thread
+// observer performs no CUDA call or ownership transfer; production translation
+// units do not receive its declaration.
+inline std::size_t DeviceBufferAllocationCountForTests() noexcept {
   return device_buffer_detail::LiveAllocationCount();
 }
 #endif
