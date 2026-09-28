@@ -213,8 +213,11 @@ TEST_CASE(checkpoint_round_trip_is_bit_identical_and_layout_is_exact) {
     }
     EXPECT_EQ(kElementCounts[tensor], ReadU64(bytes, metadata + 52));
     EXPECT_EQ(metadata + kTensorMetadataSize, kPayloadOffsets[tensor]);
-    EXPECT_EQ(FloatBits(expected.parameters[tensor].values.front()),
-              ReadU32(bytes, kPayloadOffsets[tensor]));
+    for (std::size_t value = 0;
+         value < expected.parameters[tensor].values.size(); ++value) {
+      EXPECT_EQ(FloatBits(expected.parameters[tensor].values[value]),
+                ReadU32(bytes, kPayloadOffsets[tensor] + value * 4));
+    }
   }
 
   const Checkpoint actual = LoadCheckpoint(first_path);
