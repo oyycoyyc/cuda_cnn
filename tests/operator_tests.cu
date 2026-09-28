@@ -13,7 +13,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -123,6 +125,321 @@ void CheckInputTranslation(int batch_size) {
   ExpectNearVectors(expected, actual);
   // Translation pads with a pixel value of zero before normalization.
   EXPECT_NEAR(-0.42421293F, actual[first_padding_index], 1.5e-4F);
+}
+
+std::vector<float> Pattern(std::size_t count, int offset) {
+  std::vector<float> values(count);
+  for (std::size_t index = 0; index < count; ++index) {
+    const int centered =
+        static_cast<int>((index * 37 + static_cast<std::size_t>(offset) * 17) %
+                         97) -
+        48;
+    values[index] = static_cast<float>(centered) * 0.01F;
+  }
+  return values;
+}
+
+void CheckLinearAgainstCpu(int batch_size, int input_features,
+                           int output_features) {
+  const std::vector<float> input = Pattern(
+      static_cast<std::size_t>(batch_size) * input_features, 1);
+  const std::vector<float> weight = Pattern(
+      static_cast<std::size_t>(output_features) * input_features, 2);
+  const std::vector<float> bias = Pattern(output_features, 3);
+  const std::vector<float> output_gradient = Pattern(
+      static_cast<std::size_t>(batch_size) * output_features, 4);
+  const std::vector<float> expected_output = cpu_reference::LinearForward(
+      input, weight, bias, batch_size, input_features, output_features);
+  const cpu_reference::LinearGradients expected_gradients =
+      cpu_reference::LinearBackward(input, weight, output_gradient, batch_size,
+                                    input_features, output_features);
+
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_bias = CopyToDevice(bias);
+  DeviceBuffer<float> device_output(expected_output.size());
+  DeviceBuffer<float> device_output_gradient = CopyToDevice(output_gradient);
+  DeviceBuffer<float> device_input_gradient(input.size());
+  DeviceBuffer<float> device_weight_gradient(weight.size());
+  DeviceBuffer<float> device_bias_gradient(bias.size());
+
+  LaunchLinearForward(device_input.get(), device_weight.get(),
+                      device_bias.get(), device_output.get(), batch_size,
+                      input_features, output_features, nullptr);
+  LaunchLinearBackward(
+      device_input.get(), device_weight.get(), device_output_gradient.get(),
+      device_input_gradient.get(), device_weight_gradient.get(),
+      device_bias_gradient.get(), batch_size, input_features, output_features,
+      nullptr);
+
+  ExpectNearVectors(expected_output, CopyFromDevice(device_output));
+  ExpectNearVectors(expected_gradients.input,
+                    CopyFromDevice(device_input_gradient));
+  ExpectNearVectors(expected_gradients.weight,
+                    CopyFromDevice(device_weight_gradient));
+  ExpectNearVectors(expected_gradients.bias,
+                    CopyFromDevice(device_bias_gradient));
+}
+
+void CheckConvolutionAgainstCpu(int batch_size, int input_channels,
+                                int input_height, int input_width,
+                                int output_channels, int kernel_height,
+                                int kernel_width) {
+  const int output_height = input_height - kernel_height + 1;
+  const int output_width = input_width - kernel_width + 1;
+  const std::vector<float> input = Pattern(
+      static_cast<std::size_t>(batch_size) * input_channels * input_height *
+          input_width,
+      5);
+  const std::vector<float> weight = Pattern(
+      static_cast<std::size_t>(output_channels) * input_channels *
+          kernel_height * kernel_width,
+      6);
+  const std::vector<float> bias = Pattern(output_channels, 7);
+  const std::vector<float> output_gradient = Pattern(
+      static_cast<std::size_t>(batch_size) * output_channels * output_height *
+          output_width,
+      8);
+  const std::vector<float> expected_output =
+      cpu_reference::ConvolutionForward(
+          input, weight, bias, batch_size, input_channels, input_height,
+          input_width, output_channels, kernel_height, kernel_width);
+  const cpu_reference::ConvolutionGradients expected_gradients =
+      cpu_reference::ConvolutionBackward(
+          input, weight, output_gradient, batch_size, input_channels,
+          input_height, input_width, output_channels, kernel_height,
+          kernel_width);
+
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_bias = CopyToDevice(bias);
+  DeviceBuffer<float> device_output(expected_output.size());
+  DeviceBuffer<float> device_output_gradient = CopyToDevice(output_gradient);
+  DeviceBuffer<float> device_input_gradient(input.size());
+  DeviceBuffer<float> device_weight_gradient(weight.size());
+  DeviceBuffer<float> device_bias_gradient(bias.size());
+
+  LaunchConvolutionForward(
+      device_input.get(), device_weight.get(), device_bias.get(),
+      device_output.get(), batch_size, input_channels, input_height,
+      input_width, output_channels, kernel_height, kernel_width, nullptr);
+  LaunchConvolutionBackward(
+      device_input.get(), device_weight.get(), device_output_gradient.get(),
+      device_input_gradient.get(), device_weight_gradient.get(),
+      device_bias_gradient.get(), batch_size, input_channels, input_height,
+      input_width, output_channels, kernel_height, kernel_width, nullptr);
+
+  ExpectNearVectors(expected_output, CopyFromDevice(device_output));
+  ExpectNearVectors(expected_gradients.input,
+                    CopyFromDevice(device_input_gradient));
+  ExpectNearVectors(expected_gradients.weight,
+                    CopyFromDevice(device_weight_gradient));
+  ExpectNearVectors(expected_gradients.bias,
+                    CopyFromDevice(device_bias_gradient));
+}
+
+double DotObjective(const std::vector<float>& output,
+                    const std::vector<float>& output_gradient) {
+  double objective = 0.0;
+  for (std::size_t index = 0; index < output.size(); ++index) {
+    objective += static_cast<double>(output[index]) * output_gradient[index];
+  }
+  return objective;
+}
+
+double LinearDeviceObjective(const std::vector<float>& input,
+                             const std::vector<float>& weight,
+                             const std::vector<float>& bias,
+                             const std::vector<float>& output_gradient,
+                             int batch_size, int input_features,
+                             int output_features) {
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_bias = CopyToDevice(bias);
+  DeviceBuffer<float> device_output(output_gradient.size());
+  LaunchLinearForward(device_input.get(), device_weight.get(),
+                      device_bias.get(), device_output.get(), batch_size,
+                      input_features, output_features, nullptr);
+  return DotObjective(CopyFromDevice(device_output), output_gradient);
+}
+
+void CheckProductionLinearFiniteDifferences(int input_features,
+                                            int output_features, int offset) {
+  constexpr int kBatchSize = 2;
+  constexpr float kEpsilon = 1.0e-3F;
+  const std::vector<float> input = Pattern(
+      static_cast<std::size_t>(kBatchSize) * input_features, offset);
+  std::vector<float> weight = Pattern(
+      static_cast<std::size_t>(output_features) * input_features, offset + 1);
+  const std::vector<float> bias = Pattern(output_features, offset + 2);
+  const std::vector<float> output_gradient = Pattern(
+      static_cast<std::size_t>(kBatchSize) * output_features, offset + 3);
+
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_output_gradient = CopyToDevice(output_gradient);
+  DeviceBuffer<float> device_input_gradient(input.size());
+  DeviceBuffer<float> device_weight_gradient(weight.size());
+  DeviceBuffer<float> device_bias_gradient(bias.size());
+  LaunchLinearBackward(
+      device_input.get(), device_weight.get(), device_output_gradient.get(),
+      device_input_gradient.get(), device_weight_gradient.get(),
+      device_bias_gradient.get(), kBatchSize, input_features, output_features,
+      nullptr);
+  const std::vector<float> analytic =
+      CopyFromDevice(device_weight_gradient);
+
+  const std::vector<std::size_t> checked_indices{
+      0, weight.size() / 2, weight.size() - 1};
+  for (std::size_t index : checked_indices) {
+    const float original = weight[index];
+    weight[index] = original + kEpsilon;
+    const double plus = LinearDeviceObjective(
+        input, weight, bias, output_gradient, kBatchSize, input_features,
+        output_features);
+    weight[index] = original - kEpsilon;
+    const double minus = LinearDeviceObjective(
+        input, weight, bias, output_gradient, kBatchSize, input_features,
+        output_features);
+    weight[index] = original;
+    const double numeric = (plus - minus) / (2.0 * kEpsilon);
+    const double tolerance = 1.0e-2 + 1.0e-2 * std::fabs(numeric);
+    EXPECT_NEAR(numeric, analytic[index], tolerance);
+  }
+}
+
+double ConvolutionDeviceObjective(
+    const std::vector<float>& input, const std::vector<float>& weight,
+    const std::vector<float>& bias,
+    const std::vector<float>& output_gradient, int batch_size,
+    int input_channels, int input_height, int input_width,
+    int output_channels, int kernel_height, int kernel_width) {
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_bias = CopyToDevice(bias);
+  DeviceBuffer<float> device_output(output_gradient.size());
+  LaunchConvolutionForward(
+      device_input.get(), device_weight.get(), device_bias.get(),
+      device_output.get(), batch_size, input_channels, input_height,
+      input_width, output_channels, kernel_height, kernel_width, nullptr);
+  return DotObjective(CopyFromDevice(device_output), output_gradient);
+}
+
+void CheckProductionConvolutionFiniteDifferences(
+    int input_channels, int input_height, int input_width,
+    int output_channels, int offset) {
+  constexpr int kBatchSize = 1;
+  constexpr int kKernelSize = 5;
+  constexpr float kEpsilon = 1.0e-3F;
+  const int output_height = input_height - kKernelSize + 1;
+  const int output_width = input_width - kKernelSize + 1;
+  const std::vector<float> input = Pattern(
+      static_cast<std::size_t>(kBatchSize) * input_channels * input_height *
+          input_width,
+      offset);
+  std::vector<float> weight = Pattern(
+      static_cast<std::size_t>(output_channels) * input_channels * kKernelSize *
+          kKernelSize,
+      offset + 1);
+  const std::vector<float> bias = Pattern(output_channels, offset + 2);
+  const std::vector<float> output_gradient = Pattern(
+      static_cast<std::size_t>(kBatchSize) * output_channels * output_height *
+          output_width,
+      offset + 3);
+
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_weight = CopyToDevice(weight);
+  DeviceBuffer<float> device_output_gradient = CopyToDevice(output_gradient);
+  DeviceBuffer<float> device_input_gradient(input.size());
+  DeviceBuffer<float> device_weight_gradient(weight.size());
+  DeviceBuffer<float> device_bias_gradient(bias.size());
+  LaunchConvolutionBackward(
+      device_input.get(), device_weight.get(), device_output_gradient.get(),
+      device_input_gradient.get(), device_weight_gradient.get(),
+      device_bias_gradient.get(), kBatchSize, input_channels, input_height,
+      input_width, output_channels, kKernelSize, kKernelSize, nullptr);
+  const std::vector<float> analytic =
+      CopyFromDevice(device_weight_gradient);
+
+  const std::vector<std::size_t> checked_indices{
+      0, weight.size() / 2, weight.size() - 1};
+  for (std::size_t index : checked_indices) {
+    const float original = weight[index];
+    weight[index] = original + kEpsilon;
+    const double plus = ConvolutionDeviceObjective(
+        input, weight, bias, output_gradient, kBatchSize, input_channels,
+        input_height, input_width, output_channels, kKernelSize, kKernelSize);
+    weight[index] = original - kEpsilon;
+    const double minus = ConvolutionDeviceObjective(
+        input, weight, bias, output_gradient, kBatchSize, input_channels,
+        input_height, input_width, output_channels, kKernelSize, kKernelSize);
+    weight[index] = original;
+    const double numeric = (plus - minus) / (2.0 * kEpsilon);
+    const double tolerance = 1.0e-2 + 1.0e-2 * std::fabs(numeric);
+    EXPECT_NEAR(numeric, analytic[index], tolerance);
+  }
+}
+
+std::string SourceWithoutCommentsOrLiterals(const std::string& source) {
+  enum class State { kCode, kLineComment, kBlockComment, kString, kCharacter };
+  State state = State::kCode;
+  std::string code(source.size(), ' ');
+  for (std::size_t index = 0; index < source.size(); ++index) {
+    const char current = source[index];
+    const char next = index + 1 < source.size() ? source[index + 1] : '\0';
+    if (state == State::kCode && current == '/' && next == '/') {
+      state = State::kLineComment;
+      ++index;
+    } else if (state == State::kCode && current == '/' && next == '*') {
+      state = State::kBlockComment;
+      ++index;
+    } else if (state == State::kLineComment && current == '\n') {
+      state = State::kCode;
+      code[index] = current;
+    } else if (state == State::kBlockComment && current == '*' && next == '/') {
+      state = State::kCode;
+      ++index;
+    } else if (state == State::kCode && current == '"') {
+      state = State::kString;
+    } else if (state == State::kCode && current == '\'') {
+      state = State::kCharacter;
+    } else if ((state == State::kString || state == State::kCharacter) &&
+               current == '\\') {
+      ++index;
+    } else if (state == State::kString && current == '"') {
+      state = State::kCode;
+    } else if (state == State::kCharacter && current == '\'') {
+      state = State::kCode;
+    } else if (state == State::kCode) {
+      code[index] = current;
+    }
+  }
+  return code;
+}
+
+bool ContainsIdentifier(const std::string& source,
+                        const std::string& identifier) {
+  for (std::size_t index = 0; index < source.size();) {
+    const bool starts_identifier =
+        (source[index] >= 'A' && source[index] <= 'Z') ||
+        (source[index] >= 'a' && source[index] <= 'z') || source[index] == '_';
+    if (!starts_identifier) {
+      ++index;
+      continue;
+    }
+    const std::size_t start = index++;
+    while (index < source.size() &&
+           ((source[index] >= 'A' && source[index] <= 'Z') ||
+            (source[index] >= 'a' && source[index] <= 'z') ||
+            (source[index] >= '0' && source[index] <= '9') ||
+            source[index] == '_')) {
+      ++index;
+    }
+    if (source.compare(start, index - start, identifier) == 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -361,5 +678,102 @@ TEST_CASE(maxpool_rejects_impossible_dimensions_before_launch) {
                             input, output, offsets,
                             std::numeric_limits<int>::max(),
                             std::numeric_limits<int>::max(), 2, 2, nullptr),
+                         "overflow");
+}
+
+TEST_CASE(linear_forward_backward_matches_cpu_for_small_shape) {
+  CheckLinearAgainstCpu(3, 5, 4);
+}
+
+TEST_CASE(linear_forward_backward_matches_cpu_for_non_divisible_shape) {
+  CheckLinearAgainstCpu(17, 120, 84);
+}
+
+TEST_CASE(linear_one_element_forward_backward_boundary) {
+  CheckLinearAgainstCpu(1, 1, 1);
+}
+
+TEST_CASE(linear_production_weights_match_centered_finite_differences) {
+  // The scalar objective is L=sum_i forward[i]*output_gradient[i], exactly the
+  // upstream gradient supplied to backward.
+  CheckProductionLinearFiniteDifferences(256, 120, 9);
+  CheckProductionLinearFiniteDifferences(120, 84, 13);
+  CheckProductionLinearFiniteDifferences(84, 10, 17);
+}
+
+TEST_CASE(linear_launchers_reject_invalid_dimensions_and_pointers) {
+  const auto* const read = reinterpret_cast<const float*>(1);
+  auto* const write = reinterpret_cast<float*>(1);
+  EXPECT_THROW_CONTAINS(
+      LaunchLinearForward(read, read, read, write, 0, 1, 1, nullptr),
+      "dimensions");
+  EXPECT_THROW_CONTAINS(
+      LaunchLinearForward(nullptr, read, read, write, 1, 1, 1, nullptr),
+      "pointer");
+  EXPECT_THROW_CONTAINS(
+      LaunchLinearBackward(read, read, read, write, write, write, 1, 1, 1,
+                           nullptr),
+      "overlap");
+  EXPECT_THROW_CONTAINS(
+      LaunchLinearForward(
+          reinterpret_cast<const float*>(
+              std::numeric_limits<std::uintptr_t>::max() - 1),
+          read, read, write, 1, 1, 1, nullptr),
+      "pointer range");
+}
+
+TEST_CASE(convolution_forward_backward_matches_cpu_for_non_divisible_shape) {
+  CheckConvolutionAgainstCpu(2, 2, 7, 8, 3, 5, 5);
+}
+
+TEST_CASE(convolution_forward_backward_matches_cpu_for_conv1_shape) {
+  CheckConvolutionAgainstCpu(1, 1, 28, 28, 6, 5, 5);
+}
+
+TEST_CASE(convolution_forward_backward_matches_cpu_for_conv2_shape) {
+  CheckConvolutionAgainstCpu(1, 6, 12, 12, 16, 5, 5);
+}
+
+TEST_CASE(convolution_one_element_forward_backward_boundary) {
+  CheckConvolutionAgainstCpu(1, 1, 1, 1, 1, 1, 1);
+}
+
+TEST_CASE(convolution_production_weights_match_centered_finite_differences) {
+  // The scalar objective is L=sum_i forward[i]*output_gradient[i], exactly the
+  // upstream gradient supplied to backward.
+  CheckProductionConvolutionFiniteDifferences(1, 28, 28, 6, 21);
+  CheckProductionConvolutionFiniteDifferences(6, 12, 12, 16, 25);
+}
+
+TEST_CASE(convolution_launchers_reject_invalid_dimensions_and_pointers) {
+  const auto* const read = reinterpret_cast<const float*>(1);
+  auto* const write = reinterpret_cast<float*>(1);
+  EXPECT_THROW_CONTAINS(LaunchConvolutionForward(
+                            read, read, read, write, 1, 1, 4, 5, 1, 5, 5,
+                            nullptr),
+                        "kernel");
+  EXPECT_THROW_CONTAINS(LaunchConvolutionForward(
+                            nullptr, read, read, write, 1, 1, 5, 5, 1, 5, 5,
+                            nullptr),
+                        "pointer");
+  EXPECT_THROW_CONTAINS(LaunchConvolutionBackward(
+                            read, read, read, write, write, write, 1, 1, 5, 5,
+                            1, 5, 5, nullptr),
+                        "overlap");
+  EXPECT_THROW_CONTAINS(LaunchConvolutionForward(
+                            read, read, read, write,
+                            std::numeric_limits<int>::max(),
+                            std::numeric_limits<int>::max(), 5, 5, 1, 5, 5,
+                            nullptr),
                         "overflow");
+}
+
+TEST_CASE(convolution_gradient_source_policy_forbids_atomic_operations) {
+  std::ifstream input("src/kernels/convolution.cu", std::ios::binary);
+  EXPECT_TRUE(input.is_open());
+  std::ostringstream contents;
+  contents << input.rdbuf();
+  const std::string code =
+      SourceWithoutCommentsOrLiterals(contents.str());
+  EXPECT_TRUE(!ContainsIdentifier(code, "atomicAdd"));
 }

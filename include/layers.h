@@ -93,9 +93,11 @@ void LaunchMaxPoolBackward(const float* output_gradient,
 // [output_features] bias, and [batch_size][output_features] output. All pointers
 // are non-null, pairwise-disjoint caller-owned device buffers with those minimum
 // extents and remain live through stream work. Every dimension >= 1, all
-// element/byte extents fit size_t, and stream is valid or null. Preconditions
-// are not host-validated. Immediate launch failure throws std::runtime_error;
-// no sync occurs and asynchronous errors surface at the caller's later boundary.
+// element/byte extents fit size_t, and stream is valid or null. Invalid
+// dimensions, null pointers, overlap, or overflowing extents throw
+// std::invalid_argument/std::overflow_error before launch; allocation extents
+// remain caller preconditions. Immediate launch failure throws
+// std::runtime_error; no sync occurs and asynchronous errors surface later.
 void LaunchLinearForward(const float* input, const float* weight,
     const float* bias, float* output, int batch_size, int input_features,
     int output_features, cudaStream_t stream);
@@ -106,8 +108,11 @@ void LaunchLinearForward(const float* input, const float* weight,
 // gradients and [output_features] bias gradient. All six pointers are non-null,
 // pairwise-disjoint caller-owned device buffers of the implied extents and live
 // through stream work. Dimensions >= 1, element/byte extents fit size_t, and
-// stream is valid or null. Preconditions are not host-validated. Immediate
-// launch failure throws std::runtime_error; no sync occurs and async errors surface later.
+// stream is valid or null. Invalid dimensions, null pointers, overlap, or
+// overflowing extents throw std::invalid_argument/std::overflow_error before
+// launch; allocation extents remain caller preconditions. Immediate launch
+// failure throws std::runtime_error; no sync occurs and async errors surface
+// later.
 void LaunchLinearBackward(const float* input, const float* weight,
     const float* output_gradient, float* input_gradient,
     float* weight_gradient, float* bias_gradient, int batch_size,
@@ -120,8 +125,10 @@ void LaunchLinearBackward(const float* input, const float* weight,
 // pairwise-disjoint caller-owned device buffers of the implied extents and live
 // through stream work. All dimensions >= 1; each kernel dimension is no larger
 // than its input dimension; element/byte extents fit size_t; stream is valid or
-// null. Preconditions are not host-validated. Immediate launch failure throws
-// std::runtime_error; no sync occurs and async errors surface later.
+// null. Invalid dimensions, kernels, null pointers, overlap, or overflowing
+// extents throw std::invalid_argument/std::overflow_error before launch;
+// allocation extents remain caller preconditions. Immediate launch failure
+// throws std::runtime_error; no sync occurs and async errors surface later.
 void LaunchConvolutionForward(const float* input, const float* weight,
     const float* bias, float* output, int batch_size, int input_channels,
     int input_height, int input_width, int output_channels,
@@ -132,9 +139,11 @@ void LaunchConvolutionForward(const float* input, const float* weight,
 // [output_channels] bias gradients. All six pointers are non-null, pairwise-
 // disjoint caller-owned device buffers of the forward/implied extents and live
 // through stream work. Every dimension >= 1; kernel dimensions fit input;
-// element/byte extents fit size_t; stream is valid or null. Preconditions are
-// not host-validated. Immediate launch failure throws std::runtime_error; no
-// sync occurs and asynchronous errors surface at the caller's later boundary.
+// element/byte extents fit size_t; stream is valid or null. Invalid dimensions,
+// kernels, null pointers, overlap, or overflowing extents throw
+// std::invalid_argument/std::overflow_error before launch; allocation extents
+// remain caller preconditions. Immediate launch failure throws
+// std::runtime_error; no sync occurs and asynchronous errors surface later.
 void LaunchConvolutionBackward(const float* input, const float* weight,
     const float* output_gradient, float* input_gradient,
     float* weight_gradient, float* bias_gradient, int batch_size,
