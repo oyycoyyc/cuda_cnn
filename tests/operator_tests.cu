@@ -6,6 +6,7 @@
 
 #include <cuda_runtime.h>
 
+#include <atomic>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -14,6 +15,11 @@
 #include <vector>
 
 namespace {
+
+static_assert(
+    std::is_same<decltype(device_buffer_detail::LiveAllocationCount()),
+                 std::atomic<std::size_t>&>::value,
+    "DeviceBuffer allocation accounting must be atomic");
 
 // Performs no mathematical operation and accesses no tensors. A valid launch
 // would map each thread to no output, execute no loops or boundary paths, and

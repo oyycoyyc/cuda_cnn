@@ -3,6 +3,7 @@
 
 #include <cuda_runtime_api.h>
 
+#include <atomic>
 #include <cstddef>
 #include <limits>
 #include <sstream>
@@ -11,25 +12,26 @@
 
 namespace device_buffer_detail {
 
-// Returns the internal live-allocation counter shared by all DeviceBuffer
-// specializations and translation units in this process. The reference is
-// implementation-owned, retained for program lifetime, and not exposed by the
-// public DeviceBuffer interface.
-inline std::size_t& LiveAllocationCount() noexcept {
-  static std::size_t count = 0;
+// Returns the internal atomic live-allocation counter shared by all
+// DeviceBuffer specializations and translation units in this process. The
+// reference is implementation-owned, retained for program lifetime, and not
+// exposed by the public DeviceBuffer interface.
+inline std::atomic<std::size_t>& LiveAllocationCount() noexcept {
+  static std::atomic<std::size_t> count{0};
   return count;
 }
 
 // Records one successful allocation in the implementation-owned accounting.
-// It owns no storage, retains no caller data, and cannot fail or synchronize.
+// Relaxed ordering is sufficient because the counter conveys no ownership or
+// memory visibility; it only records an independent diagnostic total.
 inline void RecordAllocation() noexcept {
-  ++LiveAllocationCount();
+  LiveAllocationCount().fetch_add(1, std::memory_order_relaxed);
 }
 
 // Records one ownership release in the implementation-owned accounting. It
-// owns no storage, retains no caller data, and cannot fail or synchronize.
+// uses relaxed ordering for the independent diagnostic total and owns no data.
 inline void RecordRelease() noexcept {
-  --LiveAllocationCount();
+  LiveAllocationCount().fetch_sub(1, std::memory_order_relaxed);
 }
 
 // Allocates exactly requested_bytes of device storage and returns unique
@@ -183,11 +185,13 @@ std::size_t DeviceBuffer<T>::size() const noexcept {
 
 #ifdef CUDA_LENET_ENABLE_TEST_HOOKS
 // Returns the process-wide number of currently owned cudaMalloc allocations
-// made by all DeviceBuffer specializations. This test-only single-host-thread
-// observer performs no CUDA call or ownership transfer; production translation
-// units do not receive its declaration.
+// made by all DeviceBuffer specializations. The relaxed load is race-free with
+// concurrent allocation/free but is only a point-in-time diagnostic snapshot;
+// it performs no CUDA call or ownership transfer. Production translation units
+// do not receive this test-only declaration.
 inline std::size_t DeviceBufferAllocationCountForTests() noexcept {
-  return device_buffer_detail::LiveAllocationCount();
+  return device_buffer_detail::LiveAllocationCount().load(
+      std::memory_order_relaxed);
 }
 #endif
 
