@@ -29,6 +29,8 @@ HOST_TEST_OBJECTS := $(addprefix $(HOST_OBJECT_DIR)/,$(addsuffix .o,$(HOST_TEST_
 CUDA_TEST_OBJECTS := $(addprefix $(CUDA_OBJECT_DIR)/,$(addsuffix .o,$(CUDA_TEST_NAMES)))
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
+RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
+PARAMETERS_OBJECT := $(HOST_OBJECT_DIR)/parameters.o
 HOST_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/host/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
@@ -36,7 +38,8 @@ CUDA_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(CUDA_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/cuda/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
-  $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d)
+  $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
+  $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -69,6 +72,8 @@ $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))): \
 endif
 
 $(BUILD_DIR)/dataset_tests$(EXEEXT): $(DATASET_OBJECT)
+$(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
+$(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
 
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
@@ -76,6 +81,8 @@ $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) |
 ifneq ($(EXEEXT),)
 $(BUILD_DIR)/dataset_tests: $(BUILD_DIR)/dataset_tests$(EXEEXT)
 $(BUILD_DIR)/dataset_probe: $(BUILD_DIR)/dataset_probe$(EXEEXT)
+$(BUILD_DIR)/random_tests: $(BUILD_DIR)/random_tests$(EXEEXT)
+$(BUILD_DIR)/parameters_tests: $(BUILD_DIR)/parameters_tests$(EXEEXT)
 endif
 
 ifneq ($(strip $(CUDA_UNIQUE_NAMES)),)
@@ -94,6 +101,12 @@ $(HOST_OBJECT_DIR)/%.o: tests/%.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(DATASET_OBJECT): src/dataset.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(RANDOM_OBJECT): src/random.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(PARAMETERS_OBJECT): src/parameters.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
