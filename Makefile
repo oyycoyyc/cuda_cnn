@@ -7,7 +7,7 @@ CXXFLAGS := -std=c++14 -O2 -Wall -Wextra -Wpedantic
 NVCCFLAGS := -std=c++14 -O2 -lineinfo \
   -gencode=arch=$(CUDA_COMPUTE),code=$(CUDA_ARCH) \
   -gencode=arch=$(CUDA_COMPUTE),code=$(CUDA_COMPUTE)
-CPPFLAGS := -Iinclude -Itests
+CPPFLAGS := -Iinclude -Isrc -Itests
 
 BUILD_DIR := build
 HOST_OBJECT_DIR := $(BUILD_DIR)/obj/host
@@ -27,13 +27,16 @@ CUDA_UNIQUE_NAMES := $(filter-out $(COLLIDING_TEST_NAMES),$(CUDA_TEST_NAMES))
 
 HOST_TEST_OBJECTS := $(addprefix $(HOST_OBJECT_DIR)/,$(addsuffix .o,$(HOST_TEST_NAMES)))
 CUDA_TEST_OBJECTS := $(addprefix $(CUDA_OBJECT_DIR)/,$(addsuffix .o,$(CUDA_TEST_NAMES)))
+DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
+DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 HOST_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/host/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
 CUDA_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(CUDA_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/cuda/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
-DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d)
+DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
+  $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -62,7 +65,17 @@ acceptance: check
 ifneq ($(strip $(HOST_UNIQUE_NAMES)),)
 $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))): \
     $(BUILD_DIR)/%$(EXEEXT): $(HOST_OBJECT_DIR)/%.o | $(BUILD_DIR)
-	$(Q)$(CXX) $(CXXFLAGS) $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
+endif
+
+$(BUILD_DIR)/dataset_tests$(EXEEXT): $(DATASET_OBJECT)
+
+$(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
+	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
+
+ifneq ($(EXEEXT),)
+$(BUILD_DIR)/dataset_tests: $(BUILD_DIR)/dataset_tests$(EXEEXT)
+$(BUILD_DIR)/dataset_probe: $(BUILD_DIR)/dataset_probe$(EXEEXT)
 endif
 
 ifneq ($(strip $(CUDA_UNIQUE_NAMES)),)
@@ -78,6 +91,9 @@ $(BUILD_DIR)/cuda/%$(EXEEXT): $(CUDA_OBJECT_DIR)/%.o | $(BUILD_DIR)/cuda
 	$(Q)$(NVCC) $(NVCCFLAGS) $< -o $@
 
 $(HOST_OBJECT_DIR)/%.o: tests/%.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(DATASET_OBJECT): src/dataset.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
