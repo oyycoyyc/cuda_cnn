@@ -27,6 +27,9 @@ CUDA_UNIQUE_NAMES := $(filter-out $(COLLIDING_TEST_NAMES),$(CUDA_TEST_NAMES))
 
 HOST_TEST_OBJECTS := $(addprefix $(HOST_OBJECT_DIR)/,$(addsuffix .o,$(HOST_TEST_NAMES)))
 CUDA_TEST_OBJECTS := $(addprefix $(CUDA_OBJECT_DIR)/,$(addsuffix .o,$(CUDA_TEST_NAMES)))
+CUDA_KERNEL_SOURCES := src/kernels/input.cu src/kernels/activation.cu \
+  src/kernels/pooling.cu
+CUDA_KERNEL_OBJECTS := $(patsubst src/kernels/%.cu,$(CUDA_OBJECT_DIR)/kernels/%.o,$(CUDA_KERNEL_SOURCES))
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
@@ -42,7 +45,8 @@ CUDA_TEST_PROGRAMS := $(strip \
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
-  $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d)
+  $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d) \
+  $(CUDA_KERNEL_OBJECTS:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -79,7 +83,7 @@ $(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
 $(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
 $(BUILD_DIR)/checkpoint_tests$(EXEEXT): $(CHECKPOINT_OBJECT) $(PARAMETERS_OBJECT)
 $(BUILD_DIR)/cpu_reference_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT)
-$(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT)
+$(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(CUDA_KERNEL_OBJECTS)
 
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
@@ -127,8 +131,11 @@ $(CPU_REFERENCE_OBJECT): tests/cpu_reference.cpp | $(HOST_OBJECT_DIR)
 $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
+$(CUDA_OBJECT_DIR)/kernels/%.o: src/kernels/%.cu | $(CUDA_OBJECT_DIR)/kernels
+	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
+
 $(BUILD_DIR) $(BUILD_DIR)/host $(BUILD_DIR)/cuda \
-    $(HOST_OBJECT_DIR) $(CUDA_OBJECT_DIR):
+    $(HOST_OBJECT_DIR) $(CUDA_OBJECT_DIR) $(CUDA_OBJECT_DIR)/kernels:
 	$(Q)mkdir -p $@
 
 clean:

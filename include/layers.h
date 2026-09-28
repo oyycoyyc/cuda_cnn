@@ -8,14 +8,18 @@
 
 // Converts images from contiguous uint8 [batch_size][28][28] storage to FP32
 // NCHW [batch_size][1][28][28], optionally applying deterministic translation
-// from seed, one_based_epoch, and original_indices[batch]. images, indices, and
-// output are non-null caller-owned device buffers of at least batch_size*784,
-// batch_size, and batch_size*784 elements, remain live through stream work, and
-// do not overlap. batch_size >= 1; seed/indices may hold any values;
+// from seed, one_based_epoch, and original_indices[batch]. Positive dx/dy moves
+// content right/down: output (x,y) samples source (x-dx,y-dy). Out-of-bounds
+// source pixels are uint8 zero and are then normalized by
+// (pixel/255-0.1307)/0.3081. images, indices, and output are non-null caller-
+// owned device buffers of at least batch_size*784, batch_size, and
+// batch_size*784 elements, remain live through stream work, and do not overlap.
+// batch_size >= 1 and must fit one CUDA x-grid; seed/indices may hold any values;
 // one_based_epoch >= 1 when augment is true and is ignored otherwise. stream is
-// a valid stream or null default stream. Preconditions are not host-validated.
-// Immediate runtime/launch failure throws std::runtime_error; no synchronization
-// occurs, so asynchronous errors surface at the caller's later sync boundary.
+// valid or null. Invalid batch/grid dimensions or augmented epoch throw
+// std::invalid_argument/std::overflow_error before launch; pointer/extents are
+// caller preconditions. Immediate launch failure throws std::runtime_error; no
+// synchronization occurs, so asynchronous errors surface at a later boundary.
 void LaunchNormalizeTranslate(const std::uint8_t* images,
     const std::uint32_t* original_indices, float* output, int batch_size,
     std::uint64_t seed, std::uint32_t one_based_epoch, bool augment,
@@ -25,7 +29,8 @@ void LaunchNormalizeTranslate(const std::uint8_t* images,
 // buffer of at least count elements, remains live through stream work, and may
 // be null exactly when count == 0; zero count is a no-op. count <=
 // SIZE_MAX/sizeof(float), and stream is a valid stream or null default stream.
-// Preconditions are not host-validated. Immediate runtime/launch failure throws
+// An overflowing count throws std::overflow_error before launch; pointer extent
+// remains a caller precondition. Immediate launch failure throws
 // std::runtime_error; no synchronization occurs and async errors surface later.
 void LaunchZero(float* values, std::size_t count, cudaStream_t stream);
 
@@ -34,8 +39,9 @@ void LaunchZero(float* values, std::size_t count, cudaStream_t stream);
 // stream work. Both may be null exactly when count == 0; otherwise both are
 // non-null. They may be identical for in-place use or disjoint, but may not
 // partially overlap. count <= SIZE_MAX/sizeof(float); stream is valid or null.
-// Preconditions are not host-validated. Immediate launch failure
-// throws std::runtime_error; no sync occurs and async errors surface later.
+// An overflowing count throws std::overflow_error before launch; pointer and
+// aliasing preconditions are caller-validated. Immediate launch failure throws
+// std::runtime_error; no sync occurs and async errors surface later.
 void LaunchReluForward(const float* input, float* output,
     std::size_t count, cudaStream_t stream);
 
@@ -45,7 +51,8 @@ void LaunchReluForward(const float* input, float* output,
 // count == 0. output_gradient and input_gradient may be identical or disjoint;
 // forward_input is disjoint from both, and partial overlaps are forbidden.
 // count <= SIZE_MAX/sizeof(float); stream is valid or null.
-// Preconditions are not host-validated. Immediate launch failure throws
+// An overflowing count throws std::overflow_error before launch; pointer and
+// aliasing preconditions are caller-validated. Immediate launch failure throws
 // std::runtime_error; no sync occurs and async errors surface later.
 void LaunchReluBackward(const float* forward_input,
     const float* output_gradient, float* input_gradient,
@@ -58,8 +65,10 @@ void LaunchReluBackward(const float* forward_input,
 // caller-owned device buffers with extents implied by these shapes and remain
 // live through stream work. batch_size, channels >= 1; input_height,input_width
 // are even and >= 2; element/byte extents fit size_t; stream is valid or null.
-// Preconditions are not host-validated. Immediate runtime/launch failure throws
-// std::runtime_error; no sync occurs and async errors surface later.
+// Invalid/overflowing dimensions throw std::invalid_argument or
+// std::overflow_error before launch; pointer extents remain caller preconditions.
+// Immediate launch failure throws std::runtime_error; no sync occurs and async
+// errors surface later.
 void LaunchMaxPoolForward(const float* input, float* output,
     std::uint8_t* winner_offsets, int batch_size, int channels,
     int input_height, int input_width, cudaStream_t stream);
@@ -70,9 +79,10 @@ void LaunchMaxPoolForward(const float* input, float* output,
 // buffers with implied extents and remain live through stream work; every
 // winner offset is in [0,3]. batch_size,channels >= 1; spatial dimensions are
 // even and >= 2; element/byte extents fit size_t; stream is valid or null.
-// Preconditions, including device offset values, are not host-validated.
-// Immediate runtime or launch failure throws std::runtime_error; no sync occurs and async errors
-// surface later.
+// Invalid/overflowing dimensions throw std::invalid_argument or
+// std::overflow_error before launch. Pointer extents and device offset values
+// remain caller preconditions. Immediate launch failure throws
+// std::runtime_error; no sync occurs and async errors surface later.
 void LaunchMaxPoolBackward(const float* output_gradient,
     const std::uint8_t* winner_offsets, float* input_gradient,
     int batch_size, int channels, int input_height, int input_width,
