@@ -158,8 +158,11 @@ void LaunchConvolutionBackward(const float* input, const float* weight,
 // pairwise-disjoint caller-owned device buffers of these extents and live
 // through stream work. batch_size >= 1; 1 <= class_count <= 256; each label is
 // less than class_count; element/byte extents fit size_t; stream is valid or
-// null. Device values are not host-validated. Immediate runtime/launch failure
-// throws std::runtime_error; no sync occurs and async errors surface later.
+// null. Invalid dimensions, null pointers, overlap, or overflowing pointer/
+// element extents throw std::invalid_argument/std::overflow_error before
+// launch; labels and other device values are not host-validated. Immediate
+// runtime/launch failure throws std::runtime_error; no sync occurs and async
+// errors surface later.
 void LaunchSoftmaxCrossEntropy(const float* logits,
     const std::uint8_t* labels, float* probabilities,
     float* per_sample_losses, float* mean_loss, float* logits_gradient,
@@ -170,7 +173,9 @@ void LaunchSoftmaxCrossEntropy(const float* logits,
 // pointers are non-null, disjoint caller-owned device buffers of at least
 // batch_size*class_count elements and live through stream work. batch_size >= 1,
 // 1 <= class_count <= 256, element/byte extents fit size_t, and stream is valid
-// or null. Device values are not host-validated. Immediate launch failure throws
+// or null. Invalid dimensions, null pointers, overlap, or overflowing pointer/
+// element extents throw std::invalid_argument/std::overflow_error before
+// launch; device values are not host-validated. Immediate launch failure throws
 // std::runtime_error; no sync occurs and async errors surface later.
 void LaunchSoftmax(const float* logits, float* probabilities,
     int batch_size, int class_count, cudaStream_t stream);
@@ -182,8 +187,10 @@ void LaunchSoftmax(const float* logits, float* probabilities,
 // disjoint caller-owned device buffers of these extents and live through stream
 // work. batch_size >= 1; 1 <= class_count <= 256; each label < class_count;
 // element/byte extents fit size_t; stream is valid or null. Device values are
-// not host-validated. Immediate runtime/launch failure throws std::runtime_error;
-// no sync occurs and async errors surface at the caller's later sync boundary.
+// not host-validated. Invalid dimensions, null pointers, overlap, or overflowing
+// pointer/element extents throw std::invalid_argument/std::overflow_error before
+// launch. Immediate runtime/launch failure throws std::runtime_error; no sync
+// occurs and async errors surface at the caller's later sync boundary.
 void LaunchArgmaxAndCountCorrect(const float* logits,
     const std::uint8_t* labels, std::uint8_t* predictions,
     int* correct_flags, int* correct_count, int batch_size,
@@ -197,10 +204,14 @@ void LaunchArgmaxAndCountCorrect(const float* logits,
 // moments are nonnegative. learning_rate and weight_decay are finite and >= 0;
 // beta1,beta2 are finite in [0,1); epsilon is finite and > 0. Each inverse bias
 // correction is finite, >= 1, and is the FP32 host-computed value of
-// 1/(1-beta^t) for its matching beta and the same integer t >= 1. count <=
-// SIZE_MAX/sizeof(float); stream is valid or null. Preconditions are
-// not host-validated. Immediate launch failure throws std::runtime_error; no
-// sync occurs and async errors surface later.
+// 1/(1-beta^t) for its matching beta and the same integer t >= 1. The update is
+// m'=beta1*m+(1-beta1)*g, v'=beta2*v+(1-beta2)*g*g, and
+// p'=p-lr*((m'*inverse1)/(sqrt(v'*inverse2)+epsilon)+weight_decay*p), where p
+// in the decay term is pre-update. count <= SIZE_MAX/sizeof(float); stream is
+// valid or null. Invalid scalars, null pointers, overlap, or overflowing
+// pointer/element extents throw std::invalid_argument/std::overflow_error
+// before launch. Immediate launch failure throws std::runtime_error; no sync
+// occurs and async errors surface later.
 void LaunchAdamW(float* parameters, const float* gradients,
     float* first_moments, float* second_moments, std::size_t count,
     float learning_rate, float beta1, float beta2, float epsilon,
@@ -213,10 +224,12 @@ void LaunchAdamW(float* parameters, const float* gradients,
 // values is a disjoint caller-owned device buffer of at least count elements and
 // may be null exactly when count == 0. Buffers remain live through stream work.
 // The exact representability preconditions are count <= INT_MAX and the byte
-// extent fits size_t; stream is valid or null. Preconditions are not host-
-// validated. Immediate runtime/launch failure throws std::runtime_error; no
-// sync occurs, and the caller must synchronize before reading the result or
-// attributing asynchronous errors.
+// extent fits size_t; stream is valid or null. Invalid count, null pointers,
+// overlap, or overflowing pointer/element extents throw
+// std::invalid_argument/std::overflow_error before launch. Immediate
+// runtime/launch failure throws std::runtime_error; no sync occurs, and the
+// caller must synchronize before reading the result or attributing asynchronous
+// errors.
 void LaunchFindFirstNonFinite(const float* values, std::size_t count,
     int* first_bad_index, cudaStream_t stream);
 

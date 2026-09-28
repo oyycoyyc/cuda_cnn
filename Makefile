@@ -28,7 +28,8 @@ CUDA_UNIQUE_NAMES := $(filter-out $(COLLIDING_TEST_NAMES),$(CUDA_TEST_NAMES))
 HOST_TEST_OBJECTS := $(addprefix $(HOST_OBJECT_DIR)/,$(addsuffix .o,$(HOST_TEST_NAMES)))
 CUDA_TEST_OBJECTS := $(addprefix $(CUDA_OBJECT_DIR)/,$(addsuffix .o,$(CUDA_TEST_NAMES)))
 CUDA_KERNEL_SOURCES := src/kernels/input.cu src/kernels/activation.cu \
-  src/kernels/pooling.cu src/kernels/linear.cu src/kernels/convolution.cu
+  src/kernels/pooling.cu src/kernels/linear.cu src/kernels/convolution.cu \
+  src/kernels/loss.cu src/kernels/metrics.cu src/kernels/adam.cu
 CUDA_KERNEL_OBJECTS := $(patsubst src/kernels/%.cu,$(CUDA_OBJECT_DIR)/kernels/%.o,$(CUDA_KERNEL_SOURCES))
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
