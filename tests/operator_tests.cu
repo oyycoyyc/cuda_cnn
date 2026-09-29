@@ -1591,14 +1591,28 @@ TEST_CASE(lenet_storage_bytes_and_constructor_query_are_exact_at_capacities) {
         DeviceBufferSuccessfulAllocationEventCountForTests();
     const std::size_t memory_queries_before =
         CudaMemoryInfoQueryCountForTests();
+    const std::size_t query_sequence_before =
+        CudaMemoryInfoQueryInvocationSequenceForTests();
+    const std::size_t allocation_attempt_sequence_before =
+        DeviceBufferAllocationAttemptSequenceForTests();
     {
       LeNet model(capacities[index], UINT64_C(101) + index, stream.get());
+      const std::size_t query_sequence =
+          CudaMemoryInfoQueryInvocationSequenceForTests();
+      const std::size_t allocation_attempt_sequence =
+          DeviceBufferAllocationAttemptSequenceForTests();
       EXPECT_EQ(expected_bytes[index], model.RequiredDeviceBytes());
       EXPECT_EQ(live_before + 1, DeviceBufferAllocationCountForTests());
       EXPECT_EQ(allocation_events_before + 1,
                 DeviceBufferSuccessfulAllocationEventCountForTests());
       EXPECT_EQ(memory_queries_before + 1,
                 CudaMemoryInfoQueryCountForTests());
+      EXPECT_TRUE(query_sequence != 0);
+      EXPECT_TRUE(allocation_attempt_sequence != 0);
+      EXPECT_TRUE(query_sequence > query_sequence_before);
+      EXPECT_TRUE(allocation_attempt_sequence >
+                  allocation_attempt_sequence_before);
+      EXPECT_TRUE(query_sequence < allocation_attempt_sequence);
     }
     EXPECT_EQ(live_before, DeviceBufferAllocationCountForTests());
     EXPECT_EQ(allocation_events_before + 1,

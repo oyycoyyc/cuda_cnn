@@ -37,6 +37,43 @@ inline std::atomic<std::size_t>& MemoryInfoQueryCount() noexcept {
   return count;
 }
 
+// Supplies one process-wide total order for host diagnostic events. Sequentially
+// consistent increments let tests compare query and allocation-attempt tokens
+// even when unrelated threads consume intervening sequence values.
+inline std::atomic<std::size_t>& DiagnosticEventSequence() noexcept {
+  static std::atomic<std::size_t> sequence{0};
+  return sequence;
+}
+
+// Stores the most recent memory-query invocation token on the calling host
+// thread. Per-thread storage prevents unrelated concurrent threads from
+// overwriting the constructor thread's evidence.
+inline std::atomic<std::size_t>& LastMemoryInfoQuerySequence() noexcept {
+  static thread_local std::atomic<std::size_t> sequence{0};
+  return sequence;
+}
+
+// Stores the most recent DeviceBuffer allocation-attempt token on the calling
+// host thread, including attempts for which cudaMalloc subsequently fails.
+inline std::atomic<std::size_t>& LastAllocationAttemptSequence() noexcept {
+  static thread_local std::atomic<std::size_t> sequence{0};
+  return sequence;
+}
+
+inline std::size_t NextDiagnosticEventSequence() noexcept {
+  return DiagnosticEventSequence().fetch_add(1, std::memory_order_seq_cst) + 1;
+}
+
+inline void RecordMemoryInfoQueryInvocation() noexcept {
+  LastMemoryInfoQuerySequence().store(NextDiagnosticEventSequence(),
+                                      std::memory_order_seq_cst);
+}
+
+inline void RecordAllocationAttempt() noexcept {
+  LastAllocationAttemptSequence().store(NextDiagnosticEventSequence(),
+                                        std::memory_order_seq_cst);
+}
+
 // Records one successful allocation in the implementation-owned accounting.
 // Relaxed ordering is sufficient because the counter conveys no ownership or
 // memory visibility; it only records an independent diagnostic total.
@@ -57,6 +94,7 @@ inline void RecordRelease() noexcept {
 inline cudaError_t QueryMemoryInfo(std::size_t* free_bytes,
                                    std::size_t* total_bytes) noexcept {
   MemoryInfoQueryCount().fetch_add(1, std::memory_order_relaxed);
+  RecordMemoryInfoQueryInvocation();
   return cudaMemGetInfo(free_bytes, total_bytes);
 }
 
@@ -67,6 +105,7 @@ inline cudaError_t QueryMemoryInfo(std::size_t* free_bytes,
 // its CUDA Runtime-defined synchronization behavior.
 inline void* Allocate(std::size_t requested_bytes) {
   void* pointer = nullptr;
+  RecordAllocationAttempt();
   const cudaError_t allocation_result = cudaMalloc(&pointer, requested_bytes);
   if (allocation_result != cudaSuccess) {
     std::size_t free_bytes = 0;
@@ -237,6 +276,28 @@ inline std::size_t DeviceBufferSuccessfulAllocationEventCountForTests()
 inline std::size_t CudaMemoryInfoQueryCountForTests() noexcept {
   return device_buffer_detail::MemoryInfoQueryCount().load(
       std::memory_order_relaxed);
+}
+
+// Returns the calling host thread's latest memory-query invocation token. The
+// token is recorded immediately before cudaMemGetInfo, regardless of its return
+// value. A query-before-allocation assertion is meaningful when snapshots and a
+// successfully completed constructor run on this same thread, its existing
+// count checks prove one query/allocation, and no nested diagnostic operation is
+// performed on that thread. Concurrent other threads can create sequence gaps
+// but cannot overwrite this thread-local token. Wraparound is outside test scope.
+inline std::size_t CudaMemoryInfoQueryInvocationSequenceForTests() noexcept {
+  return device_buffer_detail::LastMemoryInfoQuerySequence().load(
+      std::memory_order_seq_cst);
+}
+
+// Returns the calling host thread's latest DeviceBuffer allocation-attempt
+// token, recorded immediately before cudaMalloc whether that call succeeds or
+// fails. It has the same-thread/successful-constructor scope as the query
+// token. A failed allocation may issue a later diagnostic memory query, so its
+// token pair must not be interpreted as the successful preflight contract.
+inline std::size_t DeviceBufferAllocationAttemptSequenceForTests() noexcept {
+  return device_buffer_detail::LastAllocationAttemptSequence().load(
+      std::memory_order_seq_cst);
 }
 #endif
 
