@@ -31,6 +31,7 @@ CUDA_KERNEL_SOURCES := src/kernels/input.cu src/kernels/activation.cu \
   src/kernels/pooling.cu src/kernels/linear.cu src/kernels/convolution.cu \
   src/kernels/loss.cu src/kernels/metrics.cu src/kernels/adam.cu
 CUDA_KERNEL_OBJECTS := $(patsubst src/kernels/%.cu,$(CUDA_OBJECT_DIR)/kernels/%.o,$(CUDA_KERNEL_SOURCES))
+LENET_OBJECT := $(CUDA_OBJECT_DIR)/lenet.o
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
@@ -47,7 +48,7 @@ DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
   $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d) \
-  $(CUDA_KERNEL_OBJECTS:.o=.d)
+  $(CUDA_KERNEL_OBJECTS:.o=.d) $(LENET_OBJECT:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -84,7 +85,8 @@ $(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
 $(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
 $(BUILD_DIR)/checkpoint_tests$(EXEEXT): $(CHECKPOINT_OBJECT) $(PARAMETERS_OBJECT)
 $(BUILD_DIR)/cpu_reference_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT)
-$(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(CUDA_KERNEL_OBJECTS)
+$(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(PARAMETERS_OBJECT) \
+    $(RANDOM_OBJECT) $(LENET_OBJECT) $(CUDA_KERNEL_OBJECTS)
 
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
@@ -133,6 +135,9 @@ $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
 $(CUDA_OBJECT_DIR)/kernels/%.o: src/kernels/%.cu | $(CUDA_OBJECT_DIR)/kernels
+	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
+
+$(LENET_OBJECT): src/lenet.cu | $(CUDA_OBJECT_DIR)
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR) $(BUILD_DIR)/host $(BUILD_DIR)/cuda \

@@ -3,6 +3,7 @@
 #include "cpu_reference.h"
 #include "cuda_check.h"
 #include "layers.h"
+#include "lenet.h"
 #include "random.h"
 #include "tensor.h"
 #include "test_harness.h"
@@ -10,6 +11,7 @@
 #include <cuda_runtime.h>
 
 #include <atomic>
+#include <array>
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
@@ -50,6 +52,14 @@ std::vector<T> CopyFromDevice(const DeviceBuffer<T>& source) {
   std::vector<T> destination(source.size());
   CUDA_CHECK(cudaMemcpy(destination.data(), source.get(),
                         destination.size() * sizeof(T),
+                        cudaMemcpyDeviceToHost));
+  return destination;
+}
+
+template <typename T>
+std::vector<T> CopyFromDevicePointer(const T* source, std::size_t count) {
+  std::vector<T> destination(count);
+  CUDA_CHECK(cudaMemcpy(destination.data(), source, count * sizeof(T),
                         cudaMemcpyDeviceToHost));
   return destination;
 }
@@ -573,6 +583,145 @@ void CheckFirstBadIndex(const std::vector<float>& values, int expected_index) {
                            device_result.get(), nullptr);
   const std::vector<int> result = CopyFromDevice(device_result);
   EXPECT_EQ(expected_index, result[0]);
+}
+
+struct CpuLenetPass {
+  std::vector<float> conv1_pre;
+  std::vector<float> relu1;
+  cpu_reference::MaxPoolResult pool1;
+  std::vector<float> conv2_pre;
+  std::vector<float> relu2;
+  cpu_reference::MaxPoolResult pool2;
+  std::vector<float> fc1_pre;
+  std::vector<float> relu3;
+  std::vector<float> fc2_pre;
+  std::vector<float> relu4;
+  std::vector<float> logits;
+};
+
+CpuLenetPass CpuLenetForward(const std::vector<float>& input,
+                             const ParameterSet& parameters,
+                             int batch_size) {
+  CpuLenetPass pass;
+  pass.conv1_pre = cpu_reference::ConvolutionForward(
+      input, parameters[0].values, parameters[1].values, batch_size, 1, 28,
+      28, 6, 5, 5);
+  pass.relu1 = cpu_reference::ReluForward(pass.conv1_pre);
+  pass.pool1 = cpu_reference::MaxPoolForward(pass.relu1, batch_size, 6, 24,
+                                              24);
+  pass.conv2_pre = cpu_reference::ConvolutionForward(
+      pass.pool1.output, parameters[2].values, parameters[3].values,
+      batch_size, 6, 12, 12, 16, 5, 5);
+  pass.relu2 = cpu_reference::ReluForward(pass.conv2_pre);
+  pass.pool2 = cpu_reference::MaxPoolForward(pass.relu2, batch_size, 16, 8,
+                                              8);
+  pass.fc1_pre = cpu_reference::LinearForward(
+      pass.pool2.output, parameters[4].values, parameters[5].values,
+      batch_size, 256, 120);
+  pass.relu3 = cpu_reference::ReluForward(pass.fc1_pre);
+  pass.fc2_pre = cpu_reference::LinearForward(
+      pass.relu3, parameters[6].values, parameters[7].values, batch_size, 120,
+      84);
+  pass.relu4 = cpu_reference::ReluForward(pass.fc2_pre);
+  pass.logits = cpu_reference::LinearForward(
+      pass.relu4, parameters[8].values, parameters[9].values, batch_size, 84,
+      10);
+  return pass;
+}
+
+struct CpuLenetGradients {
+  ParameterSet parameters;
+  std::vector<float> input;
+};
+
+CpuLenetGradients CpuLenetBackward(const std::vector<float>& input,
+                                   const ParameterSet& parameters,
+                                   const CpuLenetPass& pass,
+                                   const std::vector<float>& logits_gradient,
+                                   int batch_size) {
+  CpuLenetGradients result{CreateLenetParameters(), {}};
+  const cpu_reference::LinearGradients fc3 = cpu_reference::LinearBackward(
+      pass.relu4, parameters[8].values, logits_gradient, batch_size, 84, 10);
+  result.parameters[8].values = fc3.weight;
+  result.parameters[9].values = fc3.bias;
+  const std::vector<float> fc2_gradient =
+      cpu_reference::ReluBackward(pass.fc2_pre, fc3.input);
+  const cpu_reference::LinearGradients fc2 = cpu_reference::LinearBackward(
+      pass.relu3, parameters[6].values, fc2_gradient, batch_size, 120, 84);
+  result.parameters[6].values = fc2.weight;
+  result.parameters[7].values = fc2.bias;
+  const std::vector<float> fc1_gradient =
+      cpu_reference::ReluBackward(pass.fc1_pre, fc2.input);
+  const cpu_reference::LinearGradients fc1 = cpu_reference::LinearBackward(
+      pass.pool2.output, parameters[4].values, fc1_gradient, batch_size, 256,
+      120);
+  result.parameters[4].values = fc1.weight;
+  result.parameters[5].values = fc1.bias;
+  const std::vector<float> pool2_gradient = cpu_reference::MaxPoolBackward(
+      fc1.input, pass.pool2.winner_offsets, batch_size, 16, 8, 8);
+  const std::vector<float> conv2_gradient =
+      cpu_reference::ReluBackward(pass.conv2_pre, pool2_gradient);
+  const cpu_reference::ConvolutionGradients conv2 =
+      cpu_reference::ConvolutionBackward(
+          pass.pool1.output, parameters[2].values, conv2_gradient, batch_size,
+          6, 12, 12, 16, 5, 5);
+  result.parameters[2].values = conv2.weight;
+  result.parameters[3].values = conv2.bias;
+  const std::vector<float> pool1_gradient = cpu_reference::MaxPoolBackward(
+      conv2.input, pass.pool1.winner_offsets, batch_size, 6, 24, 24);
+  const std::vector<float> conv1_gradient =
+      cpu_reference::ReluBackward(pass.conv1_pre, pool1_gradient);
+  const cpu_reference::ConvolutionGradients conv1 =
+      cpu_reference::ConvolutionBackward(
+          input, parameters[0].values, conv1_gradient, batch_size, 1, 28, 28,
+          6, 5, 5);
+  result.parameters[0].values = conv1.weight;
+  result.parameters[1].values = conv1.bias;
+  result.input = conv1.input;
+  return result;
+}
+
+ParameterSet SmallPatternParameters() {
+  ParameterSet parameters = CreateLenetParameters();
+  for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
+    for (std::size_t index = 0; index < parameters[tensor].values.size();
+         ++index) {
+      const int centered = static_cast<int>((index * 13 + tensor * 7) % 31) -
+                           15;
+      parameters[tensor].values[index] =
+          static_cast<float>(centered) * 0.001F;
+    }
+  }
+  return parameters;
+}
+
+double DeviceLenetObjective(LeNet* model, const float* device_input,
+                            int batch_size,
+                            const std::vector<float>& logits_gradient) {
+  const float* logits = model->Forward(device_input, batch_size);
+  const std::vector<float> host_logits = CopyFromDevicePointer(
+      logits, static_cast<std::size_t>(batch_size) * 10);
+  return DotObjective(host_logits, logits_gradient);
+}
+
+constexpr std::size_t kLenetParameterCopyBytes = 44426 * sizeof(float);
+constexpr std::size_t kLenetFourParameterCopiesBytes =
+    4 * kLenetParameterCopyBytes;
+
+const std::uint8_t* LenetArenaBase(const float* logits,
+                                   int maximum_batch_size) {
+  constexpr std::size_t kActivationFloatsBeforeLogits = 10488;
+  const std::size_t logits_offset =
+      kLenetFourParameterCopiesBytes +
+      static_cast<std::size_t>(maximum_batch_size) *
+          kActivationFloatsBeforeLogits * sizeof(float);
+  return reinterpret_cast<const std::uint8_t*>(
+      reinterpret_cast<std::uintptr_t>(logits) - logits_offset);
+}
+
+const float* ArenaFloatPointer(const std::uint8_t* base,
+                               std::size_t byte_offset) {
+  return reinterpret_cast<const float*>(base + byte_offset);
 }
 
 std::string SourceWithoutCommentsOrLiterals(const std::string& source) {
@@ -1354,4 +1503,238 @@ TEST_CASE(finite_scan_rejects_invalid_count_pointers_and_overlap) {
           static_cast<std::size_t>(std::numeric_limits<int>::max()) + 1U,
           result, nullptr),
       "INT_MAX");
+}
+
+TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
+  constexpr int kMaximumBatch = 17;
+  constexpr std::size_t kExpectedBytes = 1891708;
+  const std::size_t before = DeviceBufferAllocationCountForTests();
+  {
+    LeNet model(kMaximumBatch, UINT64_C(1337), nullptr);
+    EXPECT_EQ(before + 1, DeviceBufferAllocationCountForTests());
+    EXPECT_EQ(kExpectedBytes, model.RequiredDeviceBytes());
+
+    const ParameterSet parameters = model.ExportParameters();
+    ValidateLenetParameters(parameters);
+    std::size_t parameter_count = 0;
+    for (std::size_t index = 0; index < parameters.size(); ++index) {
+      parameter_count += parameters[index].values.size();
+      if (LenetParameterSpecs()[index].is_bias) {
+        for (float value : parameters[index].values) {
+          EXPECT_EQ(0.0F, value);
+        }
+      }
+    }
+    EXPECT_EQ(std::size_t{44426}, parameter_count);
+
+    const std::vector<float> input(kMaximumBatch * 28 * 28, 0.125F);
+    DeviceBuffer<float> device_input = CopyToDevice(input);
+    const float* const first = model.Forward(device_input.get(), 2);
+    const float* const second = model.Forward(device_input.get(), 17);
+    EXPECT_EQ(first, second);
+    EXPECT_EQ(before + 2, DeviceBufferAllocationCountForTests());
+    EXPECT_THROW_CONTAINS(model.Forward(device_input.get(), 0), "batch_size");
+    EXPECT_THROW_CONTAINS(model.Forward(device_input.get(), 18),
+                          "maximum_batch_size");
+  }
+  EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
+  EXPECT_THROW_CONTAINS(LeNet(0, UINT64_C(1), nullptr),
+                        "maximum_batch_size");
+}
+
+TEST_CASE(lenet_forward_matches_cpu_for_two_stagewise_and_seventeen_logits) {
+  constexpr int kMaximumBatch = 17;
+  ParameterSet parameters = SmallPatternParameters();
+  std::vector<float> input(kMaximumBatch * 28 * 28);
+  for (std::size_t index = 0; index < input.size(); ++index) {
+    input[index] = static_cast<float>(static_cast<int>(index % 29) - 14) *
+                   0.025F;
+  }
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  LeNet model(kMaximumBatch, UINT64_C(7), nullptr);
+  model.ImportParameters(parameters);
+
+  for (int batch_size : std::array<int, 2>{{2, 17}}) {
+    const float* const device_logits =
+        model.Forward(device_input.get(), batch_size);
+    const std::vector<float> actual = CopyFromDevicePointer(
+        device_logits,
+        static_cast<std::size_t>(batch_size) * 10);
+    const std::vector<float> batch_input(
+        input.begin(), input.begin() + static_cast<std::size_t>(batch_size) *
+                                         28 * 28);
+    const CpuLenetPass expected =
+        CpuLenetForward(batch_input, parameters, batch_size);
+    ExpectNearVectors(expected.logits, actual);
+    if (batch_size == 2) {
+      const std::uint8_t* const base =
+          LenetArenaBase(device_logits, kMaximumBatch);
+      std::size_t offset = kLenetFourParameterCopiesBytes;
+      const auto check_stage = [&](const std::vector<float>& wanted,
+                                   std::size_t per_sample) {
+        const std::vector<float> stage = CopyFromDevicePointer(
+            ArenaFloatPointer(base, offset),
+            static_cast<std::size_t>(batch_size) * per_sample);
+        ExpectNearVectors(wanted, stage);
+        offset += static_cast<std::size_t>(kMaximumBatch) * per_sample *
+                  sizeof(float);
+      };
+      check_stage(expected.conv1_pre, 3456);
+      check_stage(expected.relu1, 3456);
+      check_stage(expected.pool1.output, 864);
+      check_stage(expected.conv2_pre, 1024);
+      check_stage(expected.relu2, 1024);
+      check_stage(expected.pool2.output, 256);
+      check_stage(expected.fc1_pre, 120);
+      check_stage(expected.relu3, 120);
+      check_stage(expected.fc2_pre, 84);
+      check_stage(expected.relu4, 84);
+      EXPECT_EQ(device_logits, ArenaFloatPointer(base, offset));
+    }
+  }
+}
+
+TEST_CASE(lenet_backward_populates_all_ten_parameter_gradients) {
+  constexpr int kBatchSize = 2;
+  ParameterSet parameters = SmallPatternParameters();
+  std::vector<float> input(kBatchSize * 28 * 28);
+  for (std::size_t index = 0; index < input.size(); ++index) {
+    input[index] = static_cast<float>(static_cast<int>(index % 37) - 18) *
+                   0.02F;
+  }
+  std::vector<float> logits_gradient = Pattern(kBatchSize * 10, 41);
+  for (float& value : logits_gradient) {
+    value *= 0.01F;
+  }
+  const CpuLenetPass pass = CpuLenetForward(input, parameters, kBatchSize);
+  const CpuLenetGradients expected = CpuLenetBackward(
+      input, parameters, pass, logits_gradient, kBatchSize);
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_logits_gradient = CopyToDevice(logits_gradient);
+  LeNet model(kBatchSize, UINT64_C(9), nullptr);
+  model.ImportParameters(parameters);
+  const float* const logits = model.Forward(device_input.get(), kBatchSize);
+  model.Backward(device_logits_gradient.get(), kBatchSize);
+  const std::uint8_t* const base = LenetArenaBase(logits, kBatchSize);
+  std::size_t gradient_offset = kLenetParameterCopyBytes;
+  for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
+    const std::vector<float> actual = CopyFromDevicePointer(
+        ArenaFloatPointer(base, gradient_offset),
+        parameters[tensor].values.size());
+    for (std::size_t index = 0; index < parameters[tensor].values.size();
+         ++index) {
+      const float wanted = expected.parameters[tensor].values[index];
+      const float tolerance = 1.0e-4F + 1.0e-4F * std::fabs(wanted);
+      EXPECT_NEAR(wanted, actual[index], tolerance);
+    }
+    gradient_offset += parameters[tensor].values.size() * sizeof(float);
+  }
+  constexpr std::size_t kGradientFloatsBeforeInput = 5804;
+  const std::size_t input_gradient_offset =
+      kLenetFourParameterCopiesBytes +
+      static_cast<std::size_t>(kBatchSize) *
+          (10498 + kGradientFloatsBeforeInput) * sizeof(float);
+  const std::vector<float> actual_input = CopyFromDevicePointer(
+      ArenaFloatPointer(base, input_gradient_offset), expected.input.size());
+  ExpectNearVectors(expected.input, actual_input);
+}
+
+TEST_CASE(lenet_backward_matches_fifteen_network_finite_differences) {
+  constexpr int kBatchSize = 2;
+  constexpr float kEpsilon = 1.0e-3F;
+  ParameterSet parameters = SmallPatternParameters();
+  std::vector<float> input(kBatchSize * 28 * 28);
+  for (std::size_t index = 0; index < input.size(); ++index) {
+    input[index] = static_cast<float>(static_cast<int>(index % 23) - 11) *
+                   0.03F;
+  }
+  std::vector<float> logits_gradient = Pattern(kBatchSize * 10, 51);
+  for (float& value : logits_gradient) {
+    value *= 0.02F;
+  }
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_logits_gradient = CopyToDevice(logits_gradient);
+  LeNet model(kBatchSize, UINT64_C(11), nullptr);
+  model.ImportParameters(parameters);
+  const float* const logits = model.Forward(device_input.get(), kBatchSize);
+  model.Backward(device_logits_gradient.get(), kBatchSize);
+  const std::uint8_t* const base = LenetArenaBase(logits, kBatchSize);
+  ParameterSet analytic = CreateLenetParameters();
+  std::size_t gradient_offset = kLenetParameterCopyBytes;
+  for (std::size_t tensor = 0; tensor < analytic.size(); ++tensor) {
+    analytic[tensor].values = CopyFromDevicePointer(
+        ArenaFloatPointer(base, gradient_offset),
+        analytic[tensor].values.size());
+    gradient_offset += analytic[tensor].values.size() * sizeof(float);
+  }
+  const std::array<std::size_t, 5> weights{{0, 2, 4, 6, 8}};
+  for (std::size_t tensor : weights) {
+    const std::array<std::size_t, 3> indices{{
+        0, parameters[tensor].values.size() / 2,
+        parameters[tensor].values.size() - 1}};
+    for (std::size_t index : indices) {
+      const float original = parameters[tensor].values[index];
+      parameters[tensor].values[index] = original + kEpsilon;
+      model.ImportParameters(parameters);
+      const double plus = DeviceLenetObjective(
+          &model, device_input.get(), kBatchSize, logits_gradient);
+      parameters[tensor].values[index] = original - kEpsilon;
+      model.ImportParameters(parameters);
+      const double minus = DeviceLenetObjective(
+          &model, device_input.get(), kBatchSize, logits_gradient);
+      parameters[tensor].values[index] = original;
+      const double numeric = (plus - minus) / (2.0 * kEpsilon);
+      const double tolerance = 1.0e-2 + 1.0e-2 * std::fabs(numeric);
+      EXPECT_NEAR(analytic[tensor].values[index], numeric, tolerance);
+    }
+  }
+}
+
+TEST_CASE(lenet_train_step_decays_only_weights_and_never_allocates) {
+  constexpr int kBatchSize = 2;
+  ParameterSet parameters = SmallPatternParameters();
+  const std::vector<float> input(kBatchSize * 28 * 28, 0.25F);
+  const std::vector<float> zero_gradient(kBatchSize * 10, 0.0F);
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_gradient = CopyToDevice(zero_gradient);
+  LeNet model(kBatchSize, UINT64_C(13), nullptr);
+  model.ImportParameters(parameters);
+  const float* const logits_address = model.Forward(device_input.get(), 2);
+  model.Backward(device_gradient.get(), 2);
+  const std::size_t allocations = DeviceBufferAllocationCountForTests();
+  model.AdamWStep(1, 0.01F, AdamWConfig{0.0F, 0.0F, 1.0F, 0.2F});
+  const ParameterSet decayed = model.ExportParameters();
+  for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
+    for (std::size_t index = 0; index < parameters[tensor].values.size();
+         ++index) {
+      const float expected = LenetParameterSpecs()[tensor].is_bias
+                                 ? parameters[tensor].values[index]
+                                 : parameters[tensor].values[index] * 0.998F;
+      EXPECT_NEAR(expected, decayed[tensor].values[index], 2.0e-7F);
+    }
+  }
+  for (std::uint64_t step = 2; step <= 201; ++step) {
+    model.Forward(device_input.get(), 2);
+    model.Backward(device_gradient.get(), 2);
+    model.AdamWStep(step, 0.001F,
+                    AdamWConfig{0.9F, 0.999F, 1.0e-8F, 0.0F});
+  }
+  EXPECT_EQ(logits_address, model.Forward(device_input.get(), 2));
+  EXPECT_EQ(allocations, DeviceBufferAllocationCountForTests());
+  EXPECT_THROW_CONTAINS(
+      model.AdamWStep(0, 0.001F,
+                      AdamWConfig{0.9F, 0.999F, 1.0e-8F, 0.0F}),
+      "global_step");
+}
+
+TEST_CASE(lenet_storage_import_validates_schema_and_finite_scan_names_value) {
+  LeNet model(1, UINT64_C(17), nullptr);
+  ParameterSet malformed = model.ExportParameters();
+  malformed[0].name = "wrong";
+  EXPECT_THROW_CONTAINS(model.ImportParameters(malformed), "canonical order");
+  ParameterSet nonfinite = model.ExportParameters();
+  nonfinite[2].values[19] = std::numeric_limits<float>::infinity();
+  model.ImportParameters(nonfinite);
+  EXPECT_THROW_CONTAINS(model.RequireFinite("import"),
+                        "import: conv2.weight[19]");
 }
