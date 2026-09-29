@@ -82,9 +82,11 @@ void ValidateBuffers(std::initializer_list<BufferRange> buffers) {
 // the positive sum produces finite probabilities even for logits near +/-1000.
 // Each valid lane writes its probability and
 // d(mean CE)/dlogit=(probability-one_hot)/batch_size exactly once. Lane zero
-// writes one loss as log(sum)+max-logit[label], avoiding -log(0) when the label
-// probability underflows. Blocks touch disjoint rows, so no atomics or races
-// occur; the two trees have fixed pairing and ordinary deterministic FP32 error.
+// writes one loss as (max-logit[label])+log(sum), subtracting the common offset
+// before adding the small log term so huge equal logits remain shift-invariant
+// while still avoiding -log(0) when the label probability underflows. Blocks
+// touch disjoint rows, so no atomics or races occur; the two trees have fixed
+// pairing and ordinary deterministic FP32 error.
 __global__ void SoftmaxCrossEntropyKernel(
     const float* logits, const std::uint8_t* labels, float* probabilities,
     float* per_sample_losses, float* logits_gradient, int class_count,
@@ -124,8 +126,9 @@ __global__ void SoftmaxCrossEntropyKernel(
         (probability - target) * inverse_batch_size;
   }
   if (lane == 0) {
+    const float target_logit = logits[row + labels[sample]];
     per_sample_losses[sample] =
-        logf(sum) + maximum - logits[row + labels[sample]];
+        (maximum - target_logit) + logf(sum);
   }
 }
 

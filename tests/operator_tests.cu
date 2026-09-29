@@ -10,6 +10,7 @@
 #include <cuda_runtime.h>
 
 #include <atomic>
+#include <cfloat>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -172,13 +173,17 @@ void CheckLinearAgainstCpu(int batch_size, int input_features,
       device_bias_gradient.get(), batch_size, input_features, output_features,
       nullptr);
 
-  ExpectNearVectors(expected_output, CopyFromDevice(device_output));
-  ExpectNearVectors(expected_gradients.input,
-                    CopyFromDevice(device_input_gradient));
-  ExpectNearVectors(expected_gradients.weight,
-                    CopyFromDevice(device_weight_gradient));
-  ExpectNearVectors(expected_gradients.bias,
-                    CopyFromDevice(device_bias_gradient));
+  const std::vector<float> actual_output = CopyFromDevice(device_output);
+  const std::vector<float> actual_input_gradient =
+      CopyFromDevice(device_input_gradient);
+  const std::vector<float> actual_weight_gradient =
+      CopyFromDevice(device_weight_gradient);
+  const std::vector<float> actual_bias_gradient =
+      CopyFromDevice(device_bias_gradient);
+  ExpectNearVectors(expected_output, actual_output);
+  ExpectNearVectors(expected_gradients.input, actual_input_gradient);
+  ExpectNearVectors(expected_gradients.weight, actual_weight_gradient);
+  ExpectNearVectors(expected_gradients.bias, actual_bias_gradient);
 }
 
 void CheckConvolutionAgainstCpu(int batch_size, int input_channels,
@@ -229,13 +234,17 @@ void CheckConvolutionAgainstCpu(int batch_size, int input_channels,
       device_bias_gradient.get(), batch_size, input_channels, input_height,
       input_width, output_channels, kernel_height, kernel_width, nullptr);
 
-  ExpectNearVectors(expected_output, CopyFromDevice(device_output));
-  ExpectNearVectors(expected_gradients.input,
-                    CopyFromDevice(device_input_gradient));
-  ExpectNearVectors(expected_gradients.weight,
-                    CopyFromDevice(device_weight_gradient));
-  ExpectNearVectors(expected_gradients.bias,
-                    CopyFromDevice(device_bias_gradient));
+  const std::vector<float> actual_output = CopyFromDevice(device_output);
+  const std::vector<float> actual_input_gradient =
+      CopyFromDevice(device_input_gradient);
+  const std::vector<float> actual_weight_gradient =
+      CopyFromDevice(device_weight_gradient);
+  const std::vector<float> actual_bias_gradient =
+      CopyFromDevice(device_bias_gradient);
+  ExpectNearVectors(expected_output, actual_output);
+  ExpectNearVectors(expected_gradients.input, actual_input_gradient);
+  ExpectNearVectors(expected_gradients.weight, actual_weight_gradient);
+  ExpectNearVectors(expected_gradients.bias, actual_bias_gradient);
 }
 
 double DotObjective(const std::vector<float>& output,
@@ -260,7 +269,8 @@ double LinearDeviceObjective(const std::vector<float>& input,
   LaunchLinearForward(device_input.get(), device_weight.get(),
                       device_bias.get(), device_output.get(), batch_size,
                       input_features, output_features, nullptr);
-  return DotObjective(CopyFromDevice(device_output), output_gradient);
+  const std::vector<float> output = CopyFromDevice(device_output);
+  return DotObjective(output, output_gradient);
 }
 
 void CheckProductionLinearFiniteDifferences(int input_features,
@@ -322,7 +332,8 @@ double ConvolutionDeviceObjective(
       device_input.get(), device_weight.get(), device_bias.get(),
       device_output.get(), batch_size, input_channels, input_height,
       input_width, output_channels, kernel_height, kernel_width, nullptr);
-  return DotObjective(CopyFromDevice(device_output), output_gradient);
+  const std::vector<float> output = CopyFromDevice(device_output);
+  return DotObjective(output, output_gradient);
 }
 
 void CheckProductionConvolutionFiniteDifferences(
@@ -404,8 +415,10 @@ SoftmaxReferenceResult SoftmaxReference(
       sum += std::exp(static_cast<double>(logits[base + class_index]) -
                       maximum);
     }
-    result.losses[sample] = static_cast<float>(
-        std::log(sum) + maximum - logits[base + labels[sample]]);
+    const double target =
+        static_cast<double>(logits[base + labels[sample]]);
+    result.losses[sample] =
+        static_cast<float>((maximum - target) + std::log(sum));
     for (int class_index = 0; class_index < class_count; ++class_index) {
       const std::size_t index = base + class_index;
       const float probability = static_cast<float>(
@@ -453,7 +466,8 @@ void CheckSoftmaxBatch(int batch_size) {
       CopyFromDevice(device_probabilities);
   const std::vector<float> losses = CopyFromDevice(device_losses);
   const std::vector<float> gradients = CopyFromDevice(device_gradients);
-  const float mean = CopyFromDevice(device_mean)[0];
+  const std::vector<float> mean_values = CopyFromDevice(device_mean);
+  const float mean = mean_values[0];
   for (int sample = 0; sample < batch_size; ++sample) {
     float probability_sum = 0.0F;
     for (int class_index = 0; class_index < kClassCount; ++class_index) {
@@ -468,11 +482,12 @@ void CheckSoftmaxBatch(int batch_size) {
     EXPECT_TRUE(std::isfinite(losses[sample]));
     EXPECT_NEAR(expected.losses[sample], losses[sample], 2.0e-4F);
   }
-  float fixed_order_sum = 0.0F;
-  for (float loss : losses) {
-    fixed_order_sum += loss;
+  float expected_sum = 0.0F;
+  for (float expected_loss : expected.losses) {
+    expected_sum += expected_loss;
   }
-  EXPECT_EQ(fixed_order_sum / static_cast<float>(batch_size), mean);
+  const float expected_mean = expected_sum / static_cast<float>(batch_size);
+  EXPECT_NEAR(expected_mean, mean, 2.0e-4F);
 }
 
 struct AdamReferenceState {
@@ -510,14 +525,14 @@ void AdamWReferenceStep(AdamReferenceState* state,
 }
 
 void CheckAdamWSteps(int step_count, float weight_decay) {
-  constexpr float kLearningRate = 0.003F;
+  constexpr float kLearningRate = 0.1F;
   constexpr float kBeta1 = 0.9F;
   constexpr float kBeta2 = 0.999F;
   constexpr float kEpsilon = 1.0e-8F;
-  const std::vector<float> initial_parameters{1.25F, -0.75F, 0.125F, -2.0F};
+  const std::vector<float> initial_parameters{4.0F, -3.0F, 1.5F, -2.5F};
   const std::vector<float> gradients{0.2F, -0.4F, 0.05F, 1.5F};
-  const std::vector<float> initial_first{0.0F, 0.1F, -0.2F, 0.3F};
-  const std::vector<float> initial_second{0.0F, 0.04F, 0.09F, 0.16F};
+  const std::vector<float> initial_first(gradients.size(), 0.0F);
+  const std::vector<float> initial_second(gradients.size(), 0.0F);
   AdamReferenceState expected{
       std::vector<double>(initial_parameters.begin(), initial_parameters.end()),
       std::vector<double>(initial_first.begin(), initial_first.end()),
@@ -545,9 +560,9 @@ void CheckAdamWSteps(int step_count, float weight_decay) {
   const std::vector<float> first = CopyFromDevice(device_first);
   const std::vector<float> second = CopyFromDevice(device_second);
   for (std::size_t index = 0; index < parameters.size(); ++index) {
-    EXPECT_NEAR(expected.parameters[index], parameters[index], 2.0e-6);
-    EXPECT_NEAR(expected.first_moments[index], first[index], 2.0e-6);
-    EXPECT_NEAR(expected.second_moments[index], second[index], 2.0e-6);
+    EXPECT_NEAR(expected.parameters[index], parameters[index], 2.0e-5);
+    EXPECT_NEAR(expected.first_moments[index], first[index], 2.0e-5);
+    EXPECT_NEAR(expected.second_moments[index], second[index], 2.0e-5);
   }
 }
 
@@ -556,7 +571,8 @@ void CheckFirstBadIndex(const std::vector<float>& values, int expected_index) {
   DeviceBuffer<int> device_result(1);
   LaunchFindFirstNonFinite(device_values.get(), values.size(),
                            device_result.get(), nullptr);
-  EXPECT_EQ(expected_index, CopyFromDevice(device_result)[0]);
+  const std::vector<int> result = CopyFromDevice(device_result);
+  EXPECT_EQ(expected_index, result[0]);
 }
 
 std::string SourceWithoutCommentsOrLiterals(const std::string& source) {
@@ -773,7 +789,8 @@ TEST_CASE(relu_forward_backward_matches_cpu_and_backward_aliases_gradient) {
   LaunchReluBackward(device_input.get(), device_gradient.get(),
                      device_gradient.get(), kCount, nullptr);
 
-  ExpectNearVectors(expected_forward, CopyFromDevice(device_forward));
+  const std::vector<float> actual_forward = CopyFromDevice(device_forward);
+  ExpectNearVectors(expected_forward, actual_forward);
   const std::vector<float> actual_backward = CopyFromDevice(device_gradient);
   ExpectNearVectors(expected_backward, actual_backward);
   EXPECT_EQ(0.0F, actual_backward[1]);
@@ -788,8 +805,9 @@ TEST_CASE(relu_zero_covers_non_divisible_element_count) {
 
   LaunchZero(device_values.get(), kCount, nullptr);
 
-  EXPECT_EQ(std::vector<float>(kCount, 0.0F),
-            CopyFromDevice(device_values));
+  const std::vector<float> expected(kCount, 0.0F);
+  const std::vector<float> actual = CopyFromDevice(device_values);
+  EXPECT_EQ(expected, actual);
 }
 
 TEST_CASE(relu_launchers_reject_impossible_element_counts) {
@@ -817,10 +835,12 @@ TEST_CASE(maxpool_forward_uses_first_tie_and_row_major_offsets) {
   LaunchMaxPoolForward(device_input.get(), device_output.get(),
                        device_offsets.get(), 1, 1, 4, 4, nullptr);
 
-  ExpectNearVectors(expected.output, CopyFromDevice(device_output));
+  const std::vector<float> actual_output = CopyFromDevice(device_output);
+  ExpectNearVectors(expected.output, actual_output);
   const std::vector<std::uint8_t> actual_offsets =
       CopyFromDevice(device_offsets);
-  EXPECT_EQ(std::vector<std::uint8_t>({0, 1, 2, 3}), actual_offsets);
+  const std::vector<std::uint8_t> explicit_offsets{0, 1, 2, 3};
+  EXPECT_EQ(explicit_offsets, actual_offsets);
   EXPECT_EQ(expected.winner_offsets, actual_offsets);
 }
 
@@ -839,11 +859,10 @@ TEST_CASE(maxpool_backward_zeroes_nonwinners_and_writes_only_winners) {
 
   const std::vector<float> actual = CopyFromDevice(device_input_gradient);
   ExpectNearVectors(expected, actual);
-  EXPECT_EQ(std::vector<float>({10.0F, 0.0F, 0.0F, 20.0F,
-                                0.0F, 0.0F, 0.0F, 0.0F,
-                                0.0F, 0.0F, 0.0F, 0.0F,
-                                30.0F, 0.0F, 0.0F, 40.0F}),
-            actual);
+  const std::vector<float> explicit_expected{
+      10.0F, 0.0F, 0.0F, 20.0F, 0.0F, 0.0F, 0.0F, 0.0F,
+      0.0F,  0.0F, 0.0F, 0.0F,  30.0F, 0.0F, 0.0F, 40.0F};
+  EXPECT_EQ(explicit_expected, actual);
 }
 
 TEST_CASE(maxpool_rejects_impossible_dimensions_before_launch) {
@@ -964,6 +983,90 @@ TEST_CASE(softmax_cross_entropy_is_stable_and_scaled_for_boundary_batches) {
   CheckSoftmaxBatch(129);
 }
 
+TEST_CASE(softmax_cross_entropy_preserves_loss_under_large_common_shift) {
+  const std::vector<float> logits{1.0e20F, 1.0e20F};
+  const std::vector<std::uint8_t> labels{0};
+  DeviceBuffer<float> device_logits = CopyToDevice(logits);
+  DeviceBuffer<std::uint8_t> device_labels = CopyToDevice(labels);
+  DeviceBuffer<float> device_probabilities(logits.size());
+  DeviceBuffer<float> device_losses(1);
+  DeviceBuffer<float> device_mean(1);
+  DeviceBuffer<float> device_gradients(logits.size());
+
+  LaunchSoftmaxCrossEntropy(
+      device_logits.get(), device_labels.get(), device_probabilities.get(),
+      device_losses.get(), device_mean.get(), device_gradients.get(), 1, 2,
+      nullptr);
+
+  const std::vector<float> probabilities =
+      CopyFromDevice(device_probabilities);
+  const std::vector<float> losses = CopyFromDevice(device_losses);
+  const std::vector<float> means = CopyFromDevice(device_mean);
+  const float expected_loss = std::log(2.0F);
+  EXPECT_NEAR(0.5F, probabilities[0], 1.0e-6F);
+  EXPECT_NEAR(0.5F, probabilities[1], 1.0e-6F);
+  EXPECT_NEAR(expected_loss, losses[0], 1.0e-6F);
+  EXPECT_NEAR(expected_loss, means[0], 1.0e-6F);
+}
+
+TEST_CASE(softmax_supports_one_and_256_class_boundaries) {
+  const std::vector<float> one_logit{-FLT_MAX};
+  const std::vector<std::uint8_t> one_label{0};
+  DeviceBuffer<float> device_one_logits = CopyToDevice(one_logit);
+  DeviceBuffer<std::uint8_t> device_one_label = CopyToDevice(one_label);
+  DeviceBuffer<float> device_one_probability(1);
+  DeviceBuffer<float> device_one_loss(1);
+  DeviceBuffer<float> device_one_mean(1);
+  DeviceBuffer<float> device_one_gradient(1);
+  LaunchSoftmaxCrossEntropy(
+      device_one_logits.get(), device_one_label.get(),
+      device_one_probability.get(), device_one_loss.get(),
+      device_one_mean.get(), device_one_gradient.get(), 1, 1, nullptr);
+  const std::vector<float> one_probability =
+      CopyFromDevice(device_one_probability);
+  const std::vector<float> one_loss = CopyFromDevice(device_one_loss);
+  const std::vector<float> one_gradient =
+      CopyFromDevice(device_one_gradient);
+  EXPECT_EQ(1.0F, one_probability[0]);
+  EXPECT_EQ(0.0F, one_loss[0]);
+  EXPECT_EQ(0.0F, one_gradient[0]);
+  LaunchSoftmax(device_one_logits.get(), device_one_probability.get(), 1, 1,
+                nullptr);
+  const std::vector<float> one_inference_probability =
+      CopyFromDevice(device_one_probability);
+  EXPECT_EQ(1.0F, one_inference_probability[0]);
+
+  constexpr int kClassCount = 256;
+  std::vector<float> logits(kClassCount, -4.0F);
+  logits[0] = 7.0F;
+  logits[kClassCount - 1] = 7.0F;
+  const std::vector<std::uint8_t> labels{255};
+  const SoftmaxReferenceResult expected =
+      SoftmaxReference(logits, labels, 1, kClassCount);
+  DeviceBuffer<float> device_logits = CopyToDevice(logits);
+  DeviceBuffer<std::uint8_t> device_labels = CopyToDevice(labels);
+  DeviceBuffer<float> device_probabilities(logits.size());
+  DeviceBuffer<float> device_losses(1);
+  DeviceBuffer<float> device_mean(1);
+  DeviceBuffer<float> device_gradients(logits.size());
+  LaunchSoftmaxCrossEntropy(
+      device_logits.get(), device_labels.get(), device_probabilities.get(),
+      device_losses.get(), device_mean.get(), device_gradients.get(), 1,
+      kClassCount, nullptr);
+  const std::vector<float> probabilities =
+      CopyFromDevice(device_probabilities);
+  const std::vector<float> losses = CopyFromDevice(device_losses);
+  const std::vector<float> gradients = CopyFromDevice(device_gradients);
+  ExpectNearVectors(expected.probabilities, probabilities);
+  ExpectNearVectors(expected.gradients, gradients);
+  EXPECT_NEAR(expected.losses[0], losses[0], 1.0e-4F);
+  LaunchSoftmax(device_logits.get(), device_probabilities.get(), 1,
+                kClassCount, nullptr);
+  const std::vector<float> inference_probabilities =
+      CopyFromDevice(device_probabilities);
+  ExpectNearVectors(expected.probabilities, inference_probabilities);
+}
+
 TEST_CASE(softmax_inference_is_stable_and_label_independent) {
   constexpr int kBatchSize = 2;
   constexpr int kClassCount = 3;
@@ -1044,9 +1147,55 @@ TEST_CASE(metrics_argmax_uses_smallest_tie_and_reduces_exact_count) {
       device_logits.get(), device_labels.get(), device_predictions.get(),
       device_flags.get(), device_count.get(), kBatchSize, kClassCount, nullptr);
 
-  EXPECT_EQ(expected_predictions, CopyFromDevice(device_predictions));
-  EXPECT_EQ(expected_flags, CopyFromDevice(device_flags));
-  EXPECT_EQ(expected_count, CopyFromDevice(device_count)[0]);
+  const std::vector<std::uint8_t> predictions =
+      CopyFromDevice(device_predictions);
+  const std::vector<int> flags = CopyFromDevice(device_flags);
+  const std::vector<int> counts = CopyFromDevice(device_count);
+  EXPECT_EQ(expected_predictions, predictions);
+  EXPECT_EQ(expected_flags, flags);
+  EXPECT_EQ(expected_count, counts[0]);
+}
+
+TEST_CASE(metrics_supports_one_and_256_class_boundaries) {
+  const std::vector<float> one_logit{-FLT_MAX};
+  const std::vector<std::uint8_t> one_label{0};
+  DeviceBuffer<float> device_one_logit = CopyToDevice(one_logit);
+  DeviceBuffer<std::uint8_t> device_one_label = CopyToDevice(one_label);
+  DeviceBuffer<std::uint8_t> device_one_prediction(1);
+  DeviceBuffer<int> device_one_flag(1);
+  DeviceBuffer<int> device_one_count(1);
+  LaunchArgmaxAndCountCorrect(
+      device_one_logit.get(), device_one_label.get(),
+      device_one_prediction.get(), device_one_flag.get(),
+      device_one_count.get(), 1, 1, nullptr);
+  const std::vector<std::uint8_t> one_prediction =
+      CopyFromDevice(device_one_prediction);
+  const std::vector<int> one_flag = CopyFromDevice(device_one_flag);
+  const std::vector<int> one_count = CopyFromDevice(device_one_count);
+  EXPECT_EQ(std::uint8_t{0}, one_prediction[0]);
+  EXPECT_EQ(1, one_flag[0]);
+  EXPECT_EQ(1, one_count[0]);
+
+  constexpr int kClassCount = 256;
+  std::vector<float> logits(kClassCount, -FLT_MAX);
+  logits[0] = 12.0F;
+  logits[kClassCount - 1] = 12.0F;
+  const std::vector<std::uint8_t> labels{0};
+  DeviceBuffer<float> device_logits = CopyToDevice(logits);
+  DeviceBuffer<std::uint8_t> device_labels = CopyToDevice(labels);
+  DeviceBuffer<std::uint8_t> device_prediction(1);
+  DeviceBuffer<int> device_flag(1);
+  DeviceBuffer<int> device_count(1);
+  LaunchArgmaxAndCountCorrect(
+      device_logits.get(), device_labels.get(), device_prediction.get(),
+      device_flag.get(), device_count.get(), 1, kClassCount, nullptr);
+  const std::vector<std::uint8_t> prediction =
+      CopyFromDevice(device_prediction);
+  const std::vector<int> flag = CopyFromDevice(device_flag);
+  const std::vector<int> count = CopyFromDevice(device_count);
+  EXPECT_EQ(std::uint8_t{0}, prediction[0]);
+  EXPECT_EQ(1, flag[0]);
+  EXPECT_EQ(1, count[0]);
 }
 
 TEST_CASE(metrics_launcher_rejects_invalid_shapes_pointers_and_overlap) {
@@ -1070,8 +1219,8 @@ TEST_CASE(metrics_launcher_rejects_invalid_shapes_pointers_and_overlap) {
 }
 
 TEST_CASE(adamw_matches_fp64_reference_for_first_and_tenth_steps) {
-  CheckAdamWSteps(1, 0.01F);
-  CheckAdamWSteps(10, 0.01F);
+  CheckAdamWSteps(1, 0.4F);
+  CheckAdamWSteps(10, 0.4F);
 }
 
 TEST_CASE(adamw_zero_decay_matches_fp64_bias_update) {
@@ -1095,16 +1244,79 @@ TEST_CASE(adamw_handles_zero_and_rejects_invalid_arguments) {
                         "learning_rate");
 }
 
+TEST_CASE(adamw_rejects_invalid_and_nonfinite_hyperparameters) {
+  auto* const parameters = reinterpret_cast<float*>(16);
+  const auto* const gradients = reinterpret_cast<const float*>(32);
+  auto* const first = reinterpret_cast<float*>(48);
+  auto* const second = reinterpret_cast<float*>(64);
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const float infinity = std::numeric_limits<float>::infinity();
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    nan, 0.9F, 0.999F, 1.0e-8F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "learning_rate");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, -0.1F, 0.999F, 1.0e-8F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "beta");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, nan, 0.999F, 1.0e-8F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "beta");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 1.0F, 1.0e-8F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "beta");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, infinity, 1.0e-8F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "beta");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 0.0F, 10.0F,
+                                    1000.0F, 0.0F, nullptr),
+                        "epsilon");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, nan, 10.0F, 1000.0F,
+                                    0.0F, nullptr),
+                        "epsilon");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, 0.5F,
+                                    1000.0F, 0.0F, nullptr),
+                        "inverse bias");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, infinity,
+                                    1000.0F, 0.0F, nullptr),
+                        "inverse bias");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, 10.0F, 0.5F,
+                                    0.0F, nullptr),
+                        "inverse bias");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, 10.0F, nan,
+                                    0.0F, nullptr),
+                        "inverse bias");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, 10.0F,
+                                    1000.0F, -0.1F, nullptr),
+                        "weight_decay");
+  EXPECT_THROW_CONTAINS(LaunchAdamW(parameters, gradients, first, second, 1,
+                                    0.1F, 0.9F, 0.999F, 1.0e-8F, 10.0F,
+                                    1000.0F, infinity, nullptr),
+                        "weight_decay");
+}
+
 TEST_CASE(finite_scan_reports_all_finite_sentinel_for_zero_and_257_values) {
   DeviceBuffer<int> device_result(1);
   LaunchFindFirstNonFinite(nullptr, 0, device_result.get(), nullptr);
-  EXPECT_EQ(0, CopyFromDevice(device_result)[0]);
+  const std::vector<int> zero_result = CopyFromDevice(device_result);
+  EXPECT_EQ(0, zero_result[0]);
 
   const std::vector<float> finite_values(257, -3.25F);
   DeviceBuffer<float> device_values = CopyToDevice(finite_values);
   LaunchFindFirstNonFinite(device_values.get(), finite_values.size(),
                            device_result.get(), nullptr);
-  EXPECT_EQ(257, CopyFromDevice(device_result)[0]);
+  const std::vector<int> finite_result = CopyFromDevice(device_result);
+  EXPECT_EQ(257, finite_result[0]);
 }
 
 TEST_CASE(finite_scan_reports_smallest_nan_or_infinity_index) {

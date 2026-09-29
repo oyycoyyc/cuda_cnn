@@ -61,7 +61,8 @@ TEST_CASE(maxpool_ties_choose_first_row_major_value_and_scatter_back) {
       cpu_reference::MaxPoolForward(input, 1, 1, 2, 4);
 
   ExpectVectorNear({5, 2}, pooled.output, 0.0F);
-  EXPECT_EQ(std::vector<std::uint8_t>({0, 1}), pooled.winner_offsets);
+  const std::vector<std::uint8_t> expected_offsets{0, 1};
+  EXPECT_EQ(expected_offsets, pooled.winner_offsets);
 
   const std::vector<float> input_gradient = cpu_reference::MaxPoolBackward(
       {3, 4}, pooled.winner_offsets, 1, 1, 2, 4);
