@@ -91,6 +91,7 @@ class LeNet::Impl {
       : maximum_batch_size_(maximum_batch_size),
         stream_(stream),
         required_bytes_(RequiredBytes(maximum_batch_size)) {
+    PrepareFiniteDiagnosticNames();
     std::size_t free_bytes = 0;
     std::size_t total_bytes = 0;
     CUDA_CHECK(device_buffer_detail::QueryMemoryInfo(&free_bytes,
@@ -220,15 +221,23 @@ class LeNet::Impl {
 
   ParameterSet ExportParameters() const {
     ParameterSet result = CreateLenetParameters();
+    ExportParameters(&result);
+    return result;
+  }
+
+  void ExportParameters(ParameterSet* destination) const {
+    if (destination == nullptr) {
+      throw std::invalid_argument("export destination must not be null");
+    }
+    ValidateLenetParameters(*destination);
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
       CUDA_CHECK(cudaMemcpyAsync(
-          result[index].values.data(), parameters_[index],
+          (*destination)[index].values.data(), parameters_[index],
           static_cast<std::size_t>(specs[index].element_count) * sizeof(float),
           cudaMemcpyDeviceToHost, stream_));
     }
     CUDA_CHECK(cudaStreamSynchronize(stream_));
-    return result;
   }
 
   void ImportParameters(const ParameterSet& parameters) {
@@ -258,9 +267,6 @@ class LeNet::Impl {
       AppendGradients(append);
     }
     for (std::size_t index = 0; index < specs.size(); ++index) {
-      moment_names_[index] = std::string(specs[index].name) + ".first_moment";
-      moment_names_[index + specs.size()] =
-          std::string(specs[index].name) + ".second_moment";
       append(moment_names_[index].c_str(), first_moments_[index],
              static_cast<std::size_t>(specs[index].element_count));
       append(moment_names_[index + specs.size()].c_str(),
@@ -299,6 +305,31 @@ class LeNet::Impl {
     last_fc1_input_ = nullptr;
   }
 
+  void PrepareFiniteDiagnosticNames() {
+    const auto& specs = LenetParameterSpecs();
+    for (std::size_t index = 0; index < specs.size(); ++index) {
+      gradient_names_[index] =
+          std::string(specs[index].name) + ".gradient";
+      moment_names_[index] = std::string(specs[index].name) + ".first_moment";
+      moment_names_[index + specs.size()] =
+          std::string(specs[index].name) + ".second_moment";
+    }
+  }
+
+  bool FiniteDiagnosticNamesPrepared() const noexcept {
+    for (const std::string& name : gradient_names_) {
+      if (name.empty()) {
+        return false;
+      }
+    }
+    for (const std::string& name : moment_names_) {
+      if (name.empty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   template <typename Append>
   void AppendActivations(const Append& append) const {
     const int batch = state_batch_size_;
@@ -319,7 +350,6 @@ class LeNet::Impl {
   void AppendGradients(const Append& append) const {
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
-      gradient_names_[index] = std::string(specs[index].name) + ".gradient";
       append(gradient_names_[index].c_str(), parameter_gradients_[index],
              static_cast<std::size_t>(specs[index].element_count));
     }
@@ -472,6 +502,10 @@ ParameterSet LeNet::ExportParameters() const {
   return impl_->ExportParameters();
 }
 
+void LeNet::ExportParameters(ParameterSet* destination) const {
+  impl_->ExportParameters(destination);
+}
+
 void LeNet::ImportParameters(const ParameterSet& parameters) {
   impl_->ImportParameters(parameters);
 }
@@ -487,4 +521,9 @@ std::size_t LeNet::RequiredDeviceBytes() const {
 bool LeNetTestAccess::Fc1InputAliasesPool2(const LeNet& model) noexcept {
   return model.impl_->state_ != LeNet::Impl::ExecutionState::kIdle &&
          model.impl_->last_fc1_input_ == model.impl_->pool2_;
+}
+
+bool LeNetTestAccess::FiniteDiagnosticNamesPrepared(
+    const LeNet& model) noexcept {
+  return model.impl_->FiniteDiagnosticNamesPrepared();
 }

@@ -47,16 +47,30 @@ DatasetSplit MakeTrainValidationSplit(std::uint32_t sample_count,
   return split;
 }
 
-std::vector<std::uint32_t> ShuffledTrainingIndices(
+void ShuffledTrainingIndices(
     const std::vector<std::uint32_t>& canonical_indices, std::uint64_t seed,
-    std::uint32_t one_based_epoch) {
+    std::uint32_t one_based_epoch, std::vector<std::uint32_t>* output) {
+  if (output == nullptr) {
+    throw std::invalid_argument("shuffle output must not be null");
+  }
+  if (output == &canonical_indices) {
+    throw std::invalid_argument("shuffle output must not alias input");
+  }
   if (one_based_epoch == 0) {
     throw std::invalid_argument("epoch must be one-based");
   }
-  std::vector<std::uint32_t> shuffled = canonical_indices;
+  output->assign(canonical_indices.begin(), canonical_indices.end());
   const std::uint64_t stream_seed = lenet_random_internal::Derive(
       seed, kShuffleDomain, one_based_epoch,
       static_cast<std::uint64_t>(canonical_indices.size()));
-  Shuffle(&shuffled, stream_seed);
+  Shuffle(output, stream_seed);
+}
+
+std::vector<std::uint32_t> ShuffledTrainingIndices(
+    const std::vector<std::uint32_t>& canonical_indices, std::uint64_t seed,
+    std::uint32_t one_based_epoch) {
+  std::vector<std::uint32_t> shuffled;
+  shuffled.reserve(canonical_indices.size());
+  ShuffledTrainingIndices(canonical_indices, seed, one_based_epoch, &shuffled);
   return shuffled;
 }

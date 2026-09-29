@@ -9,6 +9,7 @@
 #include "reporting.h"
 #include "tensor.h"
 #include "training_data.h"
+#include "workflow_test_hooks.h"
 
 #include <cuda_runtime_api.h>
 
@@ -154,6 +155,8 @@ struct EvaluationResult {
   std::uint32_t timed_batches;
 };
 
+workflow_test_hooks::BeforeFinalReloadHook g_before_final_reload_hook = nullptr;
+
 std::string ParentPath(const std::string& path) {
   const std::string::size_type separator = path.find_last_of("/\\");
   if (separator == std::string::npos) {
@@ -277,9 +280,14 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
                                  cudaStream_t stream) {
   EvaluationResult result{0, 0.0, 0, 0};
   bool first_batch = true;
-  for (std::uint32_t offset = 0; offset < order.size(); offset += batch_size) {
+  std::size_t offset = 0;
+  while (offset < order.size()) {
+    if (offset > std::numeric_limits<std::uint32_t>::max()) {
+      throw std::overflow_error("batch offset does not fit uint32");
+    }
     const std::uint32_t actual =
-        PackBatch(dataset, order, offset, batch_size, &storage->host_batch);
+        PackBatch(dataset, order, static_cast<std::uint32_t>(offset),
+                  batch_size, &storage->host_batch);
     NormalizeBatch(storage->host_batch, 0, 1, false, storage, stream);
 
     // The warm-up forward still contributes metrics once; only its timing is
@@ -316,6 +324,7 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
       ++result.timed_batches;
     }
     first_batch = false;
+    offset += actual;
   }
   return result;
 }
@@ -345,6 +354,14 @@ std::vector<std::uint32_t> CanonicalOrder(std::uint32_t count) {
 }
 
 }  // namespace
+
+namespace workflow_test_hooks {
+
+void SetBeforeFinalReloadHookForTests(BeforeFinalReloadHook hook) noexcept {
+  g_before_final_reload_hook = hook;
+}
+
+}  // namespace workflow_test_hooks
 
 float LearningRateForEpoch(std::uint32_t one_based_epoch) {
   if (one_based_epoch == 0) {
@@ -379,6 +396,11 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
       options.allow_nonstandard_count);
   const std::vector<std::uint32_t> test_order =
       CanonicalOrder(test_dataset.sample_count);
+  std::vector<std::uint32_t> training_order;
+  training_order.reserve(split.training_indices.size());
+  Checkpoint best_checkpoint{{1, 0.0F, kNormalizationMean,
+                              kNormalizationStddev},
+                             CreateLenetParameters()};
 
   SelectAndReportDevice(options.device, output);
   WorkflowStream stream;
@@ -391,14 +413,18 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
   for (std::uint32_t epoch = 1; epoch <= options.epochs; ++epoch) {
     const std::chrono::steady_clock::time_point epoch_start =
         std::chrono::steady_clock::now();
-    const std::vector<std::uint32_t> training_order =
-        ShuffledTrainingIndices(split.training_indices, options.seed, epoch);
+    ShuffledTrainingIndices(split.training_indices, options.seed, epoch,
+                            &training_order);
     double weighted_loss = 0.0;
     std::uint64_t trained_samples = 0;
-    for (std::uint32_t offset = 0; offset < training_order.size();
-         offset += options.batch_size) {
+    std::size_t offset = 0;
+    while (offset < training_order.size()) {
+      if (offset > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::overflow_error("training batch offset does not fit uint32");
+      }
       const std::uint32_t actual = PackBatch(
-          training_dataset, training_order, offset, options.batch_size,
+          training_dataset, training_order, static_cast<std::uint32_t>(offset),
+          options.batch_size,
           &storage.host_batch);
       NormalizeBatch(storage.host_batch, options.seed, epoch, true, &storage,
                      stream.get());
@@ -432,6 +458,7 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
       model.RequireFinite("training optimizer step");
       weighted_loss += static_cast<double>(batch_loss) * actual;
       trained_samples += actual;
+      offset += actual;
     }
     if (trained_samples != split.training_indices.size()) {
       throw std::runtime_error("training batches did not cover every sample");
@@ -451,11 +478,10 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
       throw std::runtime_error("validation accuracy is not finite");
     }
     if (validation_accuracy > best_accuracy) {
-      const Checkpoint checkpoint{{epoch, validation_accuracy,
-                                   kNormalizationMean,
-                                   kNormalizationStddev},
-                                  model.ExportParameters()};
-      SaveCheckpoint(options.output_path, checkpoint);
+      best_checkpoint.metadata.best_epoch = epoch;
+      best_checkpoint.metadata.validation_accuracy = validation_accuracy;
+      model.ExportParameters(&best_checkpoint.parameters);
+      SaveCheckpoint(options.output_path, best_checkpoint);
       best_accuracy = validation_accuracy;
     }
     const double elapsed_ms =
@@ -466,6 +492,9 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
                       elapsed_ms);
   }
 
+  if (g_before_final_reload_hook != nullptr) {
+    g_before_final_reload_hook(&model);
+  }
   const Checkpoint best = LoadCheckpoint(options.output_path);
   model.ImportParameters(best.parameters);
   model.RequireFinite("reloaded best checkpoint");

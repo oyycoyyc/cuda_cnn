@@ -24,9 +24,9 @@ int main(int argc, char** argv) {
         return RunInfer(options.infer, std::cout, std::cerr);
     }
   } catch (const std::exception& error) {
-    std::cerr << "error: " << error.what() << '\n';
+    std::cerr << "error: " << error.what() << '\n' << Usage();
     return kRuntimeError;
   }
-  std::cerr << "error: invalid parsed command\n";
+  std::cerr << "error: invalid parsed command\n" << Usage();
   return kRuntimeError;
 }

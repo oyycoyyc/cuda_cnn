@@ -83,9 +83,19 @@ DatasetSplit MakeTrainValidationSplit(std::uint32_t sample_count,
                                       std::uint32_t validation_count,
                                       std::uint64_t seed);
 
+// Fills caller-owned output with a Fisher-Yates permutation of
+// canonical_indices, reusing its allocation when capacity is sufficient.
+// output must be non-null and must not alias canonical_indices;
+// one_based_epoch must be at least one. Invalid arguments throw
+// std::invalid_argument before output is modified. Empty input is valid.
+void ShuffledTrainingIndices(
+    const std::vector<std::uint32_t>& canonical_indices, std::uint64_t seed,
+    std::uint32_t one_based_epoch, std::vector<std::uint32_t>* output);
+
 // Returns an owning Fisher-Yates permutation of canonical_indices without
-// modifying or aliasing the input. one_based_epoch must be at least one;
-// throws std::invalid_argument otherwise. Empty input is valid.
+// modifying or aliasing the input. This convenience wrapper delegates to the
+// in-place overload. one_based_epoch must be at least one; invalid arguments
+// throw std::invalid_argument. Empty input is valid.
 std::vector<std::uint32_t> ShuffledTrainingIndices(
     const std::vector<std::uint32_t>& canonical_indices, std::uint64_t seed,
     std::uint32_t one_based_epoch);

@@ -10,6 +10,7 @@
 #include "random.h"
 #include "tensor.h"
 #include "training_data.h"
+#include "workflow_test_hooks.h"
 
 #include <cuda_runtime_api.h>
 
@@ -17,6 +18,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -27,9 +29,16 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
 namespace {
 
 const std::size_t kImagePixels = 28 * 28;
+std::string g_mnist_train_path = "data/train.bin";
+ParameterSet g_poison_parameters;
+ParameterSet g_captured_parameters;
 
 void Require(bool condition, const std::string& message) {
   if (!condition) {
@@ -108,6 +117,64 @@ Checkpoint ZeroCheckpoint(float accuracy = 0.0F,
     std::fill(tensor.values.begin(), tensor.values.end(), 0.0F);
   }
   return checkpoint;
+}
+
+Checkpoint NonzeroCheckpoint() {
+  Checkpoint checkpoint{{1, 0.0F, 0.1307F, 0.3081F},
+                        CreateLenetParameters()};
+  std::uint64_t ordinal = 1;
+  for (ParameterTensor& tensor : checkpoint.parameters) {
+    for (float& value : tensor.values) {
+      const int centered = static_cast<int>(ordinal % 23) - 11;
+      value = static_cast<float>(centered) * 0.002F;
+      ++ordinal;
+    }
+  }
+  return checkpoint;
+}
+
+void CopyDatasetSample(const MnistDataset& source, std::uint32_t source_index,
+                       std::uint32_t destination_index,
+                       std::vector<std::uint8_t>* images,
+                       std::vector<std::uint8_t>* labels) {
+  std::copy_n(source.Image(source_index), kImagePixels,
+              images->begin() +
+                  static_cast<std::size_t>(destination_index) * kImagePixels);
+  (*labels)[destination_index] = source.labels[source_index];
+}
+
+std::uint8_t Argmax(const std::vector<float>& values) {
+  return static_cast<std::uint8_t>(
+      std::max_element(values.begin(), values.end()) - values.begin());
+}
+
+std::string ReadText(const std::string& path) {
+  std::ifstream input(path, std::ios::binary);
+  Require(static_cast<bool>(input), "could not read command output " + path);
+  std::ostringstream text;
+  text << input.rdbuf();
+  return text.str();
+}
+
+int CommandExitCode(const std::string& command) {
+  const int status = std::system(command.c_str());
+  Require(status != -1, "could not launch lenet_cuda");
+#ifdef _WIN32
+  return status;
+#else
+  Require(WIFEXITED(status), "lenet_cuda did not exit normally");
+  return WEXITSTATUS(status);
+#endif
+}
+
+void PoisonModelBeforeFinalReload(LeNet* model) {
+  Require(model != nullptr, "reload poison hook received null model");
+  model->ImportParameters(g_poison_parameters);
+}
+
+void CaptureModelBeforeFinalReload(LeNet* model) {
+  Require(model != nullptr, "reload capture hook received null model");
+  model->ExportParameters(&g_captured_parameters);
 }
 
 std::vector<float> CpuLogits(const std::vector<std::uint8_t>& image,
@@ -405,26 +472,74 @@ void CaseStrictCheckpointTie() {
           "final test did not use the persisted best checkpoint");
 }
 
+void CaseReloadBeforeFinalTest() {
+  FixtureFiles files;
+  const std::uint32_t count = 12;
+  const std::vector<std::uint8_t> train_images = PatternImages(count);
+  const std::vector<std::uint8_t> train_labels = CyclicLabels(count);
+  const std::vector<std::uint8_t> repeated_test(4 * kImagePixels, 91);
+  const std::string train = files.Path("reload_train.bin");
+  const std::string test = files.Path("reload_test.bin");
+  const std::string baseline_weights = files.Path("reload_baseline.bin");
+  const std::string poisoned_weights = files.Path("reload_poisoned.bin");
+  WriteDataset(train, train_images, train_labels);
+  WriteDataset(test, repeated_test, std::vector<std::uint8_t>(4, 0));
+  std::ostringstream output;
+  std::ostringstream error;
+  Require(RunTrain(TrainFixtureOptions(train, test, baseline_weights, 1, 4),
+                   output, error) == kSuccess,
+          "reload baseline training failed");
+  const Checkpoint baseline = LoadCheckpoint(baseline_weights);
+  const std::vector<std::uint8_t> image(repeated_test.begin(),
+                                        repeated_test.begin() + kImagePixels);
+  const std::uint8_t disk_prediction =
+      Argmax(CpuLogits(image, baseline.parameters));
+  WriteDataset(test, repeated_test,
+               std::vector<std::uint8_t>(4, disk_prediction));
+
+  g_poison_parameters = CreateLenetParameters();
+  for (ParameterTensor& tensor : g_poison_parameters) {
+    std::fill(tensor.values.begin(), tensor.values.end(), 0.0F);
+  }
+  const std::uint8_t poison_prediction =
+      static_cast<std::uint8_t>((disk_prediction + 1) % 10);
+  g_poison_parameters.back().values[poison_prediction] = 10.0F;
+  workflow_test_hooks::SetBeforeFinalReloadHookForTests(
+      &PoisonModelBeforeFinalReload);
+  try {
+    output.str("");
+    output.clear();
+    Require(RunTrain(TrainFixtureOptions(train, test, poisoned_weights, 1, 4),
+                     output, error) == kSuccess,
+            "reload poison training failed");
+  } catch (...) {
+    workflow_test_hooks::SetBeforeFinalReloadHookForTests(nullptr);
+    throw;
+  }
+  workflow_test_hooks::SetBeforeFinalReloadHookForTests(nullptr);
+  Require(Field(output.str(), "final_test_accuracy") == 1.0,
+          "final test used poisoned memory instead of the disk checkpoint");
+}
+
 void CaseOverfit32() {
   FixtureFiles files;
   const std::uint32_t count = 40;
-  std::vector<std::uint8_t> images(count * kImagePixels, 0);
+  const MnistDataset official = LoadMnistDataset(g_mnist_train_path);
+  RequireDatasetCount(official, 60000, false, "overfit source training dataset");
+  std::vector<std::uint8_t> images(count * kImagePixels);
   std::vector<std::uint8_t> labels(count);
-  for (std::uint32_t sample = 0; sample < count; ++sample) {
-    labels[sample] = static_cast<std::uint8_t>(sample % 4);
-    const std::size_t base = static_cast<std::size_t>(sample) * kImagePixels;
-    const int quadrant = labels[sample];
-    const int start_y = quadrant >= 2 ? 14 : 2;
-    const int start_x = (quadrant % 2) != 0 ? 14 : 2;
-    for (int y = start_y; y < start_y + 10; ++y) {
-      for (int x = start_x; x < start_x + 10; ++x) {
-        images[base + static_cast<std::size_t>(y) * 28 + x] = 255;
-      }
-    }
-  }
   const DatasetSplit split = MakeWorkflowSplit(count, 1337, true);
   Require(split.training_indices.size() == 32,
           "overfit fixture must contain 32 training rows");
+  for (std::size_t packed = 0; packed < split.training_indices.size(); ++packed) {
+    CopyDatasetSample(official, static_cast<std::uint32_t>(packed),
+                      split.training_indices[packed], &images, &labels);
+  }
+  for (std::size_t packed = 0; packed < split.validation_indices.size();
+       ++packed) {
+    CopyDatasetSample(official, static_cast<std::uint32_t>(32 + packed),
+                      split.validation_indices[packed], &images, &labels);
+  }
   std::vector<std::uint8_t> training_images(32 * kImagePixels);
   std::vector<std::uint8_t> training_labels(32);
   for (std::size_t packed = 0; packed < split.training_indices.size(); ++packed) {
@@ -439,14 +554,24 @@ void CaseOverfit32() {
   const std::string test = files.Path("overfit_test.bin");
   const std::string subset = files.Path("overfit_subset.bin");
   const std::string weights = files.Path("overfit_weights.bin");
+  const std::string final_weights = files.Path("overfit_final_weights.bin");
   WriteDataset(train, images, labels);
   WriteDataset(test, images, labels);
   WriteDataset(subset, training_images, training_labels);
   std::ostringstream output;
   std::ostringstream error;
-  Require(RunTrain(TrainFixtureOptions(train, test, weights, 200, 32), output,
-                   error) == kSuccess,
-          "overfit training failed: " + error.str());
+  g_captured_parameters = CreateLenetParameters();
+  workflow_test_hooks::SetBeforeFinalReloadHookForTests(
+      &CaptureModelBeforeFinalReload);
+  try {
+    Require(RunTrain(TrainFixtureOptions(train, test, weights, 200, 32), output,
+                     error) == kSuccess,
+            "overfit training failed: " + error.str());
+  } catch (...) {
+    workflow_test_hooks::SetBeforeFinalReloadHookForTests(nullptr);
+    throw;
+  }
+  workflow_test_hooks::SetBeforeFinalReloadHookForTests(nullptr);
   const std::string records = output.str();
   const std::string first_marker = "event=epoch epoch=1 ";
   const std::string last_marker = "event=epoch epoch=200 ";
@@ -460,8 +585,11 @@ void CaseOverfit32() {
                                                      "train_loss"));
   Require(final_loss <= initial_loss * 0.2F,
           "overfit loss did not fall to 20 percent");
+  SaveCheckpoint(final_weights,
+                 Checkpoint{{200, 0.0F, 0.1307F, 0.3081F},
+                            g_captured_parameters});
   std::ostringstream evaluation;
-  Require(RunEvaluate(EvaluateFixtureOptions(subset, weights, 0.95F),
+  Require(RunEvaluate(EvaluateFixtureOptions(subset, final_weights, 0.95F),
                       evaluation, error) == kSuccess,
           "overfit training accuracy was below 95 percent");
 }
@@ -558,10 +686,15 @@ void CaseInfer() {
   FixtureFiles files;
   const std::string data = files.Path("infer_data.bin");
   const std::string weights = files.Path("infer_weights.bin");
-  const std::vector<std::uint8_t> images = PatternImages(3);
-  const std::vector<std::uint8_t> labels{{4, 7, 2}};
+  const MnistDataset official = LoadMnistDataset(g_mnist_train_path);
+  RequireDatasetCount(official, 60000, false, "inference source dataset");
+  std::vector<std::uint8_t> images(3 * kImagePixels);
+  std::vector<std::uint8_t> labels(3);
+  for (std::uint32_t sample = 0; sample < 3; ++sample) {
+    CopyDatasetSample(official, 7 + sample, sample, &images, &labels);
+  }
   WriteDataset(data, images, labels);
-  const Checkpoint checkpoint = ZeroCheckpoint();
+  const Checkpoint checkpoint = NonzeroCheckpoint();
   SaveCheckpoint(weights, checkpoint);
   InferOptions options{data, weights, 1, 0};
   std::ostringstream output;
@@ -578,21 +711,74 @@ void CaseInfer() {
   const std::vector<std::uint8_t> image(
       images.begin() + kImagePixels, images.begin() + 2 * kImagePixels);
   const std::vector<float> reference = CpuLogits(image, checkpoint.parameters);
+  const float maximum = *std::max_element(reference.begin(), reference.end());
+  double exponential_sum = 0.0;
+  for (float logit : reference) {
+    exponential_sum += std::exp(static_cast<double>(logit - maximum));
+  }
   double probability_sum = 0.0;
   for (std::size_t index = 0; index < 10; ++index) {
     Require(std::isfinite(logits[index]) &&
-                std::fabs(logits[index] - reference[index]) <= 1.0e-5,
+                std::fabs(logits[index] - reference[index]) <=
+                    1.0e-4 + 1.0e-4 * std::fabs(reference[index]),
             "inference logits disagree with CPU reference");
+    const double expected_probability =
+        std::exp(static_cast<double>(reference[index] - maximum)) /
+        exponential_sum;
     Require(std::isfinite(probabilities[index]) &&
-                std::fabs(probabilities[index] - 0.1) <= 1.0e-6,
+                std::fabs(probabilities[index] - expected_probability) <=
+                    1.0e-5,
             "inference probability is unstable or incorrect");
     probability_sum += probabilities[index];
   }
   Require(std::fabs(probability_sum - 1.0) <= 1.0e-6,
           "inference probabilities do not sum to one");
-  Require(Field(record, "prediction") == 0,
-          "argmax tie did not select class zero");
-  Require(Field(record, "label") == 7, "inference label was not copied");
+  Require(Field(record, "prediction") == Argmax(reference),
+          "inference prediction disagrees with CPU reference");
+  Require(Field(record, "label") == labels[1],
+          "inference label was not copied");
+}
+
+void CaseCliExecutable() {
+  FixtureFiles files;
+  const std::string parse_output = files.Path("cli_parse.txt");
+  const std::string runtime_output = files.Path("cli_runtime.txt");
+  const std::string acceptance_output = files.Path("cli_acceptance.txt");
+#ifdef _WIN32
+  const std::string executable = "build\\lenet_cuda.exe";
+#else
+  const std::string executable = "./build/lenet_cuda";
+#endif
+  Require(CommandExitCode(executable + " > " + parse_output + " 2>&1") ==
+              kUsageError,
+          "parse failure did not return exit code 2");
+  Require(ReadText(parse_output).find("Usage:") != std::string::npos,
+          "parse failure omitted concise usage");
+  Require(CommandExitCode(executable +
+                              " infer --data build/missing.bin --weights "
+                              "build/missing.ckpt --index 0 > " +
+                              runtime_output + " 2>&1") == kRuntimeError,
+          "runtime failure did not return exit code 1");
+  const std::string runtime_text = ReadText(runtime_output);
+  Require(runtime_text.find("build/missing.bin") != std::string::npos &&
+              runtime_text.find("Usage:") != std::string::npos,
+          "runtime failure omitted diagnostic or concise usage");
+
+  const std::string data = files.Path("cli_data.bin");
+  const std::string weights = files.Path("cli_weights.bin");
+  WriteDataset(data, PatternImages(1), std::vector<std::uint8_t>(1, 1));
+  SaveCheckpoint(weights, ZeroCheckpoint());
+  const std::string command =
+      executable + " evaluate --data " + data + " --weights " + weights +
+      " --min-accuracy 1 --device 0 --allow-nonstandard-count > " +
+      acceptance_output + " 2>&1";
+  Require(CommandExitCode(command) == kAcceptanceFailure,
+          "accuracy failure did not return exit code 3");
+  const std::string acceptance_text = ReadText(acceptance_output);
+  Require(acceptance_text.find("event=device") != std::string::npos &&
+              acceptance_text.find("event=evaluate") != std::string::npos &&
+              acceptance_text.find("status=fail") != std::string::npos,
+          "CLI did not dispatch evaluation or report failure");
 }
 
 struct NamedCase {
@@ -606,21 +792,29 @@ const NamedCase kCases[] = {
     {"batch17", &CaseBatch17},
     {"global_step", &CaseGlobalStepStartsAtOne},
     {"strict_checkpoint_tie", &CaseStrictCheckpointTie},
+    {"reload_before_final", &CaseReloadBeforeFinalTest},
     {"overfit32", &CaseOverfit32},
     {"one_epoch_checkpoint", &CaseOneEpochCheckpoint},
     {"evaluate", &CaseEvaluate},
     {"infer", &CaseInfer},
+    {"cli", &CaseCliExecutable},
 };
 
 }  // namespace
 
 int main(int argc, char** argv) {
   std::string selected;
-  if (argc == 3 && std::string(argv[1]) == "--case") {
-    selected = argv[2];
-  } else if (argc != 1) {
-    std::cerr << "usage: " << argv[0] << " [--case NAME]\n";
-    return 2;
+  for (int argument = 1; argument < argc; ++argument) {
+    const std::string option = argv[argument];
+    if (option == "--case" && argument + 1 < argc && selected.empty()) {
+      selected = argv[++argument];
+    } else if (option == "--mnist-train" && argument + 1 < argc) {
+      g_mnist_train_path = argv[++argument];
+    } else {
+      std::cerr << "usage: " << argv[0]
+                << " [--case NAME] [--mnist-train PATH]\n";
+      return 2;
+    }
   }
 
   int failures = 0;

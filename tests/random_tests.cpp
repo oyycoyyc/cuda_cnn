@@ -125,6 +125,25 @@ TEST_CASE(epoch_shuffle_matches_prefix_and_preserves_training_set) {
   EXPECT_TRUE(epoch_one != epoch_two);
 }
 
+TEST_CASE(epoch_shuffle_in_place_reuses_caller_capacity) {
+  std::vector<std::uint32_t> canonical(257);
+  for (std::uint32_t index = 0; index < canonical.size(); ++index) {
+    canonical[index] = index;
+  }
+  std::vector<std::uint32_t> shuffled;
+  shuffled.reserve(canonical.size());
+  std::uint32_t* const reserved_storage = shuffled.data();
+
+  ShuffledTrainingIndices(canonical, 1337, 1, &shuffled);
+  EXPECT_EQ(reserved_storage, shuffled.data());
+  EXPECT_EQ(ShuffledTrainingIndices(canonical, 1337, 1), shuffled);
+  ShuffledTrainingIndices(canonical, 1337, 2, &shuffled);
+  EXPECT_EQ(reserved_storage, shuffled.data());
+  ExpectPermutation(canonical, shuffled);
+  EXPECT_THROW_CONTAINS(
+      ShuffledTrainingIndices(canonical, 1337, 1, nullptr), "output");
+}
+
 TEST_CASE(host_random_apis_reject_invalid_arguments) {
   EXPECT_THROW_CONTAINS(MakeTrainValidationSplit(4, 5, 1),
                         "validation_count");

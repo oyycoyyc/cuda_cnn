@@ -82,6 +82,14 @@ class LeNet {
   // before return. CUDA copy or synchronization failures throw runtime_error.
   ParameterSet ExportParameters() const;
 
+  // Copies device parameters into an existing caller-owned canonical
+  // ParameterSet without resizing any tensor payload. destination must be
+  // non-null and already satisfy the exact ten-tensor LeNet schema; it remains
+  // owned by the caller and may be reused across calls. Validation failures
+  // throw std::invalid_argument before CUDA work. Copies use the borrowed stream
+  // and synchronize it before return; CUDA failures throw std::runtime_error.
+  void ExportParameters(ParameterSet* destination) const;
+
   // Validates exact canonical schema before enqueueing copies from host-owned
   // parameters into device state, then synchronizes the borrowed stream before
   // return. A schema-valid call invalidates saved forward/gradient state before
@@ -116,6 +124,11 @@ class LeNetTestAccess {
   // Returns true only after a successful Forward whose exact pointer supplied
   // to FC1 was the model's pool2 storage. No CUDA call or synchronization occurs.
   static bool Fc1InputAliasesPool2(const LeNet& model) noexcept;
+
+  // Returns true when all model finite-scan gradient/moment labels were built
+  // during construction, before any forward/backward batch phase. It performs
+  // no allocation, CUDA call, synchronization, or ownership transfer.
+  static bool FiniteDiagnosticNamesPrepared(const LeNet& model) noexcept;
 };
 
 #endif  // INCLUDE_LENET_H_

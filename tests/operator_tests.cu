@@ -1551,6 +1551,7 @@ TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
     LeNet model(kMaximumBatch, UINT64_C(1337), nullptr);
     EXPECT_EQ(before + 1, DeviceBufferAllocationCountForTests());
     EXPECT_EQ(kExpectedBytes, model.RequiredDeviceBytes());
+    EXPECT_TRUE(LeNetTestAccess::FiniteDiagnosticNamesPrepared(model));
 
     const ParameterSet parameters = model.ExportParameters();
     ValidateLenetParameters(parameters);
@@ -1578,6 +1579,31 @@ TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
   EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
   EXPECT_THROW_CONTAINS(LeNet(0, UINT64_C(1), nullptr),
                         "maximum_batch_size");
+}
+
+TEST_CASE(lenet_export_fills_canonical_storage_without_reallocation) {
+  LeNet model(1, UINT64_C(1337), nullptr);
+  ParameterSet parameters = CreateLenetParameters();
+  std::array<const float*, 10> payloads{};
+  for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
+    payloads[tensor] = parameters[tensor].values.data();
+  }
+  const std::size_t device_allocations =
+      DeviceBufferSuccessfulAllocationEventCountForTests();
+
+  model.ExportParameters(&parameters);
+  const ParameterSet expected = model.ExportParameters();
+  model.ExportParameters(&parameters);
+  EXPECT_EQ(device_allocations,
+            DeviceBufferSuccessfulAllocationEventCountForTests());
+  EXPECT_EQ(expected.size(), parameters.size());
+  for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
+    EXPECT_EQ(payloads[tensor], parameters[tensor].values.data());
+    EXPECT_EQ(expected[tensor].values, parameters[tensor].values);
+  }
+  EXPECT_THROW_CONTAINS(model.ExportParameters(nullptr), "destination");
+  parameters[0].values.pop_back();
+  EXPECT_THROW_CONTAINS(model.ExportParameters(&parameters), "element count");
 }
 
 TEST_CASE(lenet_storage_bytes_and_constructor_query_are_exact_at_capacities) {
