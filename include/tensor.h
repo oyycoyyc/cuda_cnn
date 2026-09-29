@@ -21,17 +21,43 @@ inline std::atomic<std::size_t>& LiveAllocationCount() noexcept {
   return count;
 }
 
+// Returns the process-wide monotonic count of successful DeviceBuffer
+// allocations. Unlike the live count, releases never decrement this diagnostic
+// event counter, so a transient allocate/free pair remains observable.
+inline std::atomic<std::size_t>& SuccessfulAllocationEventCount() noexcept {
+  static std::atomic<std::size_t> count{0};
+  return count;
+}
+
+// Returns the process-wide monotonic count of CUDA memory-information query
+// attempts made through QueryMemoryInfo. It is independent of allocation
+// ownership and exists to verify constructor query contracts.
+inline std::atomic<std::size_t>& MemoryInfoQueryCount() noexcept {
+  static std::atomic<std::size_t> count{0};
+  return count;
+}
+
 // Records one successful allocation in the implementation-owned accounting.
 // Relaxed ordering is sufficient because the counter conveys no ownership or
 // memory visibility; it only records an independent diagnostic total.
 inline void RecordAllocation() noexcept {
   LiveAllocationCount().fetch_add(1, std::memory_order_relaxed);
+  SuccessfulAllocationEventCount().fetch_add(1, std::memory_order_relaxed);
 }
 
 // Records one ownership release in the implementation-owned accounting. It
 // uses relaxed ordering for the independent diagnostic total and owns no data.
 inline void RecordRelease() noexcept {
   LiveAllocationCount().fetch_sub(1, std::memory_order_relaxed);
+}
+
+// Records and performs one cudaMemGetInfo query. Relaxed ordering is sufficient
+// because the monotonic count is diagnostic only and carries no memory or
+// ownership synchronization. Output pointers follow cudaMemGetInfo's contract.
+inline cudaError_t QueryMemoryInfo(std::size_t* free_bytes,
+                                   std::size_t* total_bytes) noexcept {
+  MemoryInfoQueryCount().fetch_add(1, std::memory_order_relaxed);
+  return cudaMemGetInfo(free_bytes, total_bytes);
 }
 
 // Allocates exactly requested_bytes of device storage and returns unique
@@ -45,7 +71,8 @@ inline void* Allocate(std::size_t requested_bytes) {
   if (allocation_result != cudaSuccess) {
     std::size_t free_bytes = 0;
     std::size_t total_bytes = 0;
-    const cudaError_t memory_result = cudaMemGetInfo(&free_bytes, &total_bytes);
+    const cudaError_t memory_result =
+        QueryMemoryInfo(&free_bytes, &total_bytes);
     std::ostringstream message;
     message << "CUDA allocation failed: requested_bytes=" << requested_bytes
             << " free_bytes=" << free_bytes << " total_bytes=" << total_bytes
@@ -191,6 +218,24 @@ std::size_t DeviceBuffer<T>::size() const noexcept {
 // do not receive this test-only declaration.
 inline std::size_t DeviceBufferAllocationCountForTests() noexcept {
   return device_buffer_detail::LiveAllocationCount().load(
+      std::memory_order_relaxed);
+}
+
+// Returns the number of successful DeviceBuffer allocation events since process
+// start. The counter is monotonic (subject only to size_t wraparound), uses a
+// relaxed atomic load, and detects transient allocations that the live-count
+// observer cannot. This standalone test hook changes no template definition.
+inline std::size_t DeviceBufferSuccessfulAllocationEventCountForTests()
+    noexcept {
+  return device_buffer_detail::SuccessfulAllocationEventCount().load(
+      std::memory_order_relaxed);
+}
+
+// Returns the number of cudaMemGetInfo attempts made through the shared wrapper
+// since process start. The relaxed snapshot performs no CUDA call and changes
+// no DeviceBuffer or LeNet class definition.
+inline std::size_t CudaMemoryInfoQueryCountForTests() noexcept {
+  return device_buffer_detail::MemoryInfoQueryCount().load(
       std::memory_order_relaxed);
 }
 #endif

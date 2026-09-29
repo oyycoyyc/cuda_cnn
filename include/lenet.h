@@ -20,6 +20,8 @@ struct AdamWConfig {
   float weight_decay;
 };
 
+class LeNetTestAccess;
+
 // Owns the fixed-capacity device state for modern LeNet. The constructor's
 // stream is borrowed, must remain valid for this object's lifetime, and is the
 // only stream used. The class never allocates device storage after construction
@@ -49,15 +51,19 @@ class LeNet {
   // forward chain and returns the stable model-owned device logits pointer for
   // contiguous [batch_size][10] FP32 output. normalized_images is a non-null
   // caller-owned device [batch_size][1][28][28] buffer that remains live until
-  // Backward completes. batch_size must be within constructed capacity. No
-  // synchronization or allocation occurs; launch failures throw runtime_error.
+  // Backward completes. batch_size must be within constructed capacity. A
+  // successful call replaces any prior forward/gradient state and permits one
+  // matching Backward. No synchronization or allocation occurs; launch
+  // failures throw runtime_error and leave no consumable state.
   const float* Forward(const float* normalized_images, int batch_size);
 
   // Enqueues the exact reverse chain for the most recent Forward, populating
   // all ten parameter gradients and model-owned input-gradient storage.
   // logits_gradient is a non-null caller-owned device [batch_size][10] buffer,
   // batch_size must match that Forward, and both external buffers remain live
-  // through stream work. No synchronization or allocation occurs.
+  // through stream work. The call consumes that Forward and, on success,
+  // permits one AdamWStep. Repeated or stale calls throw std::invalid_argument.
+  // No synchronization or allocation occurs.
   void Backward(const float* logits_gradient, int batch_size);
 
   // Enqueues AdamW updates for all ten canonical tensors using gradients from
@@ -65,7 +71,9 @@ class LeNet {
   // must be finite and nonnegative and config must satisfy AdamWConfig's
   // contract. Bias corrections are computed on the host in double precision.
   // Decay is config.weight_decay for weights and zero for biases. No allocation
-  // or synchronization occurs; invalid arguments throw std::invalid_argument.
+  // or synchronization occurs. The call consumes current gradients and
+  // invalidates saved forward state; stale/repeated calls and invalid arguments
+  // throw std::invalid_argument.
   void AdamWStep(std::uint64_t global_step, float learning_rate,
                  const AdamWConfig& config);
 
@@ -76,8 +84,10 @@ class LeNet {
 
   // Validates exact canonical schema before enqueueing copies from host-owned
   // parameters into device state, then synchronizes the borrowed stream before
-  // return. Input storage is not retained. Schema violations throw
-  // std::invalid_argument; CUDA copy/synchronization failures throw runtime_error.
+  // return. A schema-valid call invalidates saved forward/gradient state before
+  // copying; input storage is not retained. Schema violations throw
+  // std::invalid_argument without changing state; CUDA copy/synchronization
+  // failures throw runtime_error and leave no consumable state.
   void ImportParameters(const ParameterSet& parameters);
 
   // Deterministically scans owned FP32 tensors and synchronizes the borrowed
@@ -93,8 +103,19 @@ class LeNet {
   std::size_t RequiredDeviceBytes() const;
 
  private:
+  friend class LeNetTestAccess;
   class Impl;
   std::unique_ptr<Impl> impl_;
+};
+
+// Provides one narrow structural assertion required by the CUDA operator tests.
+// It grants no pointer or ownership access and is always declared identically,
+// independent of test macros, so LeNet's class definition remains ODR-safe.
+class LeNetTestAccess {
+ public:
+  // Returns true only after a successful Forward whose exact pointer supplied
+  // to FC1 was the model's pool2 storage. No CUDA call or synchronization occurs.
+  static bool Fc1InputAliasesPool2(const LeNet& model) noexcept;
 };
 
 #endif  // INCLUDE_LENET_H_

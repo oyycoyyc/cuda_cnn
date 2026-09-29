@@ -64,6 +64,38 @@ std::vector<T> CopyFromDevicePointer(const T* source, std::size_t count) {
   return destination;
 }
 
+template <typename T>
+std::vector<T> CopyFromDevicePointerOnStream(const T* source,
+                                              std::size_t count,
+                                              cudaStream_t stream) {
+  std::vector<T> destination(count);
+  CUDA_CHECK(cudaMemcpyAsync(destination.data(), source, count * sizeof(T),
+                             cudaMemcpyDeviceToHost, stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  return destination;
+}
+
+class NonblockingTestStream {
+ public:
+  NonblockingTestStream() : stream_(nullptr) {
+    CUDA_CHECK(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
+  }
+
+  ~NonblockingTestStream() {
+    if (stream_ != nullptr) {
+      static_cast<void>(cudaStreamDestroy(stream_));
+    }
+  }
+
+  NonblockingTestStream(const NonblockingTestStream&) = delete;
+  NonblockingTestStream& operator=(const NonblockingTestStream&) = delete;
+
+  cudaStream_t get() const { return stream_; }
+
+ private:
+  cudaStream_t stream_;
+};
+
 float NormalizedPixel(std::uint8_t pixel) {
   return (static_cast<float>(pixel) / 255.0F - 0.1307F) / 0.3081F;
 }
@@ -826,6 +858,8 @@ TEST_CASE(device_buffer_zero_count_does_not_allocate) {
 
 TEST_CASE(device_buffer_move_transfers_one_allocation) {
   const std::size_t before = DeviceBufferAllocationCountForTests();
+  const std::size_t events_before =
+      DeviceBufferSuccessfulAllocationEventCountForTests();
   {
     DeviceBuffer<float> source(4);
     float* const pointer = source.get();
@@ -835,8 +869,12 @@ TEST_CASE(device_buffer_move_transfers_one_allocation) {
     EXPECT_EQ(pointer, destination.get());
     EXPECT_EQ(std::size_t{4}, destination.size());
     EXPECT_EQ(before + 1, DeviceBufferAllocationCountForTests());
+    EXPECT_EQ(events_before + 1,
+              DeviceBufferSuccessfulAllocationEventCountForTests());
   }
   EXPECT_EQ(before, DeviceBufferAllocationCountForTests());
+  EXPECT_EQ(events_before + 1,
+            DeviceBufferSuccessfulAllocationEventCountForTests());
 }
 
 TEST_CASE(device_buffer_move_assignment_releases_destination_then_transfers) {
@@ -1542,6 +1580,34 @@ TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
                         "maximum_batch_size");
 }
 
+TEST_CASE(lenet_storage_bytes_and_constructor_query_are_exact_at_capacities) {
+  const std::array<int, 3> capacities{{1, 17, 1024}};
+  const std::array<std::size_t, 3> expected_bytes{{
+      780284, 1891708, 71841956}};
+  NonblockingTestStream stream;
+  for (std::size_t index = 0; index < capacities.size(); ++index) {
+    const std::size_t live_before = DeviceBufferAllocationCountForTests();
+    const std::size_t allocation_events_before =
+        DeviceBufferSuccessfulAllocationEventCountForTests();
+    const std::size_t memory_queries_before =
+        CudaMemoryInfoQueryCountForTests();
+    {
+      LeNet model(capacities[index], UINT64_C(101) + index, stream.get());
+      EXPECT_EQ(expected_bytes[index], model.RequiredDeviceBytes());
+      EXPECT_EQ(live_before + 1, DeviceBufferAllocationCountForTests());
+      EXPECT_EQ(allocation_events_before + 1,
+                DeviceBufferSuccessfulAllocationEventCountForTests());
+      EXPECT_EQ(memory_queries_before + 1,
+                CudaMemoryInfoQueryCountForTests());
+    }
+    EXPECT_EQ(live_before, DeviceBufferAllocationCountForTests());
+    EXPECT_EQ(allocation_events_before + 1,
+              DeviceBufferSuccessfulAllocationEventCountForTests());
+    EXPECT_EQ(memory_queries_before + 1,
+              CudaMemoryInfoQueryCountForTests());
+  }
+}
+
 TEST_CASE(lenet_forward_matches_cpu_for_two_stagewise_and_seventeen_logits) {
   constexpr int kMaximumBatch = 17;
   ParameterSet parameters = SmallPatternParameters();
@@ -1590,7 +1656,54 @@ TEST_CASE(lenet_forward_matches_cpu_for_two_stagewise_and_seventeen_logits) {
       check_stage(expected.fc2_pre, 84);
       check_stage(expected.relu4, 84);
       EXPECT_EQ(device_logits, ArenaFloatPointer(base, offset));
+      EXPECT_TRUE(LeNetTestAccess::Fc1InputAliasesPool2(model));
     }
+  }
+}
+
+TEST_CASE(lenet_forward_small_batch_preserves_every_activation_tail_on_stream) {
+  constexpr int kMaximumBatch = 17;
+  constexpr int kActualBatch = 2;
+  constexpr float kSentinel = -12345.25F;
+  const std::array<std::size_t, 11> stage_sizes{{
+      3456, 3456, 864, 1024, 1024, 256, 120, 120, 84, 84, 10}};
+  const std::vector<float> input(kMaximumBatch * 28 * 28, 0.125F);
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  NonblockingTestStream stream;
+  LeNet model(kMaximumBatch, UINT64_C(103), stream.get());
+  const float* const logits = model.Forward(device_input.get(), kActualBatch);
+  CUDA_CHECK(cudaStreamSynchronize(stream.get()));
+  const std::uint8_t* const base = LenetArenaBase(logits, kMaximumBatch);
+  const std::vector<float> sentinel_values(
+      static_cast<std::size_t>(kMaximumBatch) * stage_sizes[0], kSentinel);
+
+  std::size_t offset = kLenetFourParameterCopiesBytes;
+  for (std::size_t per_sample : stage_sizes) {
+    const std::size_t element_count =
+        static_cast<std::size_t>(kMaximumBatch) * per_sample;
+    CUDA_CHECK(cudaMemcpyAsync(
+        const_cast<float*>(ArenaFloatPointer(base, offset)),
+        sentinel_values.data(), element_count * sizeof(float),
+        cudaMemcpyHostToDevice, stream.get()));
+    offset += static_cast<std::size_t>(kMaximumBatch) * per_sample *
+              sizeof(float);
+  }
+
+  model.Forward(device_input.get(), kActualBatch);
+  offset = kLenetFourParameterCopiesBytes;
+  for (std::size_t per_sample : stage_sizes) {
+    const std::size_t active_count =
+        static_cast<std::size_t>(kActualBatch) * per_sample;
+    const std::size_t tail_count =
+        static_cast<std::size_t>(kMaximumBatch - kActualBatch) * per_sample;
+    const std::vector<float> tail = CopyFromDevicePointerOnStream(
+        ArenaFloatPointer(base, offset) + active_count, tail_count,
+        stream.get());
+    for (float value : tail) {
+      EXPECT_EQ(kSentinel, value);
+    }
+    offset += static_cast<std::size_t>(kMaximumBatch) * per_sample *
+              sizeof(float);
   }
 }
 
@@ -1702,6 +1815,8 @@ TEST_CASE(lenet_train_step_decays_only_weights_and_never_allocates) {
   const float* const logits_address = model.Forward(device_input.get(), 2);
   model.Backward(device_gradient.get(), 2);
   const std::size_t allocations = DeviceBufferAllocationCountForTests();
+  const std::size_t allocation_events =
+      DeviceBufferSuccessfulAllocationEventCountForTests();
   model.AdamWStep(1, 0.01F, AdamWConfig{0.0F, 0.0F, 1.0F, 0.2F});
   const ParameterSet decayed = model.ExportParameters();
   for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
@@ -1721,10 +1836,67 @@ TEST_CASE(lenet_train_step_decays_only_weights_and_never_allocates) {
   }
   EXPECT_EQ(logits_address, model.Forward(device_input.get(), 2));
   EXPECT_EQ(allocations, DeviceBufferAllocationCountForTests());
+  EXPECT_EQ(allocation_events,
+            DeviceBufferSuccessfulAllocationEventCountForTests());
   EXPECT_THROW_CONTAINS(
       model.AdamWStep(0, 0.001F,
                       AdamWConfig{0.9F, 0.999F, 1.0e-8F, 0.0F}),
       "global_step");
+}
+
+TEST_CASE(lenet_train_step_state_machine_invalidates_and_consumes_saved_work) {
+  constexpr int kBatchSize = 2;
+  const std::vector<float> input(kBatchSize * 28 * 28, 0.125F);
+  const std::vector<float> gradient(kBatchSize * 10, 0.01F);
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_gradient = CopyToDevice(gradient);
+  NonblockingTestStream stream;
+  LeNet model(kBatchSize, UINT64_C(107), stream.get());
+  const ParameterSet parameters = model.ExportParameters();
+  const AdamWConfig config{0.9F, 0.999F, 1.0e-8F, 0.0F};
+
+  model.Forward(device_input.get(), kBatchSize);
+  model.ImportParameters(parameters);
+  EXPECT_THROW_CONTAINS(model.Backward(device_gradient.get(), kBatchSize),
+                        "unconsumed Forward");
+
+  model.Forward(device_input.get(), kBatchSize);
+  model.Backward(device_gradient.get(), kBatchSize);
+  model.ImportParameters(parameters);
+  EXPECT_THROW_CONTAINS(model.AdamWStep(1, 0.001F, config),
+                        "current gradients");
+
+  model.Forward(device_input.get(), kBatchSize);
+  model.Backward(device_gradient.get(), kBatchSize);
+  EXPECT_THROW_CONTAINS(model.Backward(device_gradient.get(), kBatchSize),
+                        "unconsumed Forward");
+  model.AdamWStep(1, 0.001F, config);
+  EXPECT_THROW_CONTAINS(model.AdamWStep(2, 0.001F, config),
+                        "current gradients");
+
+  model.Forward(device_input.get(), kBatchSize);
+  model.Backward(device_gradient.get(), kBatchSize);
+  model.Forward(device_input.get(), kBatchSize);
+  EXPECT_THROW_CONTAINS(model.AdamWStep(2, 0.001F, config),
+                        "current gradients");
+  model.Backward(device_gradient.get(), kBatchSize);
+  model.AdamWStep(2, 0.001F, config);
+
+  model.Forward(device_input.get(), kBatchSize);
+  EXPECT_THROW_CONTAINS(model.Backward(device_gradient.get(), 1),
+                        "matching unconsumed Forward");
+  model.Backward(device_gradient.get(), kBatchSize);
+  model.AdamWStep(3, 0.001F, config);
+}
+
+TEST_CASE(lenet_storage_source_has_no_direct_device_allocation_or_free) {
+  std::ifstream input("src/lenet.cu", std::ios::binary);
+  EXPECT_TRUE(input.is_open());
+  std::ostringstream contents;
+  contents << input.rdbuf();
+  const std::string code = SourceWithoutCommentsOrLiterals(contents.str());
+  EXPECT_TRUE(!ContainsIdentifier(code, "cudaMalloc"));
+  EXPECT_TRUE(!ContainsIdentifier(code, "cudaFree"));
 }
 
 TEST_CASE(lenet_storage_import_validates_schema_and_finite_scan_names_value) {

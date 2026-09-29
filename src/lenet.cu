@@ -93,7 +93,8 @@ class LeNet::Impl {
         required_bytes_(RequiredBytes(maximum_batch_size)) {
     std::size_t free_bytes = 0;
     std::size_t total_bytes = 0;
-    CUDA_CHECK(cudaMemGetInfo(&free_bytes, &total_bytes));
+    CUDA_CHECK(device_buffer_detail::QueryMemoryInfo(&free_bytes,
+                                                      &total_bytes));
     if (free_bytes < required_bytes_) {
       std::ostringstream message;
       message << "insufficient CUDA memory: required_bytes=" << required_bytes_
@@ -117,9 +118,7 @@ class LeNet::Impl {
     if (normalized_images == nullptr) {
       throw std::invalid_argument("normalized_images must be non-null");
     }
-    forward_input_ = nullptr;
-    forward_batch_size_ = 0;
-    backward_batch_size_ = 0;
+    InvalidateWork();
 
     LaunchConvolutionForward(normalized_images, parameters_[0], parameters_[1],
                              conv1_pre_, batch_size, 1, 28, 28, 6, 5, 5,
@@ -134,8 +133,9 @@ class LeNet::Impl {
     LaunchMaxPoolForward(relu2_, pool2_, pool2_winners_, batch_size, 16, 8, 8,
                          stream_);
     // pool2_ is already contiguous N x 256; flattening is this pointer only.
-    LaunchLinearForward(pool2_, parameters_[4], parameters_[5], fc1_pre_,
-                        batch_size, 256, 120, stream_);
+    last_fc1_input_ = pool2_;
+    LaunchLinearForward(last_fc1_input_, parameters_[4], parameters_[5],
+                        fc1_pre_, batch_size, 256, 120, stream_);
     LaunchReluForward(fc1_pre_, relu3_, Count(batch_size, 120), stream_);
     LaunchLinearForward(relu3_, parameters_[6], parameters_[7], fc2_pre_,
                         batch_size, 120, 84, stream_);
@@ -143,7 +143,8 @@ class LeNet::Impl {
     LaunchLinearForward(relu4_, parameters_[8], parameters_[9], logits_,
                         batch_size, 84, 10, stream_);
     forward_input_ = normalized_images;
-    forward_batch_size_ = batch_size;
+    state_batch_size_ = batch_size;
+    state_ = ExecutionState::kForwardReady;
     return logits_;
   }
 
@@ -152,10 +153,13 @@ class LeNet::Impl {
     if (logits_gradient == nullptr) {
       throw std::invalid_argument("logits_gradient must be non-null");
     }
-    if (forward_input_ == nullptr || batch_size != forward_batch_size_) {
+    if (state_ != ExecutionState::kForwardReady || forward_input_ == nullptr ||
+        batch_size != state_batch_size_) {
       throw std::invalid_argument(
-          "Backward batch_size must match the most recent Forward");
+          "Backward requires a matching unconsumed Forward");
     }
+    const float* const forward_input = forward_input_;
+    InvalidateWork();
 
     LaunchLinearBackward(relu4_, parameters_[8], logits_gradient,
                          grad_relu4_, parameter_gradients_[8],
@@ -183,23 +187,26 @@ class LeNet::Impl {
     LaunchReluBackward(conv1_pre_, grad_relu1_, grad_relu1_,
                        Count(batch_size, 3456), stream_);
     LaunchConvolutionBackward(
-        forward_input_, parameters_[0], grad_relu1_, input_gradient_,
+        forward_input, parameters_[0], grad_relu1_, input_gradient_,
         parameter_gradients_[0], parameter_gradients_[1], batch_size, 1, 28,
         28, 6, 5, 5, stream_);
-    backward_batch_size_ = batch_size;
+    state_batch_size_ = batch_size;
+    state_ = ExecutionState::kGradientsReady;
   }
 
   void AdamWStep(std::uint64_t global_step, float learning_rate,
                  const AdamWConfig& config) {
     ValidateAdamW(global_step, learning_rate, config);
-    if (backward_batch_size_ == 0) {
-      throw std::invalid_argument("AdamWStep requires a preceding Backward");
+    if (state_ != ExecutionState::kGradientsReady) {
+      throw std::invalid_argument(
+          "AdamWStep requires current gradients from Backward");
     }
     const double step = static_cast<double>(global_step);
     const float correction1 = static_cast<float>(
         1.0 / (1.0 - std::pow(static_cast<double>(config.beta1), step)));
     const float correction2 = static_cast<float>(
         1.0 / (1.0 - std::pow(static_cast<double>(config.beta2), step)));
+    InvalidateWork();
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
       LaunchAdamW(parameters_[index], parameter_gradients_[index],
@@ -226,6 +233,7 @@ class LeNet::Impl {
 
   void ImportParameters(const ParameterSet& parameters) {
     ValidateLenetParameters(parameters);
+    InvalidateWork();
     CopyParametersToDevice(parameters);
     CUDA_CHECK(cudaStreamSynchronize(stream_));
   }
@@ -243,10 +251,10 @@ class LeNet::Impl {
       append(specs[index].name, parameters_[index],
              static_cast<std::size_t>(specs[index].element_count));
     }
-    if (forward_batch_size_ > 0) {
+    if (state_ != ExecutionState::kIdle) {
       AppendActivations(append);
     }
-    if (backward_batch_size_ > 0) {
+    if (state_ == ExecutionState::kGradientsReady) {
       AppendGradients(append);
     }
     for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -280,9 +288,20 @@ class LeNet::Impl {
   std::size_t RequiredDeviceBytes() const { return required_bytes_; }
 
  private:
+  friend class LeNetTestAccess;
+
+  enum class ExecutionState { kIdle, kForwardReady, kGradientsReady };
+
+  void InvalidateWork() noexcept {
+    state_ = ExecutionState::kIdle;
+    state_batch_size_ = 0;
+    forward_input_ = nullptr;
+    last_fc1_input_ = nullptr;
+  }
+
   template <typename Append>
   void AppendActivations(const Append& append) const {
-    const int batch = forward_batch_size_;
+    const int batch = state_batch_size_;
     append("conv1.pre_activation", conv1_pre_, Count(batch, 3456));
     append("relu1", relu1_, Count(batch, 3456));
     append("pool1", pool1_, Count(batch, 864));
@@ -304,7 +323,7 @@ class LeNet::Impl {
       append(gradient_names_[index].c_str(), parameter_gradients_[index],
              static_cast<std::size_t>(specs[index].element_count));
     }
-    const int batch = backward_batch_size_;
+    const int batch = state_batch_size_;
     append("relu4.gradient", grad_relu4_, Count(batch, 84));
     append("relu3.gradient", grad_relu3_, Count(batch, 120));
     append("pool2.gradient", grad_pool2_, Count(batch, 256));
@@ -422,9 +441,10 @@ class LeNet::Impl {
   std::uint8_t* pool2_winners_ = nullptr;
   int* scan_result_ = nullptr;
 
+  ExecutionState state_ = ExecutionState::kIdle;
+  int state_batch_size_ = 0;
   const float* forward_input_ = nullptr;
-  int forward_batch_size_ = 0;
-  int backward_batch_size_ = 0;
+  const float* last_fc1_input_ = nullptr;
   mutable std::array<int, kMaximumScannedTensors> scan_results_{};
   mutable std::array<std::string, 10> gradient_names_{};
   mutable std::array<std::string, 20> moment_names_{};
@@ -462,4 +482,9 @@ void LeNet::RequireFinite(const std::string& phase) const {
 
 std::size_t LeNet::RequiredDeviceBytes() const {
   return impl_->RequiredDeviceBytes();
+}
+
+bool LeNetTestAccess::Fc1InputAliasesPool2(const LeNet& model) noexcept {
+  return model.impl_->state_ != LeNet::Impl::ExecutionState::kIdle &&
+         model.impl_->last_fc1_input_ == model.impl_->pool2_;
 }
