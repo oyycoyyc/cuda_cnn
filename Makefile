@@ -38,6 +38,9 @@ RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
 PARAMETERS_OBJECT := $(HOST_OBJECT_DIR)/parameters.o
 CHECKPOINT_OBJECT := $(HOST_OBJECT_DIR)/checkpoint.o
 CPU_REFERENCE_OBJECT := $(HOST_OBJECT_DIR)/cpu_reference.o
+CLI_OBJECT := $(HOST_OBJECT_DIR)/cli.o
+TRAINING_DATA_OBJECT := $(HOST_OBJECT_DIR)/training_data.o
+REPORTING_OBJECT := $(HOST_OBJECT_DIR)/reporting.o
 HOST_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/host/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
@@ -48,6 +51,8 @@ DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
   $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d) \
+  $(CLI_OBJECT:.o=.d) $(TRAINING_DATA_OBJECT:.o=.d) \
+  $(REPORTING_OBJECT:.o=.d) \
   $(CUDA_KERNEL_OBJECTS:.o=.d) $(LENET_OBJECT:.o=.d)
 
 ifeq ($(V),1)
@@ -85,6 +90,10 @@ $(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
 $(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
 $(BUILD_DIR)/checkpoint_tests$(EXEEXT): $(CHECKPOINT_OBJECT) $(PARAMETERS_OBJECT)
 $(BUILD_DIR)/cpu_reference_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT)
+$(BUILD_DIR)/cli_tests$(EXEEXT): $(CLI_OBJECT)
+$(BUILD_DIR)/training_data_tests$(EXEEXT): $(TRAINING_DATA_OBJECT) \
+    $(DATASET_OBJECT) $(RANDOM_OBJECT)
+$(BUILD_DIR)/reporting_tests$(EXEEXT): $(REPORTING_OBJECT)
 $(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(PARAMETERS_OBJECT) \
     $(RANDOM_OBJECT) $(LENET_OBJECT) $(CUDA_KERNEL_OBJECTS)
 
@@ -98,6 +107,9 @@ $(BUILD_DIR)/random_tests: $(BUILD_DIR)/random_tests$(EXEEXT)
 $(BUILD_DIR)/parameters_tests: $(BUILD_DIR)/parameters_tests$(EXEEXT)
 $(BUILD_DIR)/checkpoint_tests: $(BUILD_DIR)/checkpoint_tests$(EXEEXT)
 $(BUILD_DIR)/cpu_reference_tests: $(BUILD_DIR)/cpu_reference_tests$(EXEEXT)
+$(BUILD_DIR)/cli_tests: $(BUILD_DIR)/cli_tests$(EXEEXT)
+$(BUILD_DIR)/training_data_tests: $(BUILD_DIR)/training_data_tests$(EXEEXT)
+$(BUILD_DIR)/reporting_tests: $(BUILD_DIR)/reporting_tests$(EXEEXT)
 $(BUILD_DIR)/operator_tests: $(BUILD_DIR)/operator_tests$(EXEEXT)
 endif
 
@@ -129,6 +141,15 @@ $(CHECKPOINT_OBJECT): src/checkpoint.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(CPU_REFERENCE_OBJECT): tests/cpu_reference.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(CLI_OBJECT): src/cli.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(TRAINING_DATA_OBJECT): src/training_data.cpp | $(HOST_OBJECT_DIR)
+	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+$(REPORTING_OBJECT): src/reporting.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(CUDA_OBJECT_DIR)/%.o: tests/%.cu | $(CUDA_OBJECT_DIR)
