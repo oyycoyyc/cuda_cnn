@@ -59,6 +59,10 @@ std::uint32_t PackBatch(const MnistDataset& dataset,
   const std::size_t remaining = order.size() - offset;
   const std::size_t actual =
       std::min(remaining, static_cast<std::size_t>(capacity));
+  if (actual > std::numeric_limits<std::size_t>::max() / image_size) {
+    throw std::invalid_argument(
+        "packed image byte count must fit size_t");
+  }
   for (std::size_t packed = 0; packed < actual; ++packed) {
     if (order[static_cast<std::size_t>(offset) + packed] >=
         dataset.sample_count) {

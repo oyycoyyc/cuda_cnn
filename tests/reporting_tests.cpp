@@ -52,10 +52,11 @@ TEST_CASE(reporting_ignores_and_restores_stream_locale_and_formatting) {
   const std::locale comma_locale(std::locale::classic(),
                                  new CommaDecimalPoint());
   output.imbue(comma_locale);
-  output.setf(std::ios::scientific, std::ios::floatfield);
+  output << std::hex << std::showbase << std::showpos << std::uppercase
+         << std::scientific;
   output.precision(2);
   output.fill('*');
-  output.width(7);
+  output.width(11);
   const std::ios::fmtflags original_flags = output.flags();
   const std::streamsize original_precision = output.precision();
   const char original_fill = output.fill();
@@ -63,9 +64,15 @@ TEST_CASE(reporting_ignores_and_restores_stream_locale_and_formatting) {
   const std::locale original_locale = output.getloc();
 
   PrintEpochSummary(output, 1, 0.5F, 0.25F, 2.5);
+  PrintEvaluationSummary(output, 10000, 0.9912F, 0.321F, 398753.875F,
+                         0.99F, true);
 
   EXPECT_EQ(std::string("event=epoch epoch=1 train_loss=0.500000 "
-                        "validation_accuracy=0.250000 elapsed_ms=2.500\n"),
+                        "validation_accuracy=0.250000 elapsed_ms=2.500\n"
+                        "event=evaluate samples=10000 accuracy=0.991200 "
+                        "mean_forward_ms=0.321 "
+                        "images_per_second=398753.875 "
+                        "min_accuracy=0.990000 status=pass\n"),
             output.str());
   EXPECT_TRUE(output.flags() == original_flags);
   EXPECT_EQ(original_precision, output.precision());

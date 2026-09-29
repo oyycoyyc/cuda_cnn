@@ -2,40 +2,13 @@
 
 #include <cmath>
 #include <iomanip>
-#include <ios>
 #include <locale>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
 namespace {
-
-class StreamState {
- public:
-  explicit StreamState(std::ostream& stream)
-      : stream_(stream),
-        flags_(stream.flags()),
-        precision_(stream.precision()),
-        width_(stream.width()),
-        fill_(stream.fill()),
-        locale_(stream.getloc()) {}
-
-  ~StreamState() {
-    stream_.imbue(locale_);
-    stream_.flags(flags_);
-    stream_.precision(precision_);
-    stream_.width(width_);
-    stream_.fill(fill_);
-  }
-
- private:
-  std::ostream& stream_;
-  std::ios::fmtflags flags_;
-  std::streamsize precision_;
-  std::streamsize width_;
-  char fill_;
-  std::locale locale_;
-};
 
 void RequireNonnegativeFinite(double value, const char* name) {
   if (!std::isfinite(value) || value < 0.0) {
@@ -51,11 +24,9 @@ void RequireAccuracy(float value, const char* name) {
   }
 }
 
-void Prepare(std::ostream& output) {
-  output.imbue(std::locale::classic());
-  output.setf(std::ios::fixed, std::ios::floatfield);
-  output.width(0);
-  output.fill(' ');
+void WriteRecord(std::ostream& output, const std::ostringstream& formatted) {
+  const std::string record = formatted.str();
+  output.write(record.data(), static_cast<std::streamsize>(record.size()));
 }
 
 }  // namespace
@@ -70,12 +41,13 @@ void PrintEpochSummary(std::ostream& output, std::uint32_t epoch,
   RequireAccuracy(validation_accuracy, "validation_accuracy");
   RequireNonnegativeFinite(elapsed_ms, "elapsed_ms");
 
-  StreamState restore(output);
-  Prepare(output);
-  output << "event=epoch epoch=" << epoch << " train_loss="
-         << std::setprecision(6) << training_loss
-         << " validation_accuracy=" << validation_accuracy << " elapsed_ms="
-         << std::setprecision(3) << elapsed_ms << '\n';
+  std::ostringstream formatted;
+  formatted.imbue(std::locale::classic());
+  formatted << std::fixed << "event=epoch epoch=" << epoch
+            << " train_loss=" << std::setprecision(6) << training_loss
+            << " validation_accuracy=" << validation_accuracy
+            << " elapsed_ms=" << std::setprecision(3) << elapsed_ms << '\n';
+  WriteRecord(output, formatted);
 }
 
 void PrintEvaluationSummary(std::ostream& output, std::uint32_t samples,
@@ -90,12 +62,13 @@ void PrintEvaluationSummary(std::ostream& output, std::uint32_t samples,
   RequireNonnegativeFinite(images_per_second, "images_per_second");
   RequireAccuracy(minimum_accuracy, "minimum_accuracy");
 
-  StreamState restore(output);
-  Prepare(output);
-  output << "event=evaluate samples=" << samples << " accuracy="
-         << std::setprecision(6) << accuracy << " mean_forward_ms="
-         << std::setprecision(3) << mean_forward_ms << " images_per_second="
-         << images_per_second << " min_accuracy=" << std::setprecision(6)
-         << minimum_accuracy << " status=" << (passed ? "pass" : "fail")
-         << '\n';
+  std::ostringstream formatted;
+  formatted.imbue(std::locale::classic());
+  formatted << std::fixed << "event=evaluate samples=" << samples
+            << " accuracy=" << std::setprecision(6) << accuracy
+            << " mean_forward_ms=" << std::setprecision(3) << mean_forward_ms
+            << " images_per_second=" << images_per_second
+            << " min_accuracy=" << std::setprecision(6) << minimum_accuracy
+            << " status=" << (passed ? "pass" : "fail") << '\n';
+  WriteRecord(output, formatted);
 }
