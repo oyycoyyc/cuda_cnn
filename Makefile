@@ -32,6 +32,8 @@ CUDA_KERNEL_SOURCES := src/kernels/input.cu src/kernels/activation.cu \
   src/kernels/loss.cu src/kernels/metrics.cu src/kernels/adam.cu
 CUDA_KERNEL_OBJECTS := $(patsubst src/kernels/%.cu,$(CUDA_OBJECT_DIR)/kernels/%.o,$(CUDA_KERNEL_SOURCES))
 LENET_OBJECT := $(CUDA_OBJECT_DIR)/lenet.o
+TRAIN_OBJECT := $(CUDA_OBJECT_DIR)/train.o
+MAIN_OBJECT := $(CUDA_OBJECT_DIR)/main.o
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
@@ -53,7 +55,8 @@ DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d) \
   $(CLI_OBJECT:.o=.d) $(TRAINING_DATA_OBJECT:.o=.d) \
   $(REPORTING_OBJECT:.o=.d) \
-  $(CUDA_KERNEL_OBJECTS:.o=.d) $(LENET_OBJECT:.o=.d)
+  $(CUDA_KERNEL_OBJECTS:.o=.d) $(LENET_OBJECT:.o=.d) \
+  $(TRAIN_OBJECT:.o=.d) $(MAIN_OBJECT:.o=.d)
 
 ifeq ($(V),1)
 Q :=
@@ -96,6 +99,16 @@ $(BUILD_DIR)/training_data_tests$(EXEEXT): $(TRAINING_DATA_OBJECT) \
 $(BUILD_DIR)/reporting_tests$(EXEEXT): $(REPORTING_OBJECT)
 $(BUILD_DIR)/operator_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(PARAMETERS_OBJECT) \
     $(RANDOM_OBJECT) $(LENET_OBJECT) $(CUDA_KERNEL_OBJECTS)
+$(BUILD_DIR)/workflow_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(DATASET_OBJECT) \
+    $(RANDOM_OBJECT) $(PARAMETERS_OBJECT) $(CHECKPOINT_OBJECT) \
+    $(TRAINING_DATA_OBJECT) $(REPORTING_OBJECT) $(TRAIN_OBJECT) $(LENET_OBJECT) \
+    $(CUDA_KERNEL_OBJECTS)
+
+$(BUILD_DIR)/lenet_cuda$(EXEEXT): $(MAIN_OBJECT) $(CLI_OBJECT) $(DATASET_OBJECT) \
+    $(RANDOM_OBJECT) $(PARAMETERS_OBJECT) $(CHECKPOINT_OBJECT) \
+    $(TRAINING_DATA_OBJECT) $(REPORTING_OBJECT) $(TRAIN_OBJECT) $(LENET_OBJECT) \
+    $(CUDA_KERNEL_OBJECTS) | $(BUILD_DIR)
+	$(Q)$(NVCC) $(NVCCFLAGS) $^ -o $@
 
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
@@ -111,6 +124,8 @@ $(BUILD_DIR)/cli_tests: $(BUILD_DIR)/cli_tests$(EXEEXT)
 $(BUILD_DIR)/training_data_tests: $(BUILD_DIR)/training_data_tests$(EXEEXT)
 $(BUILD_DIR)/reporting_tests: $(BUILD_DIR)/reporting_tests$(EXEEXT)
 $(BUILD_DIR)/operator_tests: $(BUILD_DIR)/operator_tests$(EXEEXT)
+$(BUILD_DIR)/workflow_tests: $(BUILD_DIR)/workflow_tests$(EXEEXT)
+$(BUILD_DIR)/lenet_cuda: $(BUILD_DIR)/lenet_cuda$(EXEEXT)
 endif
 
 ifneq ($(strip $(CUDA_UNIQUE_NAMES)),)
@@ -159,6 +174,12 @@ $(CUDA_OBJECT_DIR)/kernels/%.o: src/kernels/%.cu | $(CUDA_OBJECT_DIR)/kernels
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
 $(LENET_OBJECT): src/lenet.cu | $(CUDA_OBJECT_DIR)
+	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
+
+$(TRAIN_OBJECT): src/train.cu | $(CUDA_OBJECT_DIR)
+	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
+
+$(MAIN_OBJECT): src/main.cu | $(CUDA_OBJECT_DIR)
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR) $(BUILD_DIR)/host $(BUILD_DIR)/cuda \
