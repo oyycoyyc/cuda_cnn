@@ -1,5 +1,7 @@
 CXX ?= g++
 NVCC ?= nvcc
+PYTHON ?= python3.6
+.DEFAULT_GOAL := all
 
 CUDA_ARCH ?= sm_90
 CUDA_COMPUTE := compute_$(patsubst sm_%,%,$(CUDA_ARCH))
@@ -49,6 +51,12 @@ HOST_TEST_PROGRAMS := $(strip \
 CUDA_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(CUDA_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/cuda/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
+WORKFLOW_TEST_PROGRAM := $(BUILD_DIR)/workflow_tests$(EXEEXT)
+CUDA_TEST_PROGRAMS_WITHOUT_WORKFLOW := $(filter-out $(WORKFLOW_TEST_PROGRAM),$(CUDA_TEST_PROGRAMS))
+PYTHON_TEST_MODULES := tests.test_prepare_mnist tests.test_data_interop
+COMPLIANCE_TEST_MODULES := tests.test_check_prohibited \
+  tests.test_check_comments tests.test_documentation \
+  tests.output_format_tests tests.compliance_tests
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
@@ -64,16 +72,33 @@ else
 Q := @
 endif
 
-.PHONY: host-tests cuda-tests test makefile-tests check acceptance clean
+.PHONY: all host-tests cuda-tests python-tests prepare-data compliance test \
+  makefile-tests check acceptance clean
 .SECONDARY: $(HOST_TEST_OBJECTS) $(CUDA_TEST_OBJECTS)
+
+all: $(BUILD_DIR)/lenet_cuda$(EXEEXT) $(HOST_TEST_PROGRAMS) \
+  $(CUDA_TEST_PROGRAMS)
 
 host-tests: $(HOST_TEST_PROGRAMS)
 	$(Q)set -e; for test in $(HOST_TEST_PROGRAMS); do "$$test"; done
 
-cuda-tests: $(CUDA_TEST_PROGRAMS)
-	$(Q)set -e; for test in $(CUDA_TEST_PROGRAMS); do "$$test"; done
+prepare-data:
+	$(Q)$(PYTHON) scripts/prepare_mnist.py --output-dir data
 
-test: host-tests cuda-tests
+cuda-tests: $(CUDA_TEST_PROGRAMS) prepare-data
+	$(Q)set -e; for test in $(CUDA_TEST_PROGRAMS_WITHOUT_WORKFLOW); do "$$test"; done
+	$(Q)$(WORKFLOW_TEST_PROGRAM) --mnist-train data/train.bin
+
+python-tests:
+	$(Q)$(PYTHON) -m unittest -v $(PYTHON_TEST_MODULES)
+
+compliance:
+	$(Q)$(PYTHON) -m unittest -v $(COMPLIANCE_TEST_MODULES)
+	$(Q)$(PYTHON) scripts/check_comments.py --root . \
+	  --checklist docs/comment-review-checklist.md
+	$(Q)bash scripts/check_prohibited.sh source .
+
+test: host-tests cuda-tests python-tests compliance
 
 makefile-tests:
 	$(Q)sh tests/makefile_tests.sh
