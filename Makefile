@@ -1,6 +1,7 @@
 CXX ?= g++
 NVCC ?= nvcc
 PYTHON ?= python3.6
+BASH ?= bash
 .DEFAULT_GOAL := all
 
 CUDA_ARCH ?= sm_90
@@ -78,6 +79,7 @@ endif
 
 all: $(BUILD_DIR)/lenet_cuda$(EXEEXT) $(HOST_TEST_PROGRAMS) \
   $(CUDA_TEST_PROGRAMS)
+	@echo "event=build status=pass target=all"
 
 host-tests: $(HOST_TEST_PROGRAMS)
 	$(Q)set -e; for test in $(HOST_TEST_PROGRAMS); do "$$test"; done
@@ -96,7 +98,7 @@ compliance:
 	$(Q)$(PYTHON) -m unittest -v $(COMPLIANCE_TEST_MODULES)
 	$(Q)$(PYTHON) scripts/check_comments.py --root . \
 	  --checklist docs/comment-review-checklist.md
-	$(Q)bash scripts/check_prohibited.sh source .
+	$(Q)$(BASH) scripts/check_prohibited.sh source .
 
 test: host-tests cuda-tests python-tests compliance
 

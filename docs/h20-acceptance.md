@@ -11,8 +11,8 @@ Start in the repository root and retain one timestamped terminal log:
 
 ```bash
 set -euo pipefail
-mkdir -p build/acceptance weights data
-exec > >(tee "build/acceptance/h20-$(date -u +%Y%m%dT%H%M%SZ).log") 2>&1
+mkdir -p acceptance weights data
+exec > >(tee "acceptance/h20-$(date -u +%Y%m%dT%H%M%SZ).log") 2>&1
 date -u +%Y-%m-%dT%H:%M:%SZ
 nvcc --version
 gcc --version
@@ -65,7 +65,15 @@ The verbose commands must contain both exact targets:
 ```text
 -gencode=arch=compute_90,code=sm_90
 -gencode=arch=compute_90,code=compute_90
+event=build status=pass target=all
 ```
+
+The final marker is emitted only after `make all` completes. The `build` scan
+rejects logs that are empty, stale relative to production inputs, missing
+compiler/linker commands or either architecture flag, or lacking this marker.
+For command inspection without execution, use `make -Bn V=1` and scan that
+output with `check_prohibited.sh dry-run`; dry-run output is not successful-build
+evidence.
 
 ## CUDA Operator And Workflow Tests
 

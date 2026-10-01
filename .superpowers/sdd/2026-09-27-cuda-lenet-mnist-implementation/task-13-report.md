@@ -1,0 +1,184 @@
+# Task 13 Report
+
+## Status
+
+Implemented Task 13 static compliance checks, documentation, output grammar,
+Make targets, and corrected H20 data/workflow ordering. No CUDA, H20, training,
+timing, sanitizer, or accuracy success is claimed from the local machine.
+
+## Changes
+
+- Added a scoped source/build scanner for prohibited headers, namespaces, API
+  families, linker inputs, production CPU fallback references, and prohibited
+  standard random APIs. Source scope is `Makefile`, `include/`, `src/`, and C++/
+  CUDA files under `tests/`; README, specifications, checker source, Python
+  negative fixtures, and other documentation are excluded.
+- Added a Python 3.6-compatible comment-presence checker for global public
+  types/functions, public methods, multiline launcher declarations, and every
+  production `__global__` definition. It reconciles 104 stable declaration/
+  kernel IDs with the manual checklist and supports `--require-reviewed`.
+- Added 15 manual checklist entries for CUDA checking and binary/data
+  serializers/parsers. All 119 entries remain unchecked for the Task 14 human
+  semantic review gate.
+- Added focused checker/documentation tests plus the requested
+  `tests/compliance_tests.py` and `tests/output_format_tests.py` suites.
+- Added `all`, `python-tests`, `prepare-data`, and `compliance` Make targets.
+  `make test` aggregates host, CUDA, Python, and compliance gates. The default
+  build now produces the application and test binaries.
+- Corrected aggregate CUDA test ordering: official data preparation precedes
+  workflow execution, and `workflow_tests` receives
+  `--mnist-train data/train.bin` for its real-MNIST cases.
+- Documented environment, pinned data sources/hashes, architecture/layouts,
+  binary formats, CLI commands/ranges/defaults, determinism, exact output
+  grammar, exit statuses, CUDA Event timing, 99% threshold behavior, errors,
+  troubleshooting, and the explicit local-no-CUDA boundary.
+- Added an H20 procedure that prepares official data before overfit/inference,
+  passes `--mnist-train` to both real-MNIST cases, and records build, sanitizer,
+  architecture, dependency, training, evaluation, inference, and manual comment
+  evidence.
+
+## TDD Evidence
+
+RED was recorded immediately after adding tests and before adding checker
+scripts, documentation, or Make behavior:
+
+```text
+python -m unittest -v tests.test_check_prohibited tests.test_check_comments \
+  tests.test_documentation tests.output_format_tests tests.compliance_tests
+Ran 33 tests
+FAILED (failures=43, errors=17)
+```
+
+Failures were caused by absent checker CLIs/documents, absent Make compliance
+targets, absent official-data workflow ordering, and absent output grammar. The
+smallest implementations were then added. Scanner fixture failures also exposed
+and corrected case-insensitive `NvInfer.h` matching and per-subtest fixture
+isolation before the suite became green.
+
+Final GREEN command on the available local interpreter and toolchain:
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+$env:MAKE = 'C:\personal_apps\msys64\usr\bin\make.exe'
+& 'C:\personal_apps\anaconda3\python.exe' -m unittest -v \
+  tests.test_prepare_mnist tests.test_data_interop \
+  tests.test_check_prohibited tests.test_check_comments \
+  tests.test_documentation tests.output_format_tests tests.compliance_tests
+Ran 51 tests in 11.003s
+OK
+```
+
+## Verification
+
+- `C:\personal_apps\anaconda3\python.exe -m unittest ...` for all seven Python
+  modules: 51 tests, 0 failures.
+- `make PYTHON=C:/personal_apps/anaconda3/python.exe python-tests`: 15 tests,
+  0 failures.
+- `make PYTHON=python compliance`: 36 tests, 0 failures; comment inventory and
+  source policy gates passed.
+- `make host-tests makefile-tests`: nine host suites passed; permanent distinct
+  host/CUDA same-basename Make regression passed.
+- `python -m py_compile` for all changed Python scripts/tests and existing
+  related Python files: exit 0.
+- Python `ast.parse(..., feature_version=(3, 6))` over the six new Python files:
+  `Python 3.6 grammar check passed for 6 files`.
+- `bash -n scripts/check_prohibited.sh`: exit 0.
+- `bash scripts/check_prohibited.sh source .`:
+  `compliance scan passed: mode=source`.
+- `python scripts/check_comments.py --root . --checklist
+  docs/comment-review-checklist.md`:
+  `comment check passed: declarations_and_kernels=104 checklist_items=119`.
+- `make -B -n V=1 all | tee build/verbose-build.log` emitted both
+  `-gencode=arch=compute_90,code=sm_90` and
+  `-gencode=arch=compute_90,code=compute_90`.
+- `bash scripts/check_prohibited.sh build build/verbose-build.log`:
+  `compliance scan passed: mode=build`.
+- `git diff --check`: exit 0 before report creation; rerun before commit.
+
+## Concerns And Target-Only Work
+
+- Python 3.6 is not installed locally. New Python files pass a Python 3.6
+  grammar parse, but interpreter/package execution must be repeated on Ubuntu
+  with the hash-locked Python 3.6 environment.
+- Local `nvcc`, an NVIDIA GPU, and H20 access are unavailable. CUDA compilation,
+  CUDA numerical/workflow execution, Compute Sanitizer, `cuobjdump`, dynamic
+  dependency inspection, default training, timing, and >=99% accuracy remain
+  H20-only and were not run or claimed.
+- The manual comment checklist is deliberately unchecked. Task 14 must inspect
+  each item semantically and then run `--require-reviewed`.
+- `make cuda-tests` now verifies/prepares official MNIST and therefore needs the
+  Python data dependencies plus network access or valid cached Parquet files.
+  Focused CUDA binaries remain runnable directly without invoking that aggregate
+  target.
+
+## Fix Round 1
+
+### Review Issues Addressed
+
+- Relocated the active H20 terminal log to `acceptance/`, outside the directory
+  removed by `make clean`, so later build cleanup cannot unlink the evidence.
+- Replaced fail-open scanner pipelines with checked `find`, `grep`, and Make
+  resolution. Source scope now includes production headers/sources plus only
+  test inputs present in the Make database; dormant negative fixtures are
+  excluded.
+- Expanded practical direct-form coverage across TensorRT APIs/namespaces,
+  forced and macro includes, linker spellings, NVIDIA math/communication
+  libraries, framework headers, standard random facilities, and production CPU
+  fallback identifiers. The exact `lenet_cuda` dry-run link command is checked
+  independently for CPU reference objects.
+- Split build evidence into explicit `build` and `dry-run` modes. Actual logs
+  must be nonempty and fresh, contain a compile command, a `lenet_cuda` link
+  command with both exact architecture flags, and the post-build
+  `event=build status=pass target=all` marker. Dry-run output is labeled
+  `commands-not-executed` and cannot satisfy actual-build mode.
+- Replaced the comment line heuristic with a balanced-scope inventory covering
+  namespace functions, multiline declarations, nested public types, overload
+  signatures, forward/definition collisions, and attributed kernels. Manual
+  IDs must resolve to exactly one real source definition. The reconciled 147
+  entries remain unchecked for human review.
+- Moved device, final-test, and inference record formatting into the production
+  reporting module. Host C++ tests now exercise all five documented record
+  types for exact field order, precision, and newline termination; Python keeps
+  the README grammar checks synchronized with that production suite.
+- Narrowed README error-checking claims to operational CUDA calls and explicitly
+  documented best-effort nonthrowing cleanup for `cudaFree`,
+  `cudaStreamDestroy`, and `cudaEventDestroy`.
+
+### RED Evidence
+
+The focused tests failed before each implementation slice:
+
+```text
+tests.test_check_prohibited: 45 review-case failures with MSYS Bash
+tests.test_check_comments: overload, namespace/nested type, attributed kernel,
+  and manual stale-ID cases failed
+tests.test_documentation: 3 failures for log lifetime, evidence semantics, and
+  cleanup wording
+build/reporting_tests: PrintDeviceSummary, PrintFinalTestSummary, and
+  PrintInferenceSummary were undeclared
+```
+
+Additional RED cases confirmed that a link-only log and a link command without
+the architecture flags were incorrectly accepted before the final build-log
+validation tightening.
+
+### GREEN Evidence
+
+- `make host-tests`: all nine host suites passed, including the production
+  reporting suite.
+- `make python-tests`: 15 data/converter tests passed.
+- `make compliance`: 52 compliance/documentation/output tests passed; the
+  147-item comment inventory and Make-scoped source policy gate also passed.
+- `tests.test_check_prohibited`: 17 focused scanner tests passed.
+- `make -B -n all`: emitted compile/link commands, both exact `sm_90`/PTX
+  targets, and the completion-marker command without executing CUDA tools.
+- `git diff --check`: passed before this report append and is rerun before the
+  fix-round commit.
+
+### Remaining Target-Only Work
+
+Python 3.6 runtime/package execution, CUDA compilation, CUDA numerical and
+workflow execution, Compute Sanitizer, `cuobjdump`, dynamic dependency
+inspection, default training, timing, and the >=99% H20 accuracy gate remain
+unavailable locally and are not claimed. The semantic checklist remains
+deliberately unchecked.

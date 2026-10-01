@@ -12,12 +12,16 @@
 
 namespace lenet_random_internal {
 
+// Applies the SplitMix64 finalizer to one value with only unsigned integer
+// arithmetic, making the result identical in host and device code.
 LENET_HOST_DEVICE inline std::uint64_t Mix64(std::uint64_t value) {
   value = (value ^ (value >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
   value = (value ^ (value >> 27)) * UINT64_C(0x94D049BB133111EB);
   return value ^ (value >> 31);
 }
 
+// Derives one deterministic random word from a seed, domain, and two indices;
+// it owns no state and has no failure path.
 LENET_HOST_DEVICE inline std::uint64_t Derive(std::uint64_t seed,
                                                std::uint64_t domain,
                                                std::uint64_t a,

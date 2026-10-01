@@ -60,15 +60,18 @@ inline std::atomic<std::size_t>& LastAllocationAttemptSequence() noexcept {
   return sequence;
 }
 
+// Returns the next process-wide diagnostic sequence token.
 inline std::size_t NextDiagnosticEventSequence() noexcept {
   return DiagnosticEventSequence().fetch_add(1, std::memory_order_seq_cst) + 1;
 }
 
+// Records a memory-information query on the calling host thread.
 inline void RecordMemoryInfoQueryInvocation() noexcept {
   LastMemoryInfoQuerySequence().store(NextDiagnosticEventSequence(),
                                       std::memory_order_seq_cst);
 }
 
+// Records an allocation attempt on the calling host thread.
 inline void RecordAllocationAttempt() noexcept {
   LastAllocationAttemptSequence().store(NextDiagnosticEventSequence(),
                                         std::memory_order_seq_cst);

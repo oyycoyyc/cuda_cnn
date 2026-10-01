@@ -86,8 +86,25 @@ static compliance checks. It requires the CUDA toolkit/device and prepares the
 official dataset before invoking `workflow_tests --mnist-train data/train.bin`.
 Use `make V=1` to retain full compiler and linker commands for inspection.
 `make compliance` runs checker unit tests, reconciles the comment inventory,
-and scans production source/build inputs for prohibited dependencies, CPU
-fallback wiring, and implementation-dependent random APIs.
+and performs the source-only scan of Make-compiled production/test inputs for
+prohibited dependencies, production CPU fallback wiring, and
+implementation-dependent random APIs. It recognizes practical direct source,
+header, namespace, API, forced-include, and linker forms; it does not claim to
+decode arbitrary preprocessor obfuscation.
+
+To inspect commands without executing them, capture a dry-run and label it as
+such. This proves only what Make would invoke; the commands were not executed:
+
+```bash
+mkdir -p build
+make -Bn V=1 > build/dry-run.log
+bash scripts/check_prohibited.sh dry-run build/dry-run.log
+```
+
+Successful-build evidence must come from an actual verbose build that ends in
+`event=build status=pass target=all`, followed by
+`bash scripts/check_prohibited.sh build build/verbose-build.log`. The build-log
+scan is intentionally separate from the source-only `make compliance` gate.
 
 The exact default architecture flags are:
 
@@ -238,9 +255,12 @@ promised.
 
 ## Error Handling
 
-Every CUDA Runtime result is checked with expression, file, line, numeric code,
-and CUDA error text. Every kernel launch is checked with `cudaGetLastError`;
-phase/test synchronization boundaries attribute asynchronous failures.
+Operational CUDA Runtime calls are checked with expression, file, line, numeric
+code, and CUDA error text. Every kernel launch is checked with
+`cudaGetLastError`; phase/test synchronization boundaries attribute asynchronous
+failures. Nonthrowing destructors perform best-effort cleanup: results from
+`cudaFree`, `cudaStreamDestroy`, and `cudaEventDestroy` cannot escape those
+cleanup paths and are intentionally discarded.
 Allocation failures report requested bytes and device free/total memory.
 Dataset and checkpoint failures include the path and violated invariant.
 Training aborts on non-finite activations, losses, gradients, or parameters.

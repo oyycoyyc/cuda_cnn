@@ -158,6 +158,31 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, guide)
 
+    def test_h20_cleanup_cannot_delete_the_active_acceptance_log(self):
+        guide = read_document("docs/h20-acceptance.md")
+        log_open = guide.index("exec > >(tee")
+        self.assertIn('exec > >(tee "acceptance/', guide[log_open:])
+        self.assertNotIn('exec > >(tee "build/', guide[log_open:])
+
+    def test_documentation_distinguishes_actual_and_dry_run_build_evidence(self):
+        readme = read_document("README.md")
+        guide = read_document("docs/h20-acceptance.md")
+        self.assertIn("dry-run", readme)
+        self.assertIn("commands were not executed", readme)
+        self.assertIn(
+            "scripts/check_prohibited.sh build build/verbose-build.log", guide
+        )
+        self.assertIn("event=build status=pass target=all", guide)
+
+    def test_cuda_error_claim_excludes_nonthrowing_cleanup(self):
+        readme = read_document("README.md")
+        self.assertNotIn("Every CUDA Runtime result is checked", readme)
+        self.assertIn("Operational CUDA Runtime calls", readme)
+        self.assertIn("best-effort", readme)
+        self.assertIn("cudaFree", readme)
+        self.assertIn("cudaStreamDestroy", readme)
+        self.assertIn("cudaEventDestroy", readme)
+
     def test_documents_contain_no_placeholder_markers(self):
         for relative_path in (
             "README.md",

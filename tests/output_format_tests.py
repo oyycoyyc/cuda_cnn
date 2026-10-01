@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import unittest
 
 
@@ -10,6 +11,31 @@ class OutputFormatDocumentationTest(unittest.TestCase):
     def setUp(self):
         with open(os.path.join(ROOT, "README.md"), "r") as input_file:
             self.readme = input_file.read()
+
+    def test_host_reporting_suite_validates_production_formatters(self):
+        make = os.environ.get("MAKE", "make")
+        build = subprocess.run(
+            [make, "build/reporting_tests"],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+        self.assertEqual(0, build.returncode, build.stdout)
+        executable = os.path.join(ROOT, "build", "reporting_tests")
+        if os.name == "nt":
+            executable += ".exe"
+        result = subprocess.run(
+            [executable],
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn(
+            "event=test_suite name=reporting_tests status=pass", result.stdout
+        )
 
     def assert_documented_record(self, record, pattern):
         self.assertIn(record, self.readme)

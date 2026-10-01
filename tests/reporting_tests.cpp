@@ -1,6 +1,7 @@
 #include "reporting.h"
 #include "test_harness.h"
 
+#include <array>
 #include <cmath>
 #include <iomanip>
 #include <ios>
@@ -24,6 +25,44 @@ TEST_CASE(epoch_summary_has_exact_stable_output) {
   EXPECT_EQ(
       std::string("event=epoch epoch=1 train_loss=0.123456 "
                   "validation_accuracy=0.987600 elapsed_ms=1234.567\n"),
+      output.str());
+}
+
+TEST_CASE(device_summary_has_exact_stable_output) {
+  std::ostringstream output;
+  PrintDeviceSummary(output, 0, "NVIDIA H20", 9, 0);
+  EXPECT_EQ(std::string("event=device index=0 name=NVIDIA H20 "
+                        "compute_capability=9.0\n"),
+            output.str());
+}
+
+TEST_CASE(final_test_summary_has_exact_stable_output) {
+  std::ostringstream output;
+  PrintFinalTestSummary(output, 10000, 0.9912F, 17, 0.992F);
+  EXPECT_EQ(std::string("event=final_test samples=10000 "
+                        "final_test_accuracy=0.991200 best_epoch=17 "
+                        "validation_accuracy=0.992000\n"),
+            output.str());
+}
+
+TEST_CASE(inference_summary_has_exact_stable_output) {
+  const std::array<float, 10> logits{{
+      -1.0F, 0.0F, 1.0F, 2.0F, 3.0F,
+      4.0F, 5.0F, 6.0F, 7.0F, 8.0F}};
+  const std::array<float, 10> probabilities{{
+      0.01F, 0.02F, 0.03F, 0.04F, 0.05F,
+      0.06F, 0.07F, 0.08F, 0.09F, 0.55F}};
+  std::ostringstream output;
+  PrintInferenceSummary(output, 42, logits, probabilities, 9, 7);
+  EXPECT_EQ(
+      std::string(
+          "event=infer index=42 "
+          "logits=-1.000000000,0.000000000,1.000000000,2.000000000,"
+          "3.000000000,4.000000000,5.000000000,6.000000000,7.000000000,"
+          "8.000000000 "
+          "probabilities=0.010000000,0.020000000,0.029999999,0.039999999,"
+          "0.050000001,0.059999999,0.070000000,0.079999998,0.090000004,"
+          "0.550000012 prediction=9 label=7\n"),
       output.str());
 }
 

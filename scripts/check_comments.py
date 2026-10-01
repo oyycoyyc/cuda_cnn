@@ -7,48 +7,107 @@ import re
 import sys
 
 
-TRACKED_ID = re.compile(r"^(?:public|kernel):")
 CHECKLIST_ENTRY = re.compile(r"^\s*- \[([ xX])\] `([^`]+)`\s*$")
 TYPE_DECLARATION = re.compile(
-    r"^\s*(?:template\s*<[^>]+>\s*)?(?:class|struct|enum(?:\s+class)?)\s+(\w+)\b[^;]*\{"
+    r"(?:^|\s)(class|struct|enum(?:\s+class)?)\s+([A-Za-z_]\w*)\b"
 )
-ALIAS_DECLARATION = re.compile(r"^\s*using\s+(\w+)\s*=")
+ALIAS_DECLARATION = re.compile(r"(?:^|\s)using\s+([A-Za-z_]\w*)\s*=")
+NAMESPACE_DECLARATION = re.compile(r"(?:^|\s)namespace\s+([A-Za-z_]\w*)\s*$")
 FUNCTION_NAME = re.compile(
-    r"(~?[A-Za-z_]\w*|operator\s*(?:=|\(\)|\[\]))\s*\("
+    r"(~?[A-Za-z_]\w*|operator\s*(?:\(\)|\[\]|[=!<>+\-*/%&|^~]+))\s*\("
 )
-KERNEL_DEFINITION = re.compile(r"__global__\s+void\s+(\w+)\s*\(")
 QUALIFIED_DEFINITION = re.compile(
-    r"[A-Za-z_]\w*(?:<[^>]+>)?::(?:~?[A-Za-z_]\w*|operator\s*=)\s*\("
+    r"[A-Za-z_]\w*(?:\s*<[^>{}]+>)?::(?:~?[A-Za-z_]\w*|operator\s*[^\s(]+)\s*\("
 )
+IGNORED_FUNCTION_NAMES = set(
+    (
+        "if",
+        "for",
+        "while",
+        "switch",
+        "return",
+        "sizeof",
+        "alignas",
+        "noexcept",
+        "__launch_bounds__",
+    )
+)
+MANUAL_ID = re.compile(r"^manual:([^:]+):([A-Za-z_]\w*)$")
 
 
 def normalized_path(path):
     return path.replace(os.sep, "/")
 
 
-def code_without_line_comment(line):
-    return line.split("//", 1)[0]
+def sanitized_cpp(text):
+    output = []
+    index = 0
+    state = "code"
+    quote = None
+    while index < len(text):
+        char = text[index]
+        next_char = text[index + 1] if index + 1 < len(text) else ""
+        if state == "line-comment":
+            if char == "\n":
+                output.append(char)
+                state = "code"
+            else:
+                output.append(" ")
+        elif state == "block-comment":
+            if char == "*" and next_char == "/":
+                output.extend((" ", " "))
+                index += 1
+                state = "code"
+            elif char == "\n":
+                output.append(char)
+            else:
+                output.append(" ")
+        elif state == "string":
+            if char == "\\" and next_char:
+                output.extend((" ", " "))
+                index += 1
+            elif char == quote:
+                output.append(" ")
+                state = "code"
+            elif char == "\n":
+                output.append(char)
+            else:
+                output.append(" ")
+        elif char == "/" and next_char == "/":
+            output.extend((" ", " "))
+            index += 1
+            state = "line-comment"
+        elif char == "/" and next_char == "*":
+            output.extend((" ", " "))
+            index += 1
+            state = "block-comment"
+        elif char in ("'", '"'):
+            output.append(" ")
+            quote = char
+            state = "string"
+        else:
+            output.append(char)
+        index += 1
 
-
-def brace_delta(line):
-    code = code_without_line_comment(line)
-    return code.count("{") - code.count("}")
-
-
-def declaration_start(lines, index):
-    if index > 0 and lines[index - 1].lstrip().startswith("template"):
-        return index - 1
-    return index
+    cleaned_lines = "".join(output).splitlines(True)
+    continuation = False
+    for line_index, line in enumerate(cleaned_lines):
+        if continuation or line.lstrip().startswith("#"):
+            continuation = line.rstrip().endswith("\\")
+            cleaned_lines[line_index] = "\n" if line.endswith("\n") else ""
+        else:
+            continuation = False
+    return "".join(cleaned_lines)
 
 
 def has_adjacent_documentation(lines, index):
-    index = declaration_start(lines, index) - 1
+    index -= 1
     if index < 0 or not lines[index].strip():
         return False
     stripped = lines[index].lstrip()
     if stripped.startswith("//"):
         return True
-    if stripped.endswith("*/"):
+    if stripped.rstrip().endswith("*/"):
         while index >= 0:
             if "/*" in lines[index]:
                 return True
@@ -56,103 +115,227 @@ def has_adjacent_documentation(lines, index):
     return False
 
 
-def function_name(line):
-    matches = list(FUNCTION_NAME.finditer(code_without_line_comment(line)))
-    if not matches:
-        return None
-    name = re.sub(r"\s+", "", matches[0].group(1))
-    if name in ("if", "for", "while", "switch", "return", "sizeof"):
-        return None
-    return name
+def canonical_parameters(parameters):
+    value = re.sub(r"\s+", " ", parameters.strip())
+    value = re.sub(r"\s*([,*&<>\[\]=])\s*", r"\1", value)
+    return value
 
 
-def add_declaration(found, missing_comments, relative, identifier, lines, index):
-    stable_id = "public:{0}:{1}".format(relative, identifier)
-    found.add(stable_id)
-    if not has_adjacent_documentation(lines, index):
-        missing_comments.add(stable_id)
+def canonical_suffix(suffix):
+    value = re.sub(r"=\s*(?:delete|default)\s*$", "", suffix.strip())
+    if value.startswith(":"):
+        value = ""
+    value = re.sub(r"\b(?:override|final)\b", "", value)
+    return re.sub(r"\s+", "", value)
+
+
+def matching_parenthesis(text, opening):
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == "(":
+            depth += 1
+        elif text[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def function_signature(segment):
+    if QUALIFIED_DEFINITION.search(segment):
+        return None
+    for match in FUNCTION_NAME.finditer(segment):
+        name = re.sub(r"\s+", "", match.group(1))
+        if name in IGNORED_FUNCTION_NAMES:
+            continue
+        prefix = segment[: match.start()].rstrip()
+        if prefix.endswith("::"):
+            continue
+        opening = match.end() - 1
+        closing = matching_parenthesis(segment, opening)
+        if closing is None:
+            continue
+        parameters = canonical_parameters(segment[opening + 1 : closing])
+        suffix = canonical_suffix(segment[closing + 1 :])
+        return name + "(" + parameters + ")" + suffix
+    return None
+
+
+def declaration_visible(contexts):
+    for context in contexts:
+        if context["kind"] == "function" or context["kind"] == "other":
+            return False
+        if context["kind"] == "type" and (
+            not context["visible"] or context["access"] != "public"
+        ):
+            return False
+    return True
+
+
+def qualified_name(contexts, name):
+    scope = [
+        context["name"]
+        for context in contexts
+        if context["kind"] in ("namespace", "type") and context["name"]
+    ]
+    scope.append(name)
+    return "::".join(scope)
+
+
+def declaration_line(text, segment_offset, segment):
+    first = re.search(r"\S", segment)
+    offset = segment_offset + (first.start() if first else 0)
+    return text.count("\n", 0, offset)
 
 
 def scan_header(path, relative):
     with open(path, "r") as input_file:
-        lines = input_file.readlines()
+        original = input_file.read()
+    text = sanitized_cpp(original)
+    lines = original.splitlines(True)
+    occurrences = []
+    contexts = []
+    segment = []
+    segment_offset = 0
+    parenthesis_depth = 0
 
+    def record(name, raw_segment, role):
+        identifier = "public:{0}:{1}".format(
+            relative, qualified_name(contexts, name)
+        )
+        line = declaration_line(text, segment_offset, raw_segment)
+        occurrences.append(
+            (identifier, line, role, has_adjacent_documentation(lines, line))
+        )
+
+    def process(raw_segment, opens_scope):
+        stripped = raw_segment.strip()
+        if not stripped:
+            return {"kind": "other", "name": "", "visible": False}
+        visible = declaration_visible(contexts)
+        namespace_match = NAMESPACE_DECLARATION.search(stripped)
+        if opens_scope and namespace_match:
+            return {
+                "kind": "namespace",
+                "name": namespace_match.group(1),
+                "visible": visible,
+            }
+        type_match = TYPE_DECLARATION.search(stripped)
+        if type_match:
+            name = type_match.group(2)
+            if visible:
+                record(name, raw_segment, "definition" if opens_scope else "forward")
+            if opens_scope:
+                return {
+                    "kind": "type",
+                    "name": name,
+                    "visible": visible,
+                    "access": "public" if type_match.group(1) != "class" else "private",
+                }
+            return None
+        alias_match = ALIAS_DECLARATION.search(stripped)
+        if alias_match and visible:
+            record(alias_match.group(1), raw_segment, "declaration")
+            return None
+        signature = function_signature(stripped)
+        if signature is not None:
+            if visible:
+                record(signature, raw_segment, "definition" if opens_scope else "declaration")
+            if opens_scope:
+                return {
+                    "kind": "function",
+                    "name": "",
+                    "visible": visible,
+                }
+            return None
+        if opens_scope and (
+            stripped.startswith('extern "C"') or stripped == "extern" or stripped == ""
+        ):
+            return {"kind": "namespace", "name": "", "visible": visible}
+        if opens_scope:
+            return {"kind": "other", "name": "", "visible": False}
+        return None
+
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "(":
+            parenthesis_depth += 1
+        elif char == ")" and parenthesis_depth > 0:
+            parenthesis_depth -= 1
+
+        if parenthesis_depth == 0 and char == ":":
+            access = "".join(segment).strip()
+            if access in ("public", "private", "protected"):
+                for context in reversed(contexts):
+                    if context["kind"] == "type":
+                        context["access"] = access
+                        break
+                segment = []
+                segment_offset = index + 1
+                index += 1
+                continue
+        if parenthesis_depth == 0 and char in "{};":
+            raw_segment = "".join(segment)
+            if char == "{":
+                context = process(raw_segment, True)
+                contexts.append(
+                    context
+                    if context is not None
+                    else {"kind": "other", "name": "", "visible": False}
+                )
+            elif char == "}":
+                if contexts:
+                    contexts.pop()
+            else:
+                process(raw_segment, False)
+            segment = []
+            segment_offset = index + 1
+        else:
+            segment.append(char)
+        index += 1
+    grouped = {}
+    for occurrence in occurrences:
+        grouped.setdefault(occurrence[0], []).append(occurrence)
     found = set()
     missing_comments = set()
-    depth = 0
-    class_name = None
-    class_depth = None
-    access = None
-
-    for index, line in enumerate(lines):
-        stripped_code = code_without_line_comment(line).strip()
-
-        if stripped_code.startswith("#") or stripped_code.startswith(":"):
-            depth += brace_delta(line)
-            continue
-
-        if class_name is None and depth == 0:
-            type_match = TYPE_DECLARATION.match(stripped_code)
-            if type_match:
-                class_name = type_match.group(1)
-                class_depth = depth + 1
-                access = "public" if stripped_code.startswith("struct") else "private"
-                add_declaration(
-                    found, missing_comments, relative, class_name, lines, index
-                )
-            else:
-                alias_match = ALIAS_DECLARATION.match(stripped_code)
-                if alias_match:
-                    add_declaration(
-                        found,
-                        missing_comments,
-                        relative,
-                        alias_match.group(1),
-                        lines,
-                        index,
-                    )
-                elif not QUALIFIED_DEFINITION.search(stripped_code):
-                    name = function_name(stripped_code)
-                    if name is not None:
-                        add_declaration(
-                            found, missing_comments, relative, name, lines, index
-                        )
-        elif class_name is not None and depth == class_depth:
-            access_match = re.match(r"^(public|private|protected)\s*:\s*$", stripped_code)
-            if access_match:
-                access = access_match.group(1)
-            elif access == "public":
-                name = function_name(stripped_code)
-                if name is not None:
-                    add_declaration(
-                        found,
-                        missing_comments,
-                        relative,
-                        class_name + "::" + name,
-                        lines,
-                        index,
-                    )
-
-        depth += brace_delta(line)
-        if class_name is not None and depth < class_depth:
-            class_name = None
-            class_depth = None
-            access = None
-
+    for base, values in grouped.items():
+        role_counts = {}
+        for value in values:
+            role_counts[value[2]] = role_counts.get(value[2], 0) + 1
+        for _, line, role, documented in values:
+            identifier = base
+            if len(values) > 1:
+                identifier += "@" + role
+                if role_counts[role] > 1:
+                    identifier += ":" + str(line + 1)
+            found.add(identifier)
+            if not documented:
+                missing_comments.add(identifier)
     return found, missing_comments
 
 
 def scan_kernels(path, relative):
     with open(path, "r") as input_file:
-        text = input_file.read()
-    lines = text.splitlines(True)
+        original = input_file.read()
+    text = sanitized_cpp(original)
+    lines = original.splitlines(True)
     found = set()
     missing_comments = set()
-    for match in KERNEL_DEFINITION.finditer(text):
-        index = text.count("\n", 0, match.start())
-        stable_id = "kernel:{0}:{1}".format(relative, match.group(1))
+    for marker in re.finditer(r"\b__global__\b", text):
+        tail = text[marker.end() :]
+        opening_brace = tail.find("{")
+        if opening_brace < 0:
+            continue
+        signature = function_signature(tail[:opening_brace])
+        if signature is None:
+            continue
+        stable_id = "kernel:{0}:{1}".format(relative, signature)
         found.add(stable_id)
-        if not has_adjacent_documentation(lines, index):
+        line = text.count("\n", 0, marker.start())
+        while line > 0 and lines[line - 1].lstrip().startswith("[["):
+            line -= 1
+        if not has_adjacent_documentation(lines, line):
             missing_comments.add(stable_id)
     return found, missing_comments
 
@@ -206,6 +389,28 @@ def read_checklist(path):
     return entries
 
 
+def manual_definition_count(root, identifier):
+    match = MANUAL_ID.match(identifier)
+    if not match:
+        return 0
+    relative, symbol = match.groups()
+    path = os.path.abspath(os.path.join(root, relative.replace("/", os.sep)))
+    if os.path.commonpath((root, path)) != root or not os.path.isfile(path):
+        return 0
+    with open(path, "r") as input_file:
+        text = input_file.read()
+    if path.endswith(".py"):
+        pattern = re.compile(r"^\s*def\s+{0}\s*\(".format(re.escape(symbol)), re.M)
+    else:
+        pattern = re.compile(
+            r"\b{0}\s*\([^;{{}}]*\)\s*(?:const\s*)?(?:noexcept\s*)?\{{".format(
+                re.escape(symbol)
+            ),
+            re.S,
+        )
+    return len(pattern.findall(sanitized_cpp(text)))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Check public declarations and CUDA kernels for documentation"
@@ -228,11 +433,31 @@ def main(argv=None):
     for identifier in sorted(missing_comments):
         errors.append("missing adjacent documentation: " + identifier)
 
-    checklist_ids = set(identifier for identifier in entries if TRACKED_ID.match(identifier))
+    discovered_ids = set(found)
+    checklist_ids = set(
+        identifier
+        for identifier in entries
+        if identifier.startswith(("public:", "kernel:"))
+    )
     for identifier in sorted(found - checklist_ids):
         errors.append("missing checklist ID: " + identifier)
     for identifier in sorted(checklist_ids - found):
         errors.append("stale checklist ID: " + identifier)
+
+    for identifier in sorted(entries):
+        if identifier.startswith("manual:"):
+            count = manual_definition_count(root, identifier)
+            if count == 0:
+                errors.append("stale checklist ID: " + identifier)
+            elif count != 1:
+                errors.append(
+                    "manual checklist ID must resolve to exactly one definition: "
+                    + identifier
+                )
+            else:
+                discovered_ids.add(identifier)
+        elif not identifier.startswith(("public:", "kernel:")):
+            errors.append("unsupported checklist ID: " + identifier)
 
     if arguments.require_reviewed:
         for identifier in sorted(entries):
@@ -245,8 +470,8 @@ def main(argv=None):
         return 1
 
     print(
-        "comment check passed: declarations_and_kernels={0} checklist_items={1}".format(
-            len(found), len(entries)
+        "comment check passed: inventory={0} checklist_items={1}".format(
+            len(discovered_ids), len(entries)
         )
     )
     return 0

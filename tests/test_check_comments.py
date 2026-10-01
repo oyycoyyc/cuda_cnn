@@ -57,6 +57,10 @@ class CommentCheckerTest(unittest.TestCase):
             "      const float* input,\n"
             "      float* output) const;\n"
             "};\n\n"
+            "namespace sample {\n"
+            "// Returns a documented namespaced value.\n"
+            "int Make(int value);\n"
+            "}  // namespace sample\n\n"
             "// Launches the documented device operation on caller storage.\n"
             "void LaunchThing(\n"
             "    const float* input, float* output,\n"
@@ -69,7 +73,8 @@ class CommentCheckerTest(unittest.TestCase):
             "// There is no accumulation or race. Out-of-range threads return; "
             "no atomics,\n"
             "// synchronization, or special numerical stabilization is needed.\n"
-            "__global__ void ExampleKernel(const float* input, float* output, "
+            "[[maybe_unused]] __global__ __launch_bounds__(128) void "
+            "ExampleKernel(const float* input, float* output, "
             "int count) {\n"
             "  const int i = blockIdx.x * blockDim.x + threadIdx.x;\n"
             "  if (i < count) output[i] = input[i];\n"
@@ -79,9 +84,10 @@ class CommentCheckerTest(unittest.TestCase):
             "docs/checklist.md",
             "# Review\n\n"
             "- [ ] `public:include/api.h:Widget`\n"
-            "- [ ] `public:include/api.h:Widget::Run`\n"
-            "- [ ] `public:include/api.h:LaunchThing`\n"
-            "- [ ] `kernel:src/kernel.cu:ExampleKernel`\n",
+            "- [ ] `public:include/api.h:Widget::Run(const float*input,float*output)const`\n"
+            "- [ ] `public:include/api.h:sample::Make(int value)`\n"
+            "- [ ] `public:include/api.h:LaunchThing(const float*input,float*output,int count)`\n"
+            "- [ ] `kernel:src/kernel.cu:ExampleKernel(const float*input,float*output,int count)`\n",
         )
 
     def test_multiline_types_methods_launchers_and_kernels_pass(self):
@@ -94,11 +100,11 @@ class CommentCheckerTest(unittest.TestCase):
             ("struct MissingType {};\n", "public:include/api.h:MissingType"),
             (
                 "// Type docs.\nstruct Widget {\n  void MissingMethod() const;\n};\n",
-                "public:include/api.h:Widget::MissingMethod",
+                "public:include/api.h:Widget::MissingMethod()const",
             ),
             (
                 "void LaunchMissing(\n    const float* input, float* output);\n",
-                "public:include/api.h:LaunchMissing",
+                "public:include/api.h:LaunchMissing(const float*input,float*output)",
             ),
         )
         for source, identifier in cases:
@@ -114,7 +120,7 @@ class CommentCheckerTest(unittest.TestCase):
             "src/kernel.cu",
             "__global__ void MissingKernel(float* values) { values[0] = 0; }\n",
         )
-        identifier = "kernel:src/kernel.cu:MissingKernel"
+        identifier = "kernel:src/kernel.cu:MissingKernel(float*values)"
         self.write("docs/checklist.md", "- [ ] `{0}`\n".format(identifier))
         result = self.run_checker()
         self.assertNotEqual(0, result.returncode, result.stdout)
@@ -125,7 +131,7 @@ class CommentCheckerTest(unittest.TestCase):
             "include/api.h",
             "// This comment is detached.\n\nvoid Detached();\n",
         )
-        identifier = "public:include/api.h:Detached"
+        identifier = "public:include/api.h:Detached()"
         self.write("docs/checklist.md", "- [ ] `{0}`\n".format(identifier))
         result = self.run_checker()
         self.assertNotEqual(0, result.returncode, result.stdout)
@@ -138,13 +144,99 @@ class CommentCheckerTest(unittest.TestCase):
             text = input_file.read()
         with open(checklist, "w") as output:
             output.write(text.replace(
-                "- [ ] `public:include/api.h:LaunchThing`\n", ""
+                "- [ ] `public:include/api.h:LaunchThing(const float*input,float*output,int count)`\n", ""
             ))
-            output.write("- [ ] `kernel:src/kernel.cu:StaleKernel`\n")
+            output.write("- [ ] `kernel:src/kernel.cu:StaleKernel()`\n")
         result = self.run_checker()
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("missing checklist ID", result.stdout)
         self.assertIn("stale checklist ID", result.stdout)
+
+    def test_overloads_have_distinct_signature_ids(self):
+        self.write(
+            "include/api.h",
+            "// Computes from an integer.\n"
+            "int Compute(int value);\n"
+            "// Computes from a float.\n"
+            "int Compute(float value);\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `public:include/api.h:Compute(int value)`\n"
+            "- [ ] `public:include/api.h:Compute(float value)`\n",
+        )
+        result = self.run_checker()
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_nested_public_type_and_method_are_inventoried(self):
+        self.write(
+            "include/api.h",
+            "// Owns nested API declarations.\n"
+            "class Outer {\n"
+            " public:\n"
+            "  // Carries one nested public value.\n"
+            "  struct Inner {\n"
+            "    // Returns the nested value.\n"
+            "    int Value() const;\n"
+            "  };\n"
+            "};\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `public:include/api.h:Outer`\n"
+            "- [ ] `public:include/api.h:Outer::Inner`\n"
+            "- [ ] `public:include/api.h:Outer::Inner::Value()const`\n",
+        )
+        result = self.run_checker()
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_repeated_type_declarations_have_distinct_role_ids(self):
+        self.write(
+            "include/api.h",
+            "// Declares Widget before its definition.\n"
+            "class Widget;\n"
+            "// Defines the public Widget type.\n"
+            "class Widget {};\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `public:include/api.h:Widget@forward`\n"
+            "- [ ] `public:include/api.h:Widget@definition`\n",
+        )
+        result = self.run_checker()
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_manual_entries_must_resolve_to_exactly_one_source_definition(self):
+        self.write(
+            "src/parser.cpp",
+            "// Parses the fixture.\nvoid ParseThing() {}\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `manual:src/parser.cpp:ParseThing`\n",
+        )
+        valid = self.run_checker()
+        self.assertEqual(0, valid.returncode, valid.stdout)
+
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `manual:src/parser.cpp:MissingThing`\n",
+        )
+        stale = self.run_checker()
+        self.assertNotEqual(0, stale.returncode, stale.stdout)
+        self.assertIn("stale checklist ID", stale.stdout)
+
+        self.write(
+            "src/parser.cpp",
+            "void ParseThing() {}\nvoid ParseThing(int value) {}\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `manual:src/parser.cpp:ParseThing`\n",
+        )
+        duplicate = self.run_checker()
+        self.assertNotEqual(0, duplicate.returncode, duplicate.stdout)
+        self.assertIn("exactly one", duplicate.stdout)
 
     def test_manual_review_gate_requires_checked_entries(self):
         self.documented_fixture()

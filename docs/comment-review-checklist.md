@@ -1,124 +1,152 @@
 # Comment Review Checklist
 
-Task 13 records the stable inventory below without claiming semantic review.
-On the H20 host, inspect each item for every applicable shape/layout,
+Task 13 records the signature-based inventory below without claiming semantic
+review. On the H20 host, inspect each item for every applicable shape/layout,
 index/formula, race/synchronization, boundary, numerical-stability, ownership,
 lifetime, aliasing, and error-behavior requirement. Change `[ ]` to `[x]` only
 after that manual review; Task 14 requires `--require-reviewed`.
 
-## Public Types And Declarations
+## Public Header Declarations
 
 - [ ] `public:include/checkpoint.h:Checkpoint`
 - [ ] `public:include/checkpoint.h:CheckpointMetadata`
-- [ ] `public:include/checkpoint.h:LoadCheckpoint`
-- [ ] `public:include/checkpoint.h:SaveCheckpoint`
+- [ ] `public:include/checkpoint.h:LoadCheckpoint(const std::string&path)`
+- [ ] `public:include/checkpoint.h:SaveCheckpoint(const std::string&path,const Checkpoint&checkpoint)`
 - [ ] `public:include/cli.h:CliOptions`
 - [ ] `public:include/cli.h:Command`
 - [ ] `public:include/cli.h:EvaluateOptions`
 - [ ] `public:include/cli.h:InferOptions`
-- [ ] `public:include/cli.h:ParseCli`
+- [ ] `public:include/cli.h:ParseCli(int argc,const char*const*argv,CliOptions*options,std::string*error)`
 - [ ] `public:include/cli.h:TrainOptions`
-- [ ] `public:include/cli.h:Usage`
-- [ ] `public:include/dataset.h:LoadMnistDataset`
+- [ ] `public:include/cli.h:Usage()`
+- [ ] `public:include/cuda_check.h:cuda_support::CheckCuda(cudaError_t result,const char*expression,const char*file,int line)`
+- [ ] `public:include/dataset.h:LoadMnistDataset(const std::string&path)`
 - [ ] `public:include/dataset.h:MnistDataset`
-- [ ] `public:include/dataset.h:MnistDataset::Image`
-- [ ] `public:include/dataset.h:RequireDatasetCount`
-- [ ] `public:include/layers.h:LaunchAdamW`
-- [ ] `public:include/layers.h:LaunchArgmaxAndCountCorrect`
-- [ ] `public:include/layers.h:LaunchConvolutionBackward`
-- [ ] `public:include/layers.h:LaunchConvolutionForward`
-- [ ] `public:include/layers.h:LaunchFindFirstNonFinite`
-- [ ] `public:include/layers.h:LaunchLinearBackward`
-- [ ] `public:include/layers.h:LaunchLinearForward`
-- [ ] `public:include/layers.h:LaunchMaxPoolBackward`
-- [ ] `public:include/layers.h:LaunchMaxPoolForward`
-- [ ] `public:include/layers.h:LaunchNormalizeTranslate`
-- [ ] `public:include/layers.h:LaunchReluBackward`
-- [ ] `public:include/layers.h:LaunchReluForward`
-- [ ] `public:include/layers.h:LaunchSoftmax`
-- [ ] `public:include/layers.h:LaunchSoftmaxCrossEntropy`
-- [ ] `public:include/layers.h:LaunchZero`
+- [ ] `public:include/dataset.h:MnistDataset::Image(std::uint32_t index)const`
+- [ ] `public:include/dataset.h:RequireDatasetCount(const MnistDataset&dataset,std::uint32_t expected,bool allow_nonstandard,const std::string&role)`
+- [ ] `public:include/layers.h:LaunchAdamW(float*parameters,const float*gradients,float*first_moments,float*second_moments,std::size_t count,float learning_rate,float beta1,float beta2,float epsilon,float inverse_bias_correction1,float inverse_bias_correction2,float weight_decay,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchArgmaxAndCountCorrect(const float*logits,const std::uint8_t*labels,std::uint8_t*predictions,int*correct_flags,int*correct_count,int batch_size,int class_count,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchConvolutionBackward(const float*input,const float*weight,const float*output_gradient,float*input_gradient,float*weight_gradient,float*bias_gradient,int batch_size,int input_channels,int input_height,int input_width,int output_channels,int kernel_height,int kernel_width,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchConvolutionForward(const float*input,const float*weight,const float*bias,float*output,int batch_size,int input_channels,int input_height,int input_width,int output_channels,int kernel_height,int kernel_width,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchFindFirstNonFinite(const float*values,std::size_t count,int*first_bad_index,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchLinearBackward(const float*input,const float*weight,const float*output_gradient,float*input_gradient,float*weight_gradient,float*bias_gradient,int batch_size,int input_features,int output_features,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchLinearForward(const float*input,const float*weight,const float*bias,float*output,int batch_size,int input_features,int output_features,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchMaxPoolBackward(const float*output_gradient,const std::uint8_t*winner_offsets,float*input_gradient,int batch_size,int channels,int input_height,int input_width,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchMaxPoolForward(const float*input,float*output,std::uint8_t*winner_offsets,int batch_size,int channels,int input_height,int input_width,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchNormalizeTranslate(const std::uint8_t*images,const std::uint32_t*original_indices,float*output,int batch_size,std::uint64_t seed,std::uint32_t one_based_epoch,bool augment,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchReluBackward(const float*forward_input,const float*output_gradient,float*input_gradient,std::size_t count,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchReluForward(const float*input,float*output,std::size_t count,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchSoftmax(const float*logits,float*probabilities,int batch_size,int class_count,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchSoftmaxCrossEntropy(const float*logits,const std::uint8_t*labels,float*probabilities,float*per_sample_losses,float*mean_loss,float*logits_gradient,int batch_size,int class_count,cudaStream_t stream)`
+- [ ] `public:include/layers.h:LaunchZero(float*values,std::size_t count,cudaStream_t stream)`
 - [ ] `public:include/lenet.h:AdamWConfig`
 - [ ] `public:include/lenet.h:LeNet`
-- [ ] `public:include/lenet.h:LeNet::AdamWStep`
-- [ ] `public:include/lenet.h:LeNet::Backward`
-- [ ] `public:include/lenet.h:LeNet::ExportParameters`
-- [ ] `public:include/lenet.h:LeNet::Forward`
-- [ ] `public:include/lenet.h:LeNet::ImportParameters`
-- [ ] `public:include/lenet.h:LeNet::LeNet`
-- [ ] `public:include/lenet.h:LeNet::RequireFinite`
-- [ ] `public:include/lenet.h:LeNet::RequiredDeviceBytes`
-- [ ] `public:include/lenet.h:LeNet::operator=`
-- [ ] `public:include/lenet.h:LeNet::~LeNet`
-- [ ] `public:include/lenet.h:LeNetTestAccess`
-- [ ] `public:include/lenet.h:LeNetTestAccess::Fc1InputAliasesPool2`
-- [ ] `public:include/lenet.h:LeNetTestAccess::FiniteDiagnosticNamesPrepared`
-- [ ] `public:include/parameters.h:CreateLenetParameters`
-- [ ] `public:include/parameters.h:InitializeLenetParameters`
-- [ ] `public:include/parameters.h:LenetParameterSpecs`
+- [ ] `public:include/lenet.h:LeNet::AdamWStep(std::uint64_t global_step,float learning_rate,const AdamWConfig&config)`
+- [ ] `public:include/lenet.h:LeNet::Backward(const float*logits_gradient,int batch_size)`
+- [ ] `public:include/lenet.h:LeNet::ExportParameters()const`
+- [ ] `public:include/lenet.h:LeNet::ExportParameters(ParameterSet*destination)const`
+- [ ] `public:include/lenet.h:LeNet::Forward(const float*normalized_images,int batch_size)`
+- [ ] `public:include/lenet.h:LeNet::ImportParameters(const ParameterSet&parameters)`
+- [ ] `public:include/lenet.h:LeNet::LeNet(const LeNet&)`
+- [ ] `public:include/lenet.h:LeNet::LeNet(int maximum_batch_size,std::uint64_t seed,cudaStream_t stream)`
+- [ ] `public:include/lenet.h:LeNet::RequireFinite(const std::string&phase)const`
+- [ ] `public:include/lenet.h:LeNet::RequiredDeviceBytes()const`
+- [ ] `public:include/lenet.h:LeNet::operator=(const LeNet&)`
+- [ ] `public:include/lenet.h:LeNet::~LeNet()`
+- [ ] `public:include/lenet.h:LeNetTestAccess::Fc1InputAliasesPool2(const LeNet&model)noexcept`
+- [ ] `public:include/lenet.h:LeNetTestAccess::FiniteDiagnosticNamesPrepared(const LeNet&model)noexcept`
+- [ ] `public:include/lenet.h:LeNetTestAccess@definition`
+- [ ] `public:include/lenet.h:LeNetTestAccess@forward`
+- [ ] `public:include/parameters.h:CreateLenetParameters()`
+- [ ] `public:include/parameters.h:InitializeLenetParameters(std::uint64_t seed,ParameterSet*parameters)`
+- [ ] `public:include/parameters.h:LenetParameterSpecs()`
 - [ ] `public:include/parameters.h:ParameterSet`
 - [ ] `public:include/parameters.h:ParameterSpec`
 - [ ] `public:include/parameters.h:ParameterTensor`
-- [ ] `public:include/parameters.h:ValidateLenetParameters`
+- [ ] `public:include/parameters.h:ValidateLenetParameters(const ParameterSet&parameters)`
 - [ ] `public:include/random.h:DatasetSplit`
-- [ ] `public:include/random.h:MakeTrainValidationSplit`
-- [ ] `public:include/random.h:ShuffledTrainingIndices`
+- [ ] `public:include/random.h:MakeTrainValidationSplit(std::uint32_t sample_count,std::uint32_t validation_count,std::uint64_t seed)`
+- [ ] `public:include/random.h:ShuffledTrainingIndices(const std::vector<std::uint32_t>&canonical_indices,std::uint64_t seed,std::uint32_t one_based_epoch)`
+- [ ] `public:include/random.h:ShuffledTrainingIndices(const std::vector<std::uint32_t>&canonical_indices,std::uint64_t seed,std::uint32_t one_based_epoch,std::vector<std::uint32_t>*output)`
 - [ ] `public:include/random.h:SplitMix64`
-- [ ] `public:include/random.h:SplitMix64::Next`
-- [ ] `public:include/random.h:SplitMix64::SplitMix64`
-- [ ] `public:include/random.h:SplitMix64::UniformBounded`
+- [ ] `public:include/random.h:SplitMix64::Next()`
+- [ ] `public:include/random.h:SplitMix64::SplitMix64(std::uint64_t seed)`
+- [ ] `public:include/random.h:SplitMix64::UniformBounded(std::uint64_t exclusive_upper_bound)`
 - [ ] `public:include/random.h:TranslationOffset`
-- [ ] `public:include/random.h:TranslationOffsetForSample`
-- [ ] `public:include/reporting.h:PrintEpochSummary`
-- [ ] `public:include/reporting.h:PrintEvaluationSummary`
-- [ ] `public:include/tensor.h:CudaMemoryInfoQueryCountForTests`
-- [ ] `public:include/tensor.h:CudaMemoryInfoQueryInvocationSequenceForTests`
+- [ ] `public:include/random.h:TranslationOffsetForSample(std::uint64_t seed,std::uint32_t one_based_epoch,std::uint32_t original_index)`
+- [ ] `public:include/random.h:lenet_random_internal::Derive(std::uint64_t seed,std::uint64_t domain,std::uint64_t a,std::uint64_t b)`
+- [ ] `public:include/random.h:lenet_random_internal::Mix64(std::uint64_t value)`
+- [ ] `public:include/reporting.h:PrintDeviceSummary(std::ostream&output,int index,const std::string&name,int compute_major,int compute_minor)`
+- [ ] `public:include/reporting.h:PrintEpochSummary(std::ostream&output,std::uint32_t epoch,float training_loss,float validation_accuracy,double elapsed_ms)`
+- [ ] `public:include/reporting.h:PrintEvaluationSummary(std::ostream&output,std::uint32_t samples,float accuracy,float mean_forward_ms,float images_per_second,float minimum_accuracy,bool passed)`
+- [ ] `public:include/reporting.h:PrintFinalTestSummary(std::ostream&output,std::uint32_t samples,float accuracy,std::uint32_t best_epoch,float validation_accuracy)`
+- [ ] `public:include/reporting.h:PrintInferenceSummary(std::ostream&output,std::uint32_t index,const std::array<float,10>&logits,const std::array<float,10>&probabilities,std::uint8_t prediction,std::uint8_t label)`
+- [ ] `public:include/tensor.h:CudaMemoryInfoQueryCountForTests()noexcept`
+- [ ] `public:include/tensor.h:CudaMemoryInfoQueryInvocationSequenceForTests()noexcept`
 - [ ] `public:include/tensor.h:DeviceBuffer`
-- [ ] `public:include/tensor.h:DeviceBuffer::DeviceBuffer`
-- [ ] `public:include/tensor.h:DeviceBuffer::get`
-- [ ] `public:include/tensor.h:DeviceBuffer::operator=`
-- [ ] `public:include/tensor.h:DeviceBuffer::size`
-- [ ] `public:include/tensor.h:DeviceBuffer::~DeviceBuffer`
-- [ ] `public:include/tensor.h:DeviceBufferAllocationAttemptSequenceForTests`
-- [ ] `public:include/tensor.h:DeviceBufferAllocationCountForTests`
-- [ ] `public:include/tensor.h:DeviceBufferSuccessfulAllocationEventCountForTests`
+- [ ] `public:include/tensor.h:DeviceBuffer::DeviceBuffer()noexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::DeviceBuffer(DeviceBuffer&&other)noexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::DeviceBuffer(const DeviceBuffer&)`
+- [ ] `public:include/tensor.h:DeviceBuffer::DeviceBuffer(std::size_t count)`
+- [ ] `public:include/tensor.h:DeviceBuffer::get()constnoexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::get()noexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::operator=(DeviceBuffer&&other)noexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::operator=(const DeviceBuffer&)`
+- [ ] `public:include/tensor.h:DeviceBuffer::size()constnoexcept`
+- [ ] `public:include/tensor.h:DeviceBuffer::~DeviceBuffer()noexcept`
+- [ ] `public:include/tensor.h:DeviceBufferAllocationAttemptSequenceForTests()noexcept`
+- [ ] `public:include/tensor.h:DeviceBufferAllocationCountForTests()noexcept`
+- [ ] `public:include/tensor.h:DeviceBufferSuccessfulAllocationEventCountForTests()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::Allocate(std::size_t requested_bytes)`
+- [ ] `public:include/tensor.h:device_buffer_detail::DiagnosticEventSequence()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::Free(void*pointer)noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::LastAllocationAttemptSequence()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::LastMemoryInfoQuerySequence()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::LiveAllocationCount()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::MemoryInfoQueryCount()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::NextDiagnosticEventSequence()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::QueryMemoryInfo(std::size_t*free_bytes,std::size_t*total_bytes)noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::RecordAllocation()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::RecordAllocationAttempt()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::RecordMemoryInfoQueryInvocation()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::RecordRelease()noexcept`
+- [ ] `public:include/tensor.h:device_buffer_detail::SuccessfulAllocationEventCount()noexcept`
 - [ ] `public:include/train.h:ExitCode`
-- [ ] `public:include/train.h:LearningRateForEpoch`
-- [ ] `public:include/train.h:RunEvaluate`
-- [ ] `public:include/train.h:RunInfer`
-- [ ] `public:include/train.h:RunTrain`
+- [ ] `public:include/train.h:LearningRateForEpoch(std::uint32_t one_based_epoch)`
+- [ ] `public:include/train.h:RunEvaluate(const EvaluateOptions&options,std::ostream&output,std::ostream&error)`
+- [ ] `public:include/train.h:RunInfer(const InferOptions&options,std::ostream&output,std::ostream&error)`
+- [ ] `public:include/train.h:RunTrain(const TrainOptions&options,std::ostream&output,std::ostream&error)`
 - [ ] `public:include/training_data.h:HostBatch`
-- [ ] `public:include/training_data.h:MakeWorkflowSplit`
-- [ ] `public:include/training_data.h:PackBatch`
+- [ ] `public:include/training_data.h:MakeWorkflowSplit(std::uint32_t sample_count,std::uint64_t seed,bool allow_nonstandard_count)`
+- [ ] `public:include/training_data.h:PackBatch(const MnistDataset&dataset,const std::vector<std::uint32_t>&order,std::uint32_t offset,std::uint32_t capacity,HostBatch*batch)`
 
 ## CUDA Kernels And Reductions
 
-- [ ] `kernel:src/kernels/activation.cu:ReluBackwardKernel`
-- [ ] `kernel:src/kernels/activation.cu:ReluForwardKernel`
-- [ ] `kernel:src/kernels/activation.cu:ZeroKernel`
-- [ ] `kernel:src/kernels/adam.cu:AdamWKernel`
-- [ ] `kernel:src/kernels/adam.cu:FindFirstNonFiniteKernel`
-- [ ] `kernel:src/kernels/adam.cu:InitializeFirstBadIndexKernel`
-- [ ] `kernel:src/kernels/convolution.cu:ConvolutionBiasGradientKernel`
-- [ ] `kernel:src/kernels/convolution.cu:ConvolutionForwardKernel`
-- [ ] `kernel:src/kernels/convolution.cu:ConvolutionInputGradientKernel`
-- [ ] `kernel:src/kernels/convolution.cu:ConvolutionWeightGradientKernel`
-- [ ] `kernel:src/kernels/input.cu:NormalizeTranslateKernel`
-- [ ] `kernel:src/kernels/linear.cu:LinearBiasGradientKernel`
-- [ ] `kernel:src/kernels/linear.cu:LinearForwardKernel`
-- [ ] `kernel:src/kernels/linear.cu:LinearInputGradientKernel`
-- [ ] `kernel:src/kernels/linear.cu:LinearWeightGradientKernel`
-- [ ] `kernel:src/kernels/loss.cu:MeanLossKernel`
-- [ ] `kernel:src/kernels/loss.cu:SoftmaxCrossEntropyKernel`
-- [ ] `kernel:src/kernels/loss.cu:SoftmaxKernel`
-- [ ] `kernel:src/kernels/metrics.cu:ArgmaxFlagsKernel`
-- [ ] `kernel:src/kernels/metrics.cu:CorrectCountKernel`
-- [ ] `kernel:src/kernels/pooling.cu:MaxPoolBackwardKernel`
-- [ ] `kernel:src/kernels/pooling.cu:MaxPoolForwardKernel`
+- [ ] `kernel:src/kernels/activation.cu:ReluBackwardKernel(const float*forward_input,const float*output_gradient,float*input_gradient,std::size_t count)`
+- [ ] `kernel:src/kernels/activation.cu:ReluForwardKernel(const float*input,float*output,std::size_t count)`
+- [ ] `kernel:src/kernels/activation.cu:ZeroKernel(float*values,std::size_t count)`
+- [ ] `kernel:src/kernels/adam.cu:AdamWKernel(float*parameters,const float*gradients,float*first_moments,float*second_moments,std::size_t count,float learning_rate,float beta1,float beta2,float epsilon,float inverse_bias_correction1,float inverse_bias_correction2,float weight_decay)`
+- [ ] `kernel:src/kernels/adam.cu:FindFirstNonFiniteKernel(const float*values,int count,int*result)`
+- [ ] `kernel:src/kernels/adam.cu:InitializeFirstBadIndexKernel(int*result,int count)`
+- [ ] `kernel:src/kernels/convolution.cu:ConvolutionBiasGradientKernel(const float*output_gradient,float*bias_gradient,int batch_size,int output_channels,int output_height,int output_width)`
+- [ ] `kernel:src/kernels/convolution.cu:ConvolutionForwardKernel(const float*input,const float*weight,const float*bias,float*output,std::size_t output_count,int input_channels,int input_height,int input_width,int output_channels,int kernel_height,int kernel_width,int output_height,int output_width)`
+- [ ] `kernel:src/kernels/convolution.cu:ConvolutionInputGradientKernel(const float*weight,const float*output_gradient,float*input_gradient,std::size_t input_count,int input_channels,int input_height,int input_width,int output_channels,int kernel_height,int kernel_width,int output_height,int output_width)`
+- [ ] `kernel:src/kernels/convolution.cu:ConvolutionWeightGradientKernel(const float*input,const float*output_gradient,float*weight_gradient,std::size_t weight_count,int batch_size,int input_channels,int input_height,int input_width,int output_channels,int kernel_height,int kernel_width,int output_height,int output_width)`
+- [ ] `kernel:src/kernels/input.cu:NormalizeTranslateKernel(const std::uint8_t*images,const std::uint32_t*original_indices,float*output,std::size_t element_count,std::uint64_t seed,std::uint32_t one_based_epoch,bool augment)`
+- [ ] `kernel:src/kernels/linear.cu:LinearBiasGradientKernel(const float*output_gradient,float*bias_gradient,int batch_size,int output_features)`
+- [ ] `kernel:src/kernels/linear.cu:LinearForwardKernel(const float*input,const float*weight,const float*bias,float*output,std::size_t output_count,int input_features,int output_features)`
+- [ ] `kernel:src/kernels/linear.cu:LinearInputGradientKernel(const float*weight,const float*output_gradient,float*input_gradient,std::size_t input_count,int input_features,int output_features)`
+- [ ] `kernel:src/kernels/linear.cu:LinearWeightGradientKernel(const float*input,const float*output_gradient,float*weight_gradient,std::size_t weight_count,int batch_size,int input_features,int output_features)`
+- [ ] `kernel:src/kernels/loss.cu:MeanLossKernel(const float*per_sample_losses,float*mean_loss,int batch_size)`
+- [ ] `kernel:src/kernels/loss.cu:SoftmaxCrossEntropyKernel(const float*logits,const std::uint8_t*labels,float*probabilities,float*per_sample_losses,float*logits_gradient,int class_count,float inverse_batch_size)`
+- [ ] `kernel:src/kernels/loss.cu:SoftmaxKernel(const float*logits,float*probabilities,int class_count)`
+- [ ] `kernel:src/kernels/metrics.cu:ArgmaxFlagsKernel(const float*logits,const std::uint8_t*labels,std::uint8_t*predictions,int*correct_flags,int class_count)`
+- [ ] `kernel:src/kernels/metrics.cu:CorrectCountKernel(const int*correct_flags,int*correct_count,int batch_size)`
+- [ ] `kernel:src/kernels/pooling.cu:MaxPoolBackwardKernel(const float*output_gradient,const std::uint8_t*winner_offsets,float*input_gradient,std::size_t output_count,int input_height,int input_width,int output_height,int output_width)`
+- [ ] `kernel:src/kernels/pooling.cu:MaxPoolForwardKernel(const float*input,float*output,std::uint8_t*winner_offsets,std::size_t output_count,int input_height,int input_width,int output_height,int output_width)`
 
 ## Binary Serializers And Parsers
 
-- [ ] `manual:include/cuda_check.h:CheckCuda`
 - [ ] `manual:scripts/prepare_mnist.py:convert_parquet`
 - [ ] `manual:src/binary_io.h:ReadExact`
 - [ ] `manual:src/binary_io.h:ReadF32LE`

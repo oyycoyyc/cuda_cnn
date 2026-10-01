@@ -75,6 +75,12 @@ class ProjectComplianceTest(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(module, makefile)
 
+    def test_make_emits_actual_build_completion_marker(self):
+        make = os.environ.get("MAKE", "make")
+        result = self.run_command([make, "-B", "-n", "all"])
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn('echo "event=build status=pass target=all"', result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

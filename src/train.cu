@@ -19,8 +19,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <iomanip>
-#include <locale>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -208,13 +206,8 @@ void SelectAndReportDevice(int requested, std::ostream& output) {
   CUDA_CHECK(cudaSetDevice(requested));
   cudaDeviceProp properties;
   CUDA_CHECK(cudaGetDeviceProperties(&properties, requested));
-  std::ostringstream record;
-  record.imbue(std::locale::classic());
-  record << "event=device index=" << requested << " name=" << properties.name
-         << " compute_capability=" << properties.major << '.'
-         << properties.minor << '\n';
-  const std::string text = record.str();
-  output.write(text.data(), static_cast<std::streamsize>(text.size()));
+  PrintDeviceSummary(output, requested, properties.name, properties.major,
+                     properties.minor);
 }
 
 void CopyBatchToDevice(const HostBatch& batch, WorkflowStorage* storage,
@@ -327,22 +320,6 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
     offset += actual;
   }
   return result;
-}
-
-void PrintFinalTestSummary(std::ostream& output, std::uint32_t samples,
-                           float accuracy,
-                           const CheckpointMetadata& metadata) {
-  if (!std::isfinite(accuracy)) {
-    throw std::runtime_error("final test accuracy is not finite");
-  }
-  std::ostringstream record;
-  record.imbue(std::locale::classic());
-  record << std::fixed << "event=final_test samples=" << samples
-         << " final_test_accuracy=" << std::setprecision(6) << accuracy
-         << " best_epoch=" << metadata.best_epoch
-         << " validation_accuracy=" << metadata.validation_accuracy << '\n';
-  const std::string text = record.str();
-  output.write(text.data(), static_cast<std::streamsize>(text.size()));
 }
 
 std::vector<std::uint32_t> CanonicalOrder(std::uint32_t count) {
@@ -504,7 +481,8 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
   const float test_accuracy = static_cast<float>(test.correct) /
                               static_cast<float>(test_dataset.sample_count);
   PrintFinalTestSummary(output, test_dataset.sample_count, test_accuracy,
-                        best.metadata);
+                        best.metadata.best_epoch,
+                        best.metadata.validation_accuracy);
   return kSuccess;
 }
 
@@ -610,26 +588,7 @@ int RunInfer(const InferOptions& options, std::ostream& output,
     }
   }
 
-  std::ostringstream record;
-  record.imbue(std::locale::classic());
-  record << std::fixed << std::setprecision(9)
-         << "event=infer index=" << options.index << " logits=";
-  for (int class_index = 0; class_index < kClassCount; ++class_index) {
-    if (class_index != 0) {
-      record << ',';
-    }
-    record << logits[class_index];
-  }
-  record << " probabilities=";
-  for (int class_index = 0; class_index < kClassCount; ++class_index) {
-    if (class_index != 0) {
-      record << ',';
-    }
-    record << probabilities[class_index];
-  }
-  record << " prediction=" << static_cast<unsigned int>(prediction)
-         << " label=" << static_cast<unsigned int>(label) << '\n';
-  const std::string text = record.str();
-  output.write(text.data(), static_cast<std::streamsize>(text.size()));
+  PrintInferenceSummary(output, options.index, logits, probabilities, prediction,
+                        label);
   return kSuccess;
 }

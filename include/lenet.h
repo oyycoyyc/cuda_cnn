@@ -20,6 +20,8 @@ struct AdamWConfig {
   float weight_decay;
 };
 
+// Grants the host/CUDA test adapter read-only access to selected model
+// invariants without exposing them through the runtime workflow API.
 class LeNetTestAccess;
 
 // Owns the fixed-capacity device state for modern LeNet. The constructor's
