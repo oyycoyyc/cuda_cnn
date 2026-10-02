@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -8,6 +9,7 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKER = os.path.join(ROOT, "scripts", "check_prohibited.sh")
+ANALYZER = os.path.join(ROOT, "scripts", "analyze_build_graph.py")
 
 
 class ProhibitedCheckerTest(unittest.TestCase):
@@ -21,6 +23,11 @@ class ProhibitedCheckerTest(unittest.TestCase):
             ".DEFAULT_GOAL := all\n"
             "TEST_SOURCES := $(wildcard tests/*_tests.cpp tests/*_tests.cu)\n"
             "TEST_OUTPUTS := $(patsubst tests/%,build/%,$(TEST_SOURCES))\n"
+            "COMPLIANCE_TEST_SOURCES := $(TEST_SOURCES)\n"
+            ".PHONY: compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@for source in $(COMPLIANCE_TEST_SOURCES); do "
+            "printf 'test-source=%s\\n' \"$$source\"; done\n"
             "all: $(BUILD_DIR)/lenet_cuda $(TEST_OUTPUTS)\n"
             "$(BUILD_DIR)/lenet_cuda:\n"
             "\tnvcc -gencode=arch=compute_90,code=sm_90 "
@@ -49,6 +56,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         environment = os.environ.copy()
         if os.path.dirname(bash):
             environment["PATH"] = os.path.dirname(bash) + os.pathsep + environment["PATH"]
+        environment["PYTHON"] = sys.executable.replace("\\", "/")
         if extra_environment is not None:
             environment.update(extra_environment)
         return subprocess.run(
@@ -225,7 +233,9 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "BUILD_DIR := build\n"
             ".DEFAULT_GOAL := all\n"
             "CPU_REFERENCE_OBJECT := $(BUILD_DIR)/cpu_reference.o\n"
-            ".PHONY: all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/cpu_reference.cpp\n"
             "all: $(BUILD_DIR)/lenet_cuda\n"
             "$(BUILD_DIR)/lenet_cuda: main.o $(CPU_REFERENCE_OBJECT)\n"
             "\tnvcc $^ -o $@\n"
@@ -268,20 +278,24 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("cannot resolve", result.stdout.lower())
         self.assertIn("missing_project_header.h", result.stdout)
 
-    def test_source_scan_fails_when_make_scope_extraction_is_malformed(self):
+    def test_source_scan_propagates_source_bearing_recipe_without_output(self):
         self.write(
             "Makefile",
+            ".PHONY: compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
             "all: build/lenet_cuda build/smoke_tests\n"
             "build/lenet_cuda:\n"
             "\tnvcc src/model.cu -o $@\n"
             "build/smoke_tests: tests/smoke_tests.cpp\n"
-            "\tg++ -o $@\n",
+            "\tcompiler-wrapper clang++ -c 'tests/smoke_tests.cpp'\n",
         )
 
         result = self.run_checker("source", self.temporary)
 
         self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("test source", result.stdout.lower())
+        self.assertIn("source-bearing recipe has no supported output", result.stdout)
+        self.assertIn("Make recipe provenance analysis failed", result.stdout)
 
     def test_build_scan_rejects_every_prohibited_linker_flag(self):
         for library in ("cudnn", "cublas", "nvinfer", "nvonnxparser", "curand"):
@@ -297,8 +311,12 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
         self.write(
             "Makefile",
+            "CXX ?= g++\n"
             ".DEFAULT_GOAL := all\n"
-            ".PHONY: all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/cpu_reference.cpp\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
             "all: build/lenet_cuda build/smoke_tests\n"
             "build/lenet_cuda: build/oracle.o\n"
             "\tnvcc $^ -o $@\n"
@@ -319,7 +337,10 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write(
             "Makefile",
             ".DEFAULT_GOAL := all\n"
-            ".PHONY: all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/cpu_reference.cpp\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
             "all: build/lenet_cuda build/smoke_tests\n"
             "build/lenet_cuda: build/model_support.o\n"
             "\tnvcc $^ -o $@\n"
@@ -336,6 +357,220 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("model_support.o", result.stdout.lower())
+
+    def test_clang_ccache_quoted_paths_and_iquote_order_are_scanned(self):
+        self.write(
+            "tests/space dir/active test.cpp",
+            '#include "selected.h"\nint main() { return 0; }\n',
+        )
+        self.write("tests/include dir/selected.h", "void Clean();\n")
+        self.write("tests/quote dir/selected.h", "#include <cudnn.h>\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf '%s\\n' 'test-source=tests/space dir/active test.cpp'\n"
+            "all: build/lenet_cuda build/active\\ test\n"
+            "build/lenet_cuda:\n"
+            "\tclang++ src/model.cu -o $@\n"
+            "build/active\\ test: tests/space\\ dir/active\\ test.cpp\n"
+            "\tccache clang++ -I 'tests/include dir' "
+            "-iquote 'tests/quote dir' -c 'tests/space dir/active test.cpp' "
+            "-o 'build/active test.o'\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("quote dir", result.stdout)
+        self.assertIn("selected.h", result.stdout)
+
+    def test_analyzer_accepts_unknown_wrapper_with_quoted_source_and_output(self):
+        self.write("tests/space dir/active test.cpp", "int main() { return 0; }\n")
+        recipes = self.write(
+            "recipes.log",
+            "remote-cache unusual-cxx -c 'tests/space dir/active test.cpp' "
+            "-o 'build/active test.o'\n"
+            "unusual-link src/model.cu -o build/lenet_cuda\n",
+        )
+        manifest = self.write(
+            "manifest.log", "test-source=tests/space dir/active test.cpp\n"
+        )
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                ANALYZER,
+                "source",
+                "--root",
+                self.temporary,
+                "--recipes",
+                recipes,
+                "--manifest",
+                manifest,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual("tests/space dir/active test.cpp\n", result.stdout)
+
+    def test_attached_include_flags_resolve_active_header(self):
+        self.write("tests/smoke_tests.cpp", '#include "selected.h"\n')
+        self.write("tests/include/selected.h", "void Clean();\n")
+        self.write("tests/quote/selected.h", "#include <cublas_v2.h>\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\t$(CXX) src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\t$(CXX) -Itests/include -iquotetests/quote -c $< -o $@\n",
+        )
+
+        result = self.run_checker(
+            "source", self.temporary, extra_environment={"CXX": "clang++"}
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests/quote", result.stdout.replace("\\", "/"))
+
+    def test_make_manifest_and_recipe_sources_must_match(self):
+        self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "\t@printf 'test-source=%s\\n' tests/other_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tclang++ src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("manifest", result.stdout.lower())
+        self.assertIn("other_tests.cpp", result.stdout)
+
+    def test_active_header_symlink_cannot_escape_repository(self):
+        outside = tempfile.mkdtemp(prefix="lenet-prohibited-outside-")
+        self.addCleanup(shutil.rmtree, outside)
+        outside_header = os.path.join(outside, "outside.h")
+        with open(outside_header, "w") as output:
+            output.write("void Outside();\n")
+        link = os.path.join(self.temporary, "tests", "escape.h")
+        try:
+            os.symlink(outside_header, link)
+        except OSError as error:
+            self.skipTest("symlink creation unavailable: {0}".format(error))
+        self.write("tests/smoke_tests.cpp", '#include "escape.h"\n')
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("escapes source root", result.stdout.lower())
+
+    def test_clang_ld_and_archive_provenance_reaches_production(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/cpu_reference.cpp\n"
+            "all: build/lenet_cuda\n"
+            "build/lenet_cuda: build/main.o build/libsupport.a\n"
+            "\tclang++ $^ -o $@\n"
+            "build/libsupport.a: build/renamed.o\n"
+            "\tar rcs $@ $<\n"
+            "build/renamed.o: build/oracle.o\n"
+            "\tld -r $< -o $@\n"
+            "build/oracle.o: tests/cpu_reference.cpp\n"
+            "\tccache clang++ -c $< -o $@\n"
+            "build/main.o: src/model.cu\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("libsupport.a", result.stdout)
+
+    def test_test_only_links_do_not_taint_production(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/cpu_reference.cpp\n"
+            "all: build/lenet_cuda build/workflow_tests\n"
+            "build/lenet_cuda: build/main.o\n"
+            "\tclang++ $^ -o $@\n"
+            "build/workflow_tests: build/oracle.o\n"
+            "\tclang++ $^ -o $@\n"
+            "build/oracle.o: tests/cpu_reference.cpp\n"
+            "\tclang++ -c $< -o $@\n"
+            "build/main.o: src/model.cu\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_production_include_option_path_is_not_an_artifact_input(self):
+        os.makedirs(os.path.join(self.temporary, "src", "include path"))
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda: build/main.o\n"
+            "\tclang++ $^ -o $@\n"
+            "build/main.o: src/model.cu\n"
+            "\tclang++ -I 'src/include path' -c $< -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_production_response_file_is_rejected_as_ambiguous(self):
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tclang++ @build/objects.rsp -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("response", result.stdout.lower())
 
     def valid_build_log(self, completion=True):
         log = (
@@ -392,6 +627,46 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("failure record", result.stdout.lower())
+
+    def test_actual_build_scan_accepts_benign_error_zero_and_documentation(self):
+        log = self.write(
+            "verbose-build.log",
+            "make: *** [Makefile:80: all] Error 0\n"
+            "compiler documentation: error: means a failed translation\n" +
+            self.valid_build_log(),
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_actual_build_scan_rejects_compiler_error_diagnostic(self):
+        log = self.write(
+            "verbose-build.log",
+            "src/main.cu:4:2: error: invalid conversion\n" +
+            self.valid_build_log(),
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("failure record", result.stdout.lower())
+
+    def test_actual_build_scan_accepts_clang_recipe_structure(self):
+        log = self.write(
+            "verbose-build.log",
+            "clang++ -std=c++14 -gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90 -c src/main.cu "
+            "-o build/main.o\n"
+            "clang++ -std=c++14 -gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90 build/main.o "
+            "-o build/lenet_cuda\n"
+            "event=build status=pass target=all\n",
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertEqual(0, result.returncode, result.stdout)
 
     def test_dry_run_scan_is_explicit_and_does_not_require_completion_marker(self):
         log = self.write("verbose-build.log", self.valid_build_log(False))

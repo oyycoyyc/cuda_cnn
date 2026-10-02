@@ -248,3 +248,46 @@ workflow execution, Compute Sanitizer, `cuobjdump`, dynamic dependency
 inspection, default training, timing, and the >=99% H20 accuracy gate remain
 unavailable locally and are not claimed. The semantic checklist remains
 deliberately unchecked.
+
+## Compliance Hardening Subtask 13.1
+
+Stabilized the recipe-analyzer foundation around Python 3.6-compatible
+`shlex.split(..., posix=True)`, translation-unit suffix detection independent
+of compiler/wrapper names, exactly one supported output for source-bearing
+commands, and exact normalized reconciliation between Make's test-source
+manifest and recipe translation units. The shell entry point preserves the
+analyzer diagnostic and returns failure when analysis fails.
+
+The three inherited parser/manifest tests were already green. A focused direct
+analyzer regression for an unknown wrapper plus quoted source/output paths
+failed under an intentional naive-whitespace-tokenization mutation with the
+expected missing-recipe manifest error. The tightened wrapper regression failed
+under intentional removal of the source-output requirement because the source
+scan incorrectly returned success.
+
+Focused final verification:
+
+```text
+python -m unittest -v \
+  ...test_clang_ccache_quoted_paths_and_iquote_order_are_scanned \
+  ...test_attached_include_flags_resolve_active_header \
+  ...test_make_manifest_and_recipe_sources_must_match \
+  ...test_analyzer_accepts_unknown_wrapper_with_quoted_source_and_output \
+  ...test_source_scan_propagates_source_bearing_recipe_without_output
+Ran 5 tests in 2.012s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed: scripts/analyze_build_graph.py
+
+bash -n scripts/check_prohibited.sh
+exit 0
+```
+
+Inherited active-header, artifact-provenance, build-log, and documentation work
+is retained in this stabilization commit but remains assigned to independent
+audit/refinement in Subtasks 13.2 through 13.5. Python 3.6 runtime execution and
+all CUDA/H20 evidence remain unavailable locally and are not claimed.

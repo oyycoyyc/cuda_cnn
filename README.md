@@ -88,9 +88,14 @@ Use `make V=1` to retain full compiler and linker commands for inspection.
 `make compliance` runs checker unit tests, reconciles the comment inventory,
 and performs the source-only scan of Make-compiled production/test inputs for
 prohibited dependencies, production CPU fallback wiring, and
-implementation-dependent random APIs. It recognizes practical direct source,
-header, namespace, API, forced-include, and linker forms; it does not claim to
-decode arbitrary preprocessor obfuscation.
+implementation-dependent random APIs. A Python 3.6-compatible `shlex` analyzer
+cross-checks Make's expected test-source manifest against the forced `all`
+recipes, follows each command's ordered `-iquote`/`-I` paths, and traces
+tests-owned provenance through direct compilation, relocatable links, and
+archives. Response files and shell-obfuscated recipes affecting `lenet_cuda`
+fail closed because their inputs cannot be proven. The gate recognizes practical
+direct source, header, namespace, API, forced-include, and linker forms; it does
+not claim to decode arbitrary preprocessor or shell obfuscation.
 
 To inspect commands without executing them, capture a dry-run and label it as
 such. This proves only what Make would invoke; the commands were not executed:

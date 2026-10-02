@@ -32,6 +32,7 @@ case:
 python3.6 -m pip install --require-hashes -r requirements-py36.txt
 python3.6 -m py_compile \
   scripts/prepare_mnist.py scripts/check_comments.py \
+  scripts/analyze_build_graph.py \
   tests/test_prepare_mnist.py tests/test_data_interop.py \
   tests/test_check_prohibited.py tests/test_check_comments.py \
   tests/test_documentation.py tests/output_format_tests.py \
@@ -76,10 +77,14 @@ marker. For command inspection without execution, use `make -Bn V=1` and scan
 that output with `check_prohibited.sh dry-run`; dry-run output is not
 successful-build evidence.
 
-The source scan derives compiled test translation units and transitive output
-provenance from the forced `all` dry run, recursively scans their project-local
-headers, and rejects any tests-owned source or object in the `lenet_cuda` link.
-Dormant fixtures that are absent from the build graph are outside that scope.
+The source scan cross-checks a Make-emitted test-source manifest against the
+forced `all` recipes. It shell-tokenizes direct commands, follows their ordered
+`-iquote` and `-I` paths, recursively scans project-local headers, canonicalizes
+full file paths, and traces test provenance through objects, relocatable links,
+and archives into `lenet_cuda`. Dormant fixtures absent from the build graph are
+outside that scope. Response files or shell-obfuscated recipes that can affect
+`lenet_cuda` are unsupported and fail closed rather than silently weakening the
+evidence.
 
 ## CUDA Operator And Workflow Tests
 

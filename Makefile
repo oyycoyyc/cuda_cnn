@@ -22,6 +22,8 @@ endif
 
 HOST_TEST_SOURCES := $(wildcard tests/*_tests.cpp)
 CUDA_TEST_SOURCES := $(wildcard tests/*_tests.cu)
+COMPLIANCE_TEST_SOURCES := $(HOST_TEST_SOURCES) $(CUDA_TEST_SOURCES) \
+  tests/cpu_reference.cpp
 HOST_TEST_NAMES := $(basename $(notdir $(HOST_TEST_SOURCES)))
 CUDA_TEST_NAMES := $(basename $(notdir $(CUDA_TEST_SOURCES)))
 COLLIDING_TEST_NAMES := $(filter $(HOST_TEST_NAMES),$(CUDA_TEST_NAMES))
@@ -74,12 +76,17 @@ Q := @
 endif
 
 .PHONY: all host-tests cuda-tests python-tests prepare-data compliance test \
-  makefile-tests check acceptance clean
+  makefile-tests check acceptance compliance-test-sources clean
 .SECONDARY: $(HOST_TEST_OBJECTS) $(CUDA_TEST_OBJECTS)
 
 all: $(BUILD_DIR)/lenet_cuda$(EXEEXT) $(HOST_TEST_PROGRAMS) \
   $(CUDA_TEST_PROGRAMS)
 	@echo "event=build status=pass target=all"
+
+compliance-test-sources:
+	@for source in $(COMPLIANCE_TEST_SOURCES); do \
+	  printf 'test-source=%s\n' "$$source"; \
+	done
 
 host-tests: $(HOST_TEST_PROGRAMS)
 	$(Q)set -e; for test in $(HOST_TEST_PROGRAMS); do "$$test"; done
