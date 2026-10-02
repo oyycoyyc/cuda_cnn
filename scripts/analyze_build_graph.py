@@ -13,7 +13,8 @@ ARTIFACT_SUFFIXES = (".o", ".obj", ".a", ".lib", ".so", ".dll")
 INCLUDE_RE = re.compile(
     r'^\s*#\s*include\s*([<"])([^>"]+)[>"]'
 )
-CONTROL_TOKENS = ("&&", "||", "|", ">", ">>", "<", "<<")
+SHELL_CONTROL_CHARS = ";&|<>"
+ARCHIVE_TOOLS = ("ar", "llvm-ar", "gcc-ar")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -61,6 +62,32 @@ def source_token(root, token, require_file):
     }
 
 
+def executable_basename(token):
+    basename = token.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    if basename.endswith(".exe"):
+        basename = basename[:-4]
+    return basename
+
+
+def positional_archive_output(tokens):
+    if len(tokens) < 4 or executable_basename(tokens[0]) not in ARCHIVE_TOOLS:
+        return None
+    operation = tokens[1]
+    if operation.startswith("-"):
+        operation = operation[1:]
+    if (not operation or not operation.isalpha() or
+            not any(action in operation.lower() for action in ("q", "r"))):
+        return None
+    archive = tokens[2]
+    if archive.startswith("-") or not archive.lower().endswith((".a", ".lib")):
+        return None
+    if not any(not token.startswith("-") and
+               token.lower().endswith(ARTIFACT_SUFFIXES)
+               for token in tokens[3:]):
+        return None
+    return archive, 2
+
+
 def output_token(tokens):
     outputs = []
     output_indexes = set()
@@ -84,15 +111,14 @@ def output_token(tokens):
                 output_indexes.add(index)
         index += 1
 
-    if not outputs:
-        for index, token in enumerate(tokens):
-            if token.startswith("-") or not token.lower().endswith((".a", ".lib")):
-                continue
-            later = tokens[index + 1:]
-            if any(item.lower().endswith(ARTIFACT_SUFFIXES) for item in later):
-                outputs.append(token)
-                output_indexes.add(index)
-                break
+    if not outputs and not any(
+            not token.startswith("-") and token.lower().endswith(SOURCE_SUFFIXES)
+            for token in tokens):
+        archive_output = positional_archive_output(tokens)
+        if archive_output is not None:
+            output, index = archive_output
+            outputs.append(output)
+            output_indexes.add(index)
     if len(outputs) > 1:
         raise AnalysisError("recipe command has multiple output paths")
     return (outputs[0] if outputs else None), output_indexes
@@ -135,13 +161,49 @@ def include_directories(root, tokens):
     return quote_dirs, include_dirs
 
 
-def has_unsupported_shell(tokens):
-    for token in tokens:
-        if token in CONTROL_TOKENS or "$(" in token or "`" in token:
+def has_unsupported_shell(line):
+    single_quoted = False
+    double_quoted = False
+    escaped = False
+    index = 0
+    while index < len(line):
+        character = line[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if character == "\\" and not single_quoted:
+            escaped = True
+            index += 1
+            continue
+        if character == "'" and not double_quoted:
+            single_quoted = not single_quoted
+            index += 1
+            continue
+        if character == '"' and not single_quoted:
+            double_quoted = not double_quoted
+            index += 1
+            continue
+        if single_quoted:
+            index += 1
+            continue
+        if character == "`" or (character == "$" and
+                                  index + 1 < len(line) and
+                                  line[index + 1] == "("):
             return True
-        if token.endswith(";") and token != ";":
+        if not double_quoted and character in SHELL_CONTROL_CHARS:
             return True
+        index += 1
     return False
+
+
+def split_recipe(line):
+    lexer = shlex.shlex(
+        line, posix=True, punctuation_chars=SHELL_CONTROL_CHARS
+    )
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return list(lexer)
 
 
 def parse_recipes(root, recipe_path, require_sources=True):
@@ -152,7 +214,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
             if not line.strip():
                 continue
             try:
-                tokens = shlex.split(line, posix=True)
+                tokens = split_recipe(line)
             except ValueError as error:
                 raise AnalysisError(
                     "cannot parse Make recipe line {0}: {1}".format(line_number, error)
@@ -169,6 +231,21 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 if parsed is not None:
                     sources.append(parsed)
                     source_indexes.add(index)
+            response = any(token.startswith("@") for token in tokens)
+            unsupported_shell = has_unsupported_shell(line)
+            tests_owned = any(
+                source["relative"].startswith("tests/") for source in sources
+            )
+            if tests_owned and response:
+                raise AnalysisError(
+                    "unsupported response-file input in tests-owned source recipe "
+                    "on line {0}".format(line_number)
+                )
+            if tests_owned and unsupported_shell:
+                raise AnalysisError(
+                    "unsupported shell control in tests-owned source recipe on line "
+                    "{0}".format(line_number)
+                )
             if sources and output is None:
                 raise AnalysisError(
                     "source-bearing recipe has no supported output on line {0}".format(
@@ -201,8 +278,8 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 "candidate_inputs": candidates,
                 "quote_dirs": quote_dirs,
                 "include_dirs": include_dirs,
-                "response": any(token.startswith("@") for token in tokens),
-                "unsupported_shell": has_unsupported_shell(tokens),
+                "response": response,
+                "unsupported_shell": unsupported_shell,
             })
     return commands
 

@@ -67,6 +67,26 @@ class ProhibitedCheckerTest(unittest.TestCase):
             universal_newlines=True,
         )
 
+    def run_analyzer(self, recipes, manifest):
+        recipe_path = self.write("recipes.log", recipes)
+        manifest_path = self.write("manifest.log", manifest)
+        return subprocess.run(
+            [
+                sys.executable,
+                ANALYZER,
+                "source",
+                "--root",
+                self.temporary,
+                "--recipes",
+                recipe_path,
+                "--manifest",
+                manifest_path,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+
     def assert_rejected(self, relative_path, content, mode="source"):
         path = os.path.join(self.temporary, relative_path)
         original = None
@@ -297,6 +317,76 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("source-bearing recipe has no supported output", result.stdout)
         self.assertIn("Make recipe provenance analysis failed", result.stdout)
 
+    def test_source_with_archive_input_still_requires_explicit_output(self):
+        result = self.run_analyzer(
+            "compiler-wrapper clang++ -c tests/smoke_tests.cpp "
+            "build/libsupport.a build/input.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("source-bearing recipe has no supported output", result.stdout)
+
+    def test_known_archive_tool_path_supports_positional_output(self):
+        result = self.run_analyzer(
+            "clang++ -c src/model.cu -o build/model.o\n"
+            "tools/llvm-ar rcs build/libmodel.a build/model.o\n"
+            "clang++ build/libmodel.a -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_test_source_recipe_rejects_response_file_before_manifest_mismatch(self):
+        self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")
+
+        result = self.run_analyzer(
+            "compiler-wrapper clang++ -c tests/smoke_tests.cpp "
+            "@build/test.rsp -o build/smoke.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/other_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("response", result.stdout.lower())
+        self.assertNotIn("manifest mismatch", result.stdout.lower())
+
+    def test_test_source_recipe_rejects_standalone_and_adjacent_shell_controls(self):
+        controls = (
+            "; other-command",
+            "&&other-command",
+            "|other-command",
+            "2>/dev/null",
+            "trailing;",
+            "$(other-command)",
+            "`other-command`",
+        )
+        for control in controls:
+            with self.subTest(control=control):
+                result = self.run_analyzer(
+                    "compiler-wrapper clang++ -c tests/smoke_tests.cpp "
+                    "-o build/smoke.o {0}\n".format(control) +
+                    "clang++ src/model.cu -o build/lenet_cuda\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("shell", result.stdout.lower())
+
+    def test_test_source_recipe_allows_quoted_and_escaped_literal_punctuation(self):
+        result = self.run_analyzer(
+            "compiler-wrapper clang++ '-DNAME=$(literal)' "
+            "'-DPIPE=left|right' -I 'tests/include&support' "
+            "-DSEMI=left\\;right -c tests/smoke_tests.cpp "
+            "-o build/smoke.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
     def test_build_scan_rejects_every_prohibited_linker_flag(self):
         for library in ("cudnn", "cublas", "nvinfer", "nvonnxparser", "curand"):
             with self.subTest(library=library):
@@ -463,6 +553,18 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("manifest", result.stdout.lower())
         self.assertIn("other_tests.cpp", result.stdout)
+
+    def test_recipe_test_source_absent_from_manifest_is_rejected(self):
+        self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")
+        result = self.run_analyzer(
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+            "clang++ -c tests/other_tests.cpp -o build/other.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("missing from manifest: tests/other_tests.cpp", result.stdout)
 
     def test_active_header_symlink_cannot_escape_repository(self):
         outside = tempfile.mkdtemp(prefix="lenet-prohibited-outside-")
@@ -757,6 +859,19 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn(command, result.stdout.lower())
                 self.assertIn("failed", result.stdout.lower())
+
+    def test_source_scan_propagates_malformed_and_nonzero_make_invocations(self):
+        makefiles = (
+            "all:\n  malformed recipe\n",
+            "$(error forced nonzero Make invocation)\nall:\n\t@true\n",
+        )
+        for makefile in makefiles:
+            with self.subTest(makefile=makefile):
+                self.write("Makefile", makefile)
+                result = self.run_checker("source", self.temporary)
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("make dry-run failed", result.stdout.lower())
 
     def test_invalid_mode_and_missing_target_fail(self):
         invalid = self.run_checker("unknown", self.temporary)

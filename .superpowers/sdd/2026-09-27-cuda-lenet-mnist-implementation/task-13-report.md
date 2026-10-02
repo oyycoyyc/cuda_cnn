@@ -291,3 +291,64 @@ Inherited active-header, artifact-provenance, build-log, and documentation work
 is retained in this stabilization commit but remains assigned to independent
 audit/refinement in Subtasks 13.2 through 13.5. Python 3.6 runtime execution and
 all CUDA/H20 evidence remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.1 Fix Round 1
+
+### Review Issues Addressed
+
+- Restricted positional archive-output inference to unambiguous `ar`,
+  `llvm-ar`, or `gcc-ar` commands, including executable paths and `.exe`
+  suffixes, with a recognized replace/quick-append operation, archive output
+  position, and following artifact member. Every source-bearing recipe still
+  requires an explicit `-o`, even when archive inputs precede other artifacts.
+- Replaced convenience splitting with Python 3.6-compatible punctuation-aware
+  `shlex.shlex` tokenization. Standalone and adjacent command separators,
+  pipelines, redirections, command substitutions, and backticks are detected;
+  quoted or escaped literal punctuation in normal compiler options and paths is
+  not rejected.
+- Reject response-file tokens and unsupported shell controls immediately when
+  a recipe contains a normalized tests-owned translation unit, before test
+  manifest reconciliation. Production-graph validation remains unchanged.
+- Added direct analyzer regressions for extra recipe test sources absent from
+  the manifest and checker regressions proving malformed and explicit nonzero
+  Make invocations propagate failure.
+
+### TDD Evidence
+
+The five initial focused regressions ran before the analyzer change. Archive
+ambiguity, response-file ordering, and all seven shell-control subcases failed
+for the expected reasons; the existing manifest-extra and Make-failure behavior
+was already correct:
+
+```text
+Ran 5 tests in 1.326s
+FAILED (failures=9)
+```
+
+After the minimal analyzer change, those five tests passed. Positive focused
+coverage also preserves quoted/escaped compiler punctuation and a path-qualified
+`llvm-ar rcs` positional archive recipe.
+
+### Focused Verification
+
+```text
+python -m unittest -v <13 focused Subtask 13.1 parser/checker tests>
+Ran 13 tests
+OK
+
+python -m py_compile scripts/analyze_build_graph.py tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+bash -n scripts/check_prohibited.sh
+exit 0
+
+git diff --check
+exit 0
+```
+
+No Subtask 13.2-or-later behavior was intentionally changed. Python 3.6 runtime
+execution and all CUDA/H20 evidence remain unavailable locally and are not
+claimed.
