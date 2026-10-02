@@ -532,6 +532,61 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("tests/quote", result.stdout.replace("\\", "/"))
 
+    def test_duplicate_headers_follow_complete_quote_search_order(self):
+        source_directory = "tests/source dir"
+        first_quote = "tests/quote first.cpp"
+        second_quote = "tests/quote second"
+        first_include = "tests/include first.c"
+        second_include = "tests/include second"
+        self.write(
+            source_directory + "/active tests.cpp",
+            '#include "from_source.h"\n'
+            '#include "from_first_quote.h"\n'
+            '#include "from_second_quote.h"\n'
+            '#include "from_first_include.h"\n'
+            '#include <project_angle.h>\n',
+        )
+
+        selected = (
+            source_directory + "/from_source.h",
+            first_quote + "/from_first_quote.h",
+            second_quote + "/from_second_quote.h",
+            first_include + "/from_first_include.h",
+            second_include + "/project_angle.h",
+        )
+        for path in selected:
+            self.write(path, "void Selected();\n")
+
+        duplicates = (
+            first_quote + "/from_source.h",
+            second_quote + "/from_source.h",
+            first_include + "/from_source.h",
+            second_include + "/from_source.h",
+            second_quote + "/from_first_quote.h",
+            first_include + "/from_first_quote.h",
+            second_include + "/from_first_quote.h",
+            first_include + "/from_second_quote.h",
+            second_include + "/from_second_quote.h",
+            second_include + "/from_first_include.h",
+        )
+        for path in duplicates:
+            self.write(path, "void DormantDuplicate();\n")
+
+        result = self.run_analyzer(
+            "clang++ -c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -I 'tests/include first.c' '-Itests/include second' "
+            "-iquote 'tests/quote first.cpp' '-iquotetests/quote second' "
+            "-c 'tests/source dir/active tests.cpp' -o build/active.o\n",
+            "test-source=tests/source dir/active tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(
+            set((source_directory + "/active tests.cpp",) + selected),
+            set(result.stdout.splitlines()),
+        )
+
     def test_make_manifest_and_recipe_sources_must_match(self):
         self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")
         self.write(
@@ -569,20 +624,37 @@ class ProhibitedCheckerTest(unittest.TestCase):
     def test_active_header_symlink_cannot_escape_repository(self):
         outside = tempfile.mkdtemp(prefix="lenet-prohibited-outside-")
         self.addCleanup(shutil.rmtree, outside)
-        outside_header = os.path.join(outside, "outside.h")
-        with open(outside_header, "w") as output:
+        with open(os.path.join(outside, "outside.h"), "w") as output:
             output.write("void Outside();\n")
-        link = os.path.join(self.temporary, "tests", "escape.h")
+        link = os.path.join(self.temporary, "tests", "escape")
+        junction = False
         try:
-            os.symlink(outside_header, link)
+            os.symlink(outside, link, target_is_directory=True)
         except OSError as error:
-            self.skipTest("symlink creation unavailable: {0}".format(error))
-        self.write("tests/smoke_tests.cpp", '#include "escape.h"\n')
+            if os.name != "nt":
+                self.skipTest("symlink creation unavailable: {0}".format(error))
+            created = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", link, outside],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+            )
+            if created.returncode != 0:
+                self.skipTest("junction creation unavailable: {0}".format(created.stdout))
+            junction = True
+        self.write("tests/smoke_tests.cpp", '#include "escape/outside.h"\n')
 
-        result = self.run_checker("source", self.temporary)
+        try:
+            result = self.run_checker("source", self.temporary)
 
-        self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("escapes source root", result.stdout.lower())
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            self.assertIn("escapes source root", result.stdout.lower())
+        finally:
+            if os.path.lexists(link):
+                if junction:
+                    os.rmdir(link)
+                else:
+                    os.unlink(link)
 
     def test_clang_ld_and_archive_provenance_reaches_production(self):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")

@@ -127,6 +127,7 @@ def output_token(tokens):
 def include_directories(root, tokens):
     quote_dirs = []
     include_dirs = []
+    option_indexes = set()
     index = 0
     while index < len(tokens):
         token = tokens[index]
@@ -137,14 +138,17 @@ def include_directories(root, tokens):
                 raise AnalysisError("include option has no directory: {0}".format(token))
             value = tokens[index + 1]
             destination = quote_dirs if token == "-iquote" else include_dirs
+            option_indexes.update((index, index + 1))
             index += 2
         elif token.startswith("-iquote") and len(token) > len("-iquote"):
             value = token[len("-iquote"):]
             destination = quote_dirs
+            option_indexes.add(index)
             index += 1
         elif token.startswith("-I") and len(token) > 2:
             value = token[2:]
             destination = include_dirs
+            option_indexes.add(index)
             index += 1
         else:
             index += 1
@@ -158,7 +162,7 @@ def include_directories(root, tokens):
                 "include directory escapes source root through symlink: {0}".format(value)
             )
         destination.append(resolved)
-    return quote_dirs, include_dirs
+    return quote_dirs, include_dirs, option_indexes
 
 
 def has_unsupported_shell(line):
@@ -222,10 +226,13 @@ def parse_recipes(root, recipe_path, require_sources=True):
             if not tokens:
                 continue
             output, output_indexes = output_token(tokens)
+            quote_dirs, include_dirs, include_option_indexes = include_directories(
+                root, tokens
+            )
             sources = []
             source_indexes = set()
             for index, token in enumerate(tokens):
-                if index in output_indexes:
+                if index in output_indexes or index in include_option_indexes:
                     continue
                 parsed = source_token(root, token, require_sources)
                 if parsed is not None:
@@ -255,10 +262,10 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output_path = None
             if output is not None:
                 _, output_path = resolve_path(root, output)
-            quote_dirs, include_dirs = include_directories(root, tokens)
             candidates = []
             for index, token in enumerate(tokens):
-                if index in output_indexes or index in source_indexes:
+                if (index in output_indexes or index in source_indexes or
+                        index in include_option_indexes):
                     continue
                 if token.startswith("-") or token.startswith("@"):
                     continue

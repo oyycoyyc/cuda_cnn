@@ -352,3 +352,67 @@ exit 0
 No Subtask 13.2-or-later behavior was intentionally changed. Python 3.6 runtime
 execution and all CUDA/H20 evidence remain unavailable locally and are not
 claimed.
+
+## Compliance Hardening Subtask 13.2
+
+Audited the inherited active-header closure and retained its per-translation-
+unit search model: the including file directory precedes all `-iquote`
+directories in command order, which precede all `-I` directories in command
+order. Quoted includes fail closed when unresolved, reachable project-local
+angle includes are scanned, each selected header is recursively visited by its
+canonical real path, escapes are rejected, and dormant duplicate fixtures are
+not added to the active set.
+
+The audit found that separated include-option operands were also being parsed
+as possible translation units. A valid quoted include directory ending in
+`.c` or `.cpp` therefore failed before include resolution. Include parsing now
+records attached and separated option-token positions so those tokens cannot be
+classified as source or artifact inputs. This is limited to active-input
+classification and does not change artifact provenance or build-log behavior.
+
+### TDD Evidence
+
+The new complete-order regression failed before the analyzer change:
+
+```text
+test_duplicate_headers_follow_complete_quote_search_order ... FAIL
+build graph analysis failed: source file does not exist: tests/include first.c
+Ran 1 test
+FAILED (failures=1)
+```
+
+The regression uses duplicate names at the including directory, two quoted
+include directories, and two normal include directories. It mixes attached and
+separated options with quoted paths, and includes a project-local angle header.
+Its hand-written expected active-file set contains only each winning candidate.
+After GREEN, an intentional `-I`-before-`-iquote` mutation made the same test
+fail by selecting both wrong normal-include duplicates; the correct order was
+then restored.
+
+### Focused Verification
+
+```text
+python -m unittest -v \
+  ...test_active_test_transitive_headers_are_scanned_without_dependency_files \
+  ...test_active_test_unresolved_quoted_include_fails_closed \
+  ...test_active_header_symlink_cannot_escape_repository \
+  ...test_dormant_negative_fixture_is_ignored_but_compiled_test_is_scanned \
+  ...test_duplicate_headers_follow_complete_quote_search_order
+Ran 5 tests in 2.609s
+OK
+
+python -m py_compile \
+  scripts/analyze_build_graph.py tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The symlink-escape regression now uses a directory junction fallback when
+unprivileged Windows cannot create a symbolic link, so all five named tests ran
+without skips. Python 3.6 runtime execution and all CUDA/H20 evidence remain
+unavailable locally and are not claimed.

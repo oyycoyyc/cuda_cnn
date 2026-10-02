@@ -100,7 +100,7 @@ Commit subject: `fix: stabilize compliance recipe analysis`
 - Consumes: per-translation-unit recipe tokens from Subtask 13.1.
 - Produces: recursive active-header closure following compiler quote-include order and rejecting unresolved or escaping project-local inputs.
 
-- [ ] **Step 1: Add focused failing tests**
+- [x] **Step 1: Add focused failing tests**
 
 Add/confirm tests for:
 
@@ -113,17 +113,17 @@ def test_dormant_negative_fixture_is_ignored_but_compiled_test_is_scanned(): ...
 
 Also add a duplicate-header test proving resolution order is: including file directory, each `-iquote` directory in command order, then each `-I` directory in command order.
 
-- [ ] **Step 2: Run the header RED tests**
+- [x] **Step 2: Run the header RED tests**
 
 Run the five named tests directly with `python -m unittest -v`.
 
 Expected: the new duplicate-order or boundary case fails before implementation.
 
-- [ ] **Step 3: Implement exact recursive include closure**
+- [x] **Step 3: Implement exact recursive include closure**
 
 Parse separated and attached `-I`/`-iquote` options, preserve their relative ordering within each compiler search class, resolve the complete file through `os.path.realpath`, reject any real path outside the root, recurse only through active includes, and fail on unresolved quoted includes. Angle-bracket system headers may remain unresolved, but any resolved project-local angle include must be scanned.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run the five focused tests and Python 3.6 grammar parsing. Commit subject: `fix: resolve active compliance headers exactly`.
 
