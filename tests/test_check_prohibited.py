@@ -629,30 +629,34 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual("tests/smoke_tests.cpp\n", result.stdout)
 
-    def test_active_visit_key_collapses_only_equivalent_lexical_directories(self):
+    def test_parent_relative_include_scans_each_same_real_header_route(self):
         specification = importlib.util.spec_from_file_location(
             "analyze_build_graph", ANALYZER
         )
         analyzer = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(analyzer)
-        self.assertTrue(
-            hasattr(analyzer, "active_visit_key"),
-            "analyzer must expose active_visit_key for deterministic identity tests",
+        source = self.write(
+            "tests/smoke_tests.cpp",
+            '#include "../route-a/shared/header.h"\n'
+            '#include "../route-b/shared/header.h"\n',
         )
-        canonical_file = os.path.join(self.temporary, "real", "header.h")
-        canonical_directory = os.path.dirname(canonical_file)
-        loop_file = os.path.join(self.temporary, "loop", "real", "header.h")
-        loop_directory = os.path.dirname(loop_file)
-        alias_file = os.path.join(self.temporary, "alias", "header.h")
-        alias_directory = os.path.dirname(alias_file)
+        canonical_header = self.write(
+            "real/header.h", '#include "../target.h"\n'
+        )
+        route_a_header = self.write("route-a/shared/header.h", "")
+        route_b_header = self.write("route-b/shared/header.h", "")
+        self.write("route-a/target.h", "void CleanTarget();\n")
+        route_b_target = self.write("route-b/target.h", "")
+        outside = self.temporary + "-outside.h"
         realpath = os.path.realpath
         modeled_paths = {
-            os.path.normcase(os.path.abspath(canonical_file)): canonical_file,
-            os.path.normcase(os.path.abspath(loop_file)): canonical_file,
-            os.path.normcase(os.path.abspath(alias_file)): canonical_file,
-            os.path.normcase(os.path.abspath(canonical_directory)): canonical_directory,
-            os.path.normcase(os.path.abspath(loop_directory)): canonical_directory,
-            os.path.normcase(os.path.abspath(alias_directory)): alias_directory,
+            os.path.normcase(os.path.abspath(route_a_header)): canonical_header,
+            os.path.normcase(os.path.abspath(route_b_header)): canonical_header,
+            os.path.normcase(os.path.abspath(os.path.dirname(route_a_header))):
+                os.path.dirname(canonical_header),
+            os.path.normcase(os.path.abspath(os.path.dirname(route_b_header))):
+                os.path.dirname(canonical_header),
+            os.path.normcase(os.path.abspath(route_b_target)): outside,
         }
 
         def modeled_realpath(path):
@@ -661,12 +665,44 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         with mock.patch.object(
                 analyzer.os.path, "realpath", side_effect=modeled_realpath):
-            canonical_key = analyzer.active_visit_key(canonical_file, [], [])
-            loop_key = analyzer.active_visit_key(loop_file, [], [])
-            alias_key = analyzer.active_visit_key(alias_file, [], [])
+            with self.assertRaises(analyzer.AnalysisError) as context:
+                analyzer.collect_active_inputs(
+                    realpath(self.temporary), [(source, [], [])]
+                )
 
-        self.assertEqual(canonical_key, loop_key)
-        self.assertNotEqual(canonical_key, alias_key)
+        self.assertIn(
+            "active include escapes source root through symlink",
+            str(context.exception),
+        )
+
+    def test_modeled_directory_alias_recursion_terminates_at_canonical_file(self):
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        source = self.write(
+            "tests/smoke_tests.cpp",
+            '#include "../loop/tests/smoke_tests.cpp"\n',
+        )
+        alias = self.write("loop/tests/smoke_tests.cpp", "")
+        realpath = os.path.realpath
+
+        def modeled_realpath(path):
+            if os.path.normcase(os.path.abspath(path)) == os.path.normcase(alias):
+                return realpath(source)
+            return realpath(path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            try:
+                active = analyzer.collect_active_inputs(
+                    realpath(self.temporary), [(source, [], [])]
+                )
+            except analyzer.AnalysisError as error:
+                self.fail("canonical recursion did not terminate: {0}".format(error))
+
+        self.assertEqual(set((realpath(source),)), active)
 
     def test_same_real_header_lexical_routes_are_scanned_independently(self):
         source = self.write(

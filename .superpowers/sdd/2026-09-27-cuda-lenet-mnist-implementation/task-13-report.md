@@ -524,3 +524,63 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 Python 3.6 runtime execution and all CUDA/H20 evidence remain unavailable
 locally and are not claimed. Subtask 13.3 and later behavior was not changed.
+
+## Compliance Hardening Subtask 13.2 Fix Round 3
+
+### Context Collision Addressed
+
+- Restored the full normalized lexical file path plus the translation unit's
+  quote/include directories as the global visited context. Distinct lexical
+  routes to one real header therefore retain different parent-relative include
+  semantics even when both lexical directories canonicalize to one directory.
+- Added a canonical-real-file set scoped to the current DFS chain. Re-entering
+  the same real file stops only that recursive branch, and `finally` removal
+  permits later independent lexical routes to scan normally.
+- Retained canonical active-output deduplication and canonical source-root/file
+  checks for every selected candidate before recursive traversal.
+- Documented the safety boundary in the analyzer: an actually unguarded
+  recursive include cannot compile, so terminating a repeated canonical file in
+  the current chain cannot conceal executable compiled content.
+
+### TDD Evidence
+
+Both deterministic regressions failed before the production change:
+
+```text
+test_parent_relative_include_scans_each_same_real_header_route ... FAIL
+AssertionError: AnalysisError not raised
+
+test_modeled_directory_alias_recursion_terminates_at_canonical_file ... FAIL
+AssertionError: canonical recursion did not terminate: cannot resolve quoted include ...
+
+Ran 2 tests
+FAILED (failures=2)
+```
+
+The first regression models two non-recursive lexical routes whose header and
+containing directories share canonical identities. The shared header includes
+`../target.h`; the first route is clean and the second resolves through a
+modeled source-root escape. The second regression models directory-alias
+recursion without requiring Windows symlink privilege.
+
+### Focused Verification
+
+```text
+python -m unittest -v <10 focused Subtask 13.2 active-header tests>
+Ran 10 tests in 3.260s
+OK (skipped=2: Windows denied file and directory symlink creation)
+
+python -m py_compile scripts/analyze_build_graph.py tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The retained real directory-symlink recursion regression remains in the focused
+set; its deterministic modeled companion ran locally. Python 3.6 runtime
+execution and all CUDA/H20 evidence remain unavailable locally and are not
+claimed. Subtask 13.3 and later behavior was not changed.

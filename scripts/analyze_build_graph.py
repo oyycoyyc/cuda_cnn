@@ -350,8 +350,7 @@ def reconcile_test_sources(root, commands, expected):
 def active_visit_key(path, quote_dirs, include_dirs):
     lexical_path = os.path.abspath(os.path.normpath(path))
     return (
-        os.path.realpath(lexical_path),
-        os.path.realpath(os.path.dirname(lexical_path)),
+        lexical_path,
         tuple(quote_dirs),
         tuple(include_dirs),
     )
@@ -360,66 +359,76 @@ def active_visit_key(path, quote_dirs, include_dirs):
 def collect_active_inputs(root, compile_contexts):
     active = set()
     visited = set()
+    recursion_stack = set()
 
     def visit(path, quote_dirs, include_dirs):
         lexical_path = os.path.abspath(os.path.normpath(path))
         key = active_visit_key(lexical_path, quote_dirs, include_dirs)
-        real_path = key[0]
+        real_path = os.path.realpath(lexical_path)
         if not is_within(root, real_path):
             raise AnalysisError(
                 "active include escapes source root: {0}".format(lexical_path)
             )
         if key in visited:
             return
+        # An unguarded recursive include cannot compile. Stopping a repeated
+        # canonical file only in this chain models guarded/pragma-once
+        # termination without hiding content from later independent routes.
+        if real_path in recursion_stack:
+            return
         visited.add(key)
         active.add(real_path)
+        recursion_stack.add(real_path)
         try:
-            source_file = io.open(real_path, "r", encoding="utf-8")
-        except (IOError, OSError) as error:
-            raise AnalysisError(
-                "cannot read active source input {0}: {1}".format(
-                    display_path(root, real_path), error
+            try:
+                source_file = io.open(real_path, "r", encoding="utf-8")
+            except (IOError, OSError) as error:
+                raise AnalysisError(
+                    "cannot read active source input {0}: {1}".format(
+                        display_path(root, real_path), error
+                    )
                 )
-            )
-        with source_file:
-            for line in source_file:
-                match = INCLUDE_RE.match(line)
-                if match is None:
-                    continue
-                delimiter, include_name = match.groups()
-                if delimiter == '"':
-                    search_dirs = [os.path.dirname(lexical_path)] + quote_dirs + include_dirs
-                else:
-                    search_dirs = include_dirs
-                resolved = None
-                for directory in search_dirs:
-                    candidate = os.path.abspath(os.path.normpath(
-                        os.path.join(directory, include_name)
-                    ))
-                    if not os.path.exists(candidate):
+            with source_file:
+                for line in source_file:
+                    match = INCLUDE_RE.match(line)
+                    if match is None:
                         continue
-                    candidate_real = os.path.realpath(candidate)
-                    if not is_within(root, candidate_real):
-                        raise AnalysisError(
-                            "active include escapes source root through symlink: {0}".format(
-                                include_name
-                            )
-                        )
-                    if not os.path.isfile(candidate_real):
-                        raise AnalysisError(
-                            "active include is not a file: {0}".format(include_name)
-                        )
-                    resolved = candidate
-                    break
-                if resolved is None:
+                    delimiter, include_name = match.groups()
                     if delimiter == '"':
-                        raise AnalysisError(
-                            "cannot resolve quoted include from {0}: {1}".format(
-                                display_path(root, real_path), include_name
+                        search_dirs = [os.path.dirname(lexical_path)] + quote_dirs + include_dirs
+                    else:
+                        search_dirs = include_dirs
+                    resolved = None
+                    for directory in search_dirs:
+                        candidate = os.path.abspath(os.path.normpath(
+                            os.path.join(directory, include_name)
+                        ))
+                        if not os.path.exists(candidate):
+                            continue
+                        candidate_real = os.path.realpath(candidate)
+                        if not is_within(root, candidate_real):
+                            raise AnalysisError(
+                                "active include escapes source root through symlink: {0}".format(
+                                    include_name
+                                )
                             )
-                        )
-                    continue
-                visit(resolved, quote_dirs, include_dirs)
+                        if not os.path.isfile(candidate_real):
+                            raise AnalysisError(
+                                "active include is not a file: {0}".format(include_name)
+                            )
+                        resolved = candidate
+                        break
+                    if resolved is None:
+                        if delimiter == '"':
+                            raise AnalysisError(
+                                "cannot resolve quoted include from {0}: {1}".format(
+                                    display_path(root, real_path), include_name
+                                )
+                            )
+                        continue
+                    visit(resolved, quote_dirs, include_dirs)
+        finally:
+            recursion_stack.remove(real_path)
 
     for source, quote_dirs, include_dirs in compile_contexts:
         visit(source, quote_dirs, include_dirs)
