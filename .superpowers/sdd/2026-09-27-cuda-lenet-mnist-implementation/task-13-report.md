@@ -584,3 +584,64 @@ The retained real directory-symlink recursion regression remains in the focused
 set; its deterministic modeled companion ran locally. Python 3.6 runtime
 execution and all CUDA/H20 evidence remain unavailable locally and are not
 claimed. Subtask 13.3 and later behavior was not changed.
+
+## Compliance Hardening Subtask 13.3
+
+Audited and hardened the inherited artifact graph around exactly one normalized
+`build/lenet_cuda` or `build/lenet_cuda.exe` output. Positional artifact tokens
+now match analyzed producers even when intermediate names have no conventional
+suffix, so provenance survives arbitrary compiler/linker executable names and
+multiple renamed layers. Reachable project artifact paths that escape the
+source root fail closed instead of disappearing from analysis.
+
+Common creating forms for `ar`, path-qualified `llvm-ar[.exe]`, and `gcc-ar`
+are modeled, including leading-dash operations and a valued `--plugin` option.
+Archive option operands are excluded from artifact inputs, while an archive
+whose reachable members come from a response file remains a known producer and
+is rejected specifically for the unsupported response file. Existing rejection
+of reachable shell controls, duplicate producers, missing producers, and
+tests-owned sources is retained. A tests-owned object linked only into
+`build/workflow_tests` remains accepted, and include-directory/output operands
+are not classified as artifact inputs.
+
+### TDD Evidence
+
+The first eight new focused behaviors were added before the production change.
+The initial seven-test RED run reported three expected failures:
+
+```text
+test_unknown_tools_trace_extensionless_multilayer_provenance ... FAIL
+test_archive_tool_common_forms_trace_provenance
+  (gcc-ar ... --plugin ...) ... FAIL
+test_production_output_must_be_exactly_under_build ... FAIL
+Ran 7 tests
+FAILED (failures=3)
+```
+
+The escaping-artifact regression separately failed because `../hidden.o` was
+silently ignored. During GREEN audit, the archive response-file regression also
+failed first with a missing-producer diagnostic rather than response-file
+rejection. Both passed after the corresponding minimal analyzer changes.
+
+### Focused Verification
+
+```text
+python -m unittest -v <18 focused Subtask 13.3 provenance tests>
+Ran 18 tests in 4.614s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No active-header, scanner-wrapper, build-log, or public documentation behavior
+was changed, and no broad, CUDA, or H20 command was run. Python 3.6 runtime
+execution and all CUDA/H20 evidence remain unavailable locally and are not
+claimed. Subtasks 13.4 and later remain unchanged.

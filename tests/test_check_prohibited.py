@@ -830,6 +830,160 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("libsupport.a", result.stdout)
 
+    def test_unknown_tools_trace_extensionless_multilayer_provenance(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+
+        result = self.run_analyzer(
+            "cache-wrapper unknown-clang -c tests/cpu_reference.cpp "
+            "-o oracle_blob\n"
+            "unknown-relocator -r oracle_blob -o renamed_blob\n"
+            "unknown-linker renamed_blob -o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("renamed_blob", result.stdout)
+
+    def test_archive_tool_common_forms_trace_provenance(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        archive_commands = (
+            "ar rcs build/libsupport.a build/renamed.o",
+            "ar -rcs build/libsupport.a build/renamed.o",
+            "tools/llvm-ar.exe qc build/libsupport.a build/renamed.o",
+            "gcc-ar crs --plugin tools/liblto_plugin.so "
+            "build/libsupport.a build/renamed.o",
+        )
+        for archive_command in archive_commands:
+            with self.subTest(archive_command=archive_command):
+                result = self.run_analyzer(
+                    "ccache clang++ -c tests/cpu_reference.cpp "
+                    "-o build/oracle.o\n"
+                    "ld -r build/oracle.o -o build/renamed.o\n" +
+                    archive_command + "\n" +
+                    "unknown-linker build/libsupport.a -o build/lenet_cuda\n",
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned", result.stdout.lower())
+                self.assertIn("libsupport.a", result.stdout)
+
+    def test_reachable_archive_response_file_is_rejected(self):
+        result = self.run_analyzer(
+            "ar rcs build/libsupport.a @build/members.rsp\n"
+            "unknown-linker build/libsupport.a -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("response", result.stdout.lower())
+
+    def test_reachable_artifact_without_producer_is_rejected(self):
+        result = self.run_analyzer(
+            "unknown-linker build/missing.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("no analyzed producer", result.stdout.lower())
+        self.assertIn("missing.o", result.stdout)
+
+    def test_reachable_escaping_artifact_is_rejected(self):
+        result = self.run_analyzer(
+            "unknown-linker ../hidden.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("escapes source root", result.stdout.lower())
+        self.assertIn("hidden.o", result.stdout)
+
+    def test_duplicate_artifact_producers_are_rejected(self):
+        result = self.run_analyzer(
+            "unknown-compiler -c src/model.cu -o build/main.o\n"
+            "other-compiler -c src/model.cu -o build/main.o\n"
+            "unknown-linker build/main.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("multiple recipe commands produce artifact", result.stdout.lower())
+        self.assertIn("main.o", result.stdout)
+
+    def test_reachable_shell_control_is_rejected(self):
+        result = self.run_analyzer(
+            "unknown-compiler -c src/model.cu -o build/main.o && echo hidden\n"
+            "unknown-linker build/main.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("shell", result.stdout.lower())
+
+    def test_production_output_must_be_exactly_under_build(self):
+        result = self.run_analyzer(
+            "unknown-linker src/model.cu -o dist/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("exactly one build/lenet_cuda", result.stdout.lower())
+
+    def test_multiple_production_outputs_are_rejected(self):
+        result = self.run_analyzer(
+            "unknown-linker src/model.cu -o build/lenet_cuda\n"
+            "other-linker src/model.cu -o build/lenet_cuda.exe\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("exactly one build/lenet_cuda", result.stdout.lower())
+        self.assertIn("found 2", result.stdout.lower())
+
+    def test_include_and_output_operands_are_not_artifact_inputs(self):
+        recipes = (
+            "unknown-compiler -I tests/headers.o -c src/model.cu "
+            "-obuild/main.o\n"
+            "unknown-linker build/main.o -obuild/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -obuild/smoke.o\n"
+        )
+        result = self.run_analyzer(
+            recipes,
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        commands = analyzer.parse_recipes(
+            os.path.realpath(self.temporary),
+            os.path.join(self.temporary, "recipes.log"),
+        )
+        candidates = set(
+            candidate
+            for command in commands
+            for candidate in command["candidate_inputs"]
+        )
+        self.assertNotIn(
+            os.path.realpath(os.path.join(self.temporary, "tests", "headers.o")),
+            candidates,
+        )
+        self.assertNotIn(
+            os.path.realpath(os.path.join(self.temporary, "build", "lenet_cuda")),
+            candidates,
+        )
+
     def test_test_only_links_do_not_taint_production(self):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
         self.write(

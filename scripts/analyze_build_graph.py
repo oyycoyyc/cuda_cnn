@@ -78,47 +78,70 @@ def positional_archive_output(tokens):
     if (not operation or not operation.isalpha() or
             not any(action in operation.lower() for action in ("q", "r"))):
         return None
-    archive = tokens[2]
+    excluded_indexes = set((1,))
+    index = 2
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            excluded_indexes.add(index)
+            index += 1
+            break
+        if token in ("--plugin", "--target", "--format"):
+            if index + 1 >= len(tokens):
+                raise AnalysisError(
+                    "archive option has no value: {0}".format(token)
+                )
+            excluded_indexes.update((index, index + 1))
+            index += 2
+            continue
+        if (token == "--thin" or token.startswith("--plugin=") or
+                token.startswith("--target=") or
+                token.startswith("--format=") or
+                token.startswith("--record-libdeps=")):
+            excluded_indexes.add(index)
+            index += 1
+            continue
+        break
+    if index >= len(tokens):
+        return None
+    archive = tokens[index]
     if archive.startswith("-") or not archive.lower().endswith((".a", ".lib")):
         return None
-    if not any(not token.startswith("-") and
-               token.lower().endswith(ARTIFACT_SUFFIXES)
-               for token in tokens[3:]):
+    if index + 1 >= len(tokens):
         return None
-    return archive, 2
+    return archive, index, excluded_indexes
 
 
 def output_token(tokens):
     outputs = []
     output_indexes = set()
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        if token == "-o":
-            if index + 1 >= len(tokens):
-                raise AnalysisError("output option has no path")
-            outputs.append(tokens[index + 1])
-            output_indexes.update((index, index + 1))
-            index += 2
-            continue
-        if token.startswith("-o") and len(token) > 2:
-            attached = token[2:]
-            lower = attached.lower()
-            if ("/" in attached or "\\" in attached or
-                    lower.endswith(ARTIFACT_SUFFIXES) or
-                    os.path.basename(lower) in ("lenet_cuda", "lenet_cuda.exe")):
-                outputs.append(attached)
-                output_indexes.add(index)
-        index += 1
-
-    if not outputs and not any(
-            not token.startswith("-") and token.lower().endswith(SOURCE_SUFFIXES)
-            for token in tokens):
+    if tokens and executable_basename(tokens[0]) in ARCHIVE_TOOLS:
         archive_output = positional_archive_output(tokens)
         if archive_output is not None:
-            output, index = archive_output
+            output, index, excluded_indexes = archive_output
             outputs.append(output)
             output_indexes.add(index)
+            output_indexes.update(excluded_indexes)
+    else:
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            if token == "-o":
+                if index + 1 >= len(tokens):
+                    raise AnalysisError("output option has no path")
+                outputs.append(tokens[index + 1])
+                output_indexes.update((index, index + 1))
+                index += 2
+                continue
+            if token.startswith("-o") and len(token) > 2:
+                attached = token[2:]
+                lower = attached.lower()
+                if ("/" in attached or "\\" in attached or
+                        lower.endswith(ARTIFACT_SUFFIXES) or
+                        os.path.basename(lower) in ("lenet_cuda", "lenet_cuda.exe")):
+                    outputs.append(attached)
+                    output_indexes.add(index)
+            index += 1
     if len(outputs) > 1:
         raise AnalysisError("recipe command has multiple output paths")
     return (outputs[0] if outputs else None), output_indexes
@@ -269,13 +292,13 @@ def parse_recipes(root, recipe_path, require_sources=True):
                     continue
                 if token.startswith("-") or token.startswith("@"):
                     continue
-                if (token.lower().endswith(ARTIFACT_SUFFIXES) or
-                        "/" in token or "\\" in token):
-                    try:
-                        _, candidate = resolve_path(root, token)
-                    except AnalysisError:
-                        continue
-                    candidates.append(candidate)
+                try:
+                    _, candidate = resolve_path(root, token)
+                except AnalysisError:
+                    if token.lower().endswith(ARTIFACT_SUFFIXES):
+                        raise
+                    continue
+                candidates.append(candidate)
             commands.append({
                 "line": line,
                 "line_number": line_number,
@@ -459,15 +482,17 @@ def build_artifact_graph(root, commands):
                 inputs.append(candidate)
         command["artifact_inputs"] = inputs
 
+    application_names = set(
+        os.path.normcase(path) for path in ("build/lenet_cuda", "build/lenet_cuda.exe")
+    )
     applications = [
         output for output in producers
-        if os.path.basename(output).lower() in ("lenet_cuda", "lenet_cuda.exe")
+        if os.path.normcase(display_path(root, output)) in application_names
     ]
     if len(applications) != 1:
         raise AnalysisError(
-            "Make recipes must expose exactly one lenet_cuda output; found {0}".format(
-                len(applications)
-            )
+            "Make recipes must expose exactly one build/lenet_cuda[.exe] output; "
+            "found {0}".format(len(applications))
         )
 
     visited = set()
