@@ -612,6 +612,62 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("alias/sibling.h", result.stdout.replace("\\", "/"))
 
+    def test_directory_symlink_recursion_terminates_at_canonical_active_file(self):
+        self.write("tests/smoke_tests.cpp", '#include "../loop/tests/smoke_tests.cpp"\n')
+        link = os.path.join(self.temporary, "loop")
+        try:
+            os.symlink(".", link, target_is_directory=True)
+        except OSError as error:
+            self.skipTest("directory symlink creation unavailable: {0}".format(error))
+
+        result = self.run_analyzer(
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual("tests/smoke_tests.cpp\n", result.stdout)
+
+    def test_active_visit_key_collapses_only_equivalent_lexical_directories(self):
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        self.assertTrue(
+            hasattr(analyzer, "active_visit_key"),
+            "analyzer must expose active_visit_key for deterministic identity tests",
+        )
+        canonical_file = os.path.join(self.temporary, "real", "header.h")
+        canonical_directory = os.path.dirname(canonical_file)
+        loop_file = os.path.join(self.temporary, "loop", "real", "header.h")
+        loop_directory = os.path.dirname(loop_file)
+        alias_file = os.path.join(self.temporary, "alias", "header.h")
+        alias_directory = os.path.dirname(alias_file)
+        realpath = os.path.realpath
+        modeled_paths = {
+            os.path.normcase(os.path.abspath(canonical_file)): canonical_file,
+            os.path.normcase(os.path.abspath(loop_file)): canonical_file,
+            os.path.normcase(os.path.abspath(alias_file)): canonical_file,
+            os.path.normcase(os.path.abspath(canonical_directory)): canonical_directory,
+            os.path.normcase(os.path.abspath(loop_directory)): canonical_directory,
+            os.path.normcase(os.path.abspath(alias_directory)): alias_directory,
+        }
+
+        def modeled_realpath(path):
+            normalized = os.path.normcase(os.path.abspath(path))
+            return modeled_paths.get(normalized, realpath(path))
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            canonical_key = analyzer.active_visit_key(canonical_file, [], [])
+            loop_key = analyzer.active_visit_key(loop_file, [], [])
+            alias_key = analyzer.active_visit_key(alias_file, [], [])
+
+        self.assertEqual(canonical_key, loop_key)
+        self.assertNotEqual(canonical_key, alias_key)
+
     def test_same_real_header_lexical_routes_are_scanned_independently(self):
         source = self.write(
             "tests/smoke_tests.cpp",

@@ -347,18 +347,28 @@ def reconcile_test_sources(root, commands, expected):
     return compile_contexts
 
 
+def active_visit_key(path, quote_dirs, include_dirs):
+    lexical_path = os.path.abspath(os.path.normpath(path))
+    return (
+        os.path.realpath(lexical_path),
+        os.path.realpath(os.path.dirname(lexical_path)),
+        tuple(quote_dirs),
+        tuple(include_dirs),
+    )
+
+
 def collect_active_inputs(root, compile_contexts):
     active = set()
     visited = set()
 
     def visit(path, quote_dirs, include_dirs):
         lexical_path = os.path.abspath(os.path.normpath(path))
-        real_path = os.path.realpath(lexical_path)
+        key = active_visit_key(lexical_path, quote_dirs, include_dirs)
+        real_path = key[0]
         if not is_within(root, real_path):
             raise AnalysisError(
                 "active include escapes source root: {0}".format(lexical_path)
             )
-        key = (lexical_path, tuple(quote_dirs), tuple(include_dirs))
         if key in visited:
             return
         visited.add(key)

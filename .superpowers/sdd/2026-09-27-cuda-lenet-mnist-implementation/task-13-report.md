@@ -474,3 +474,53 @@ The deterministic same-real-file regression and the junction-backed external
 escape regression both ran locally. Python 3.6 runtime execution and all
 CUDA/H20 evidence remain unavailable locally and are not claimed. Subtask 13.3
 and later behavior was not intentionally changed.
+
+## Compliance Hardening Subtask 13.2 Fix Round 2
+
+### Cycle Issue Addressed
+
+- Changed recursive active-header visit identity from the unbounded lexical file
+  path to the canonical real file, canonical realpath of its lexical containing
+  directory, and the translation unit's quote/include search context.
+- Kept the lexical containing directory for actual quoted-include candidate
+  lookup. File symlinks located in distinct real directories therefore retain
+  distinct compiler lookup semantics, while directory-symlink aliases of the
+  same search directory collapse and terminate.
+- Kept canonical full-file paths for source-root checks, reads, and emitted
+  active-file output.
+
+### TDD Evidence
+
+The deterministic key regression was added before the production helper and
+failed with the expected missing-identity assertion:
+
+```text
+test_active_visit_key_collapses_only_equivalent_lexical_directories ... FAIL
+AssertionError: analyzer must expose active_visit_key for deterministic identity tests
+```
+
+The in-root `loop -> root` recursive-include integration regression was also
+added first. This Windows host denied directory-symlink creation with
+`WinError 1314`, so it skipped as permitted; the deterministic regression
+models the same canonical-directory collapse without symlink privilege and also
+proves that distinct file-symlink directories do not collapse.
+
+### Focused Verification
+
+```text
+python -m unittest -v <9 focused Subtask 13.2 cycle/symlink/order tests>
+Ran 9 tests in 2.952s
+OK (skipped=2: Windows denied file and directory symlink creation)
+
+python -m py_compile scripts/analyze_build_graph.py tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+Python 3.6 runtime execution and all CUDA/H20 evidence remain unavailable
+locally and are not claimed. Subtask 13.3 and later behavior was not changed.
