@@ -161,7 +161,7 @@ def include_directories(root, tokens):
             raise AnalysisError(
                 "include directory escapes source root through symlink: {0}".format(value)
             )
-        destination.append(resolved)
+        destination.append(lexical)
     return quote_dirs, include_dirs, option_indexes
 
 
@@ -331,7 +331,7 @@ def reconcile_test_sources(root, commands, expected):
             if source["relative"].startswith("tests/"):
                 actual[source["relative"]] = source["real"]
                 compile_contexts.append((
-                    source["real"],
+                    source["lexical"],
                     command["quote_dirs"],
                     command["include_dirs"],
                 ))
@@ -352,12 +352,13 @@ def collect_active_inputs(root, compile_contexts):
     visited = set()
 
     def visit(path, quote_dirs, include_dirs):
-        real_path = os.path.realpath(path)
+        lexical_path = os.path.abspath(os.path.normpath(path))
+        real_path = os.path.realpath(lexical_path)
         if not is_within(root, real_path):
             raise AnalysisError(
-                "active include escapes source root: {0}".format(path)
+                "active include escapes source root: {0}".format(lexical_path)
             )
-        key = (real_path, tuple(quote_dirs), tuple(include_dirs))
+        key = (lexical_path, tuple(quote_dirs), tuple(include_dirs))
         if key in visited:
             return
         visited.add(key)
@@ -377,12 +378,14 @@ def collect_active_inputs(root, compile_contexts):
                     continue
                 delimiter, include_name = match.groups()
                 if delimiter == '"':
-                    search_dirs = [os.path.dirname(real_path)] + quote_dirs + include_dirs
+                    search_dirs = [os.path.dirname(lexical_path)] + quote_dirs + include_dirs
                 else:
                     search_dirs = include_dirs
                 resolved = None
                 for directory in search_dirs:
-                    candidate = os.path.join(directory, include_name)
+                    candidate = os.path.abspath(os.path.normpath(
+                        os.path.join(directory, include_name)
+                    ))
                     if not os.path.exists(candidate):
                         continue
                     candidate_real = os.path.realpath(candidate)
@@ -396,7 +399,7 @@ def collect_active_inputs(root, compile_contexts):
                         raise AnalysisError(
                             "active include is not a file: {0}".format(include_name)
                         )
-                    resolved = candidate_real
+                    resolved = candidate
                     break
                 if resolved is None:
                     if delimiter == '"':

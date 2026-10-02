@@ -1,3 +1,4 @@
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -5,6 +6,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -552,7 +554,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             first_quote + "/from_first_quote.h",
             second_quote + "/from_second_quote.h",
             first_include + "/from_first_include.h",
-            second_include + "/project_angle.h",
+            first_include + "/project_angle.h",
         )
         for path in selected:
             self.write(path, "void Selected();\n")
@@ -568,6 +570,10 @@ class ProhibitedCheckerTest(unittest.TestCase):
             first_include + "/from_second_quote.h",
             second_include + "/from_second_quote.h",
             second_include + "/from_first_include.h",
+            source_directory + "/project_angle.h",
+            first_quote + "/project_angle.h",
+            second_quote + "/project_angle.h",
+            second_include + "/project_angle.h",
         )
         for path in duplicates:
             self.write(path, "void DormantDuplicate();\n")
@@ -586,6 +592,55 @@ class ProhibitedCheckerTest(unittest.TestCase):
             set((source_directory + "/active tests.cpp",) + selected),
             set(result.stdout.splitlines()),
         )
+
+    def test_symlinked_header_uses_lexical_directory_for_nested_include(self):
+        self.write("real/header.h", '#include "sibling.h"\n')
+        self.write("real/sibling.h", "void CleanSibling();\n")
+        self.write("alias/sibling.h", "#include <cudnn.h>\n")
+        link = os.path.join(self.temporary, "alias", "header.h")
+        try:
+            os.symlink(os.path.join("..", "real", "header.h"), link)
+        except OSError as error:
+            self.skipTest("file symlink creation unavailable: {0}".format(error))
+        self.write(
+            "tests/smoke_tests.cpp",
+            '#include "../real/header.h"\n#include "../alias/header.h"\n',
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("alias/sibling.h", result.stdout.replace("\\", "/"))
+
+    def test_same_real_header_lexical_routes_are_scanned_independently(self):
+        source = self.write(
+            "tests/smoke_tests.cpp",
+            '#include "../real/header.h"\n#include "../alias/header.h"\n',
+        )
+        real_header = self.write("real/header.h", '#include "sibling.h"\n')
+        self.write("real/sibling.h", "void CleanSibling();\n")
+        alias_header = self.write("alias/header.h", '#include "sibling.h"\n')
+        alias_sibling = self.write("alias/sibling.h", "#include <cudnn.h>\n")
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        realpath = os.path.realpath
+        canonical_real_header = realpath(real_header)
+
+        def modeled_realpath(path):
+            if os.path.normcase(os.path.abspath(path)) == os.path.normcase(alias_header):
+                return canonical_real_header
+            return realpath(path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            active = analyzer.collect_active_inputs(
+                realpath(self.temporary), [(source, [], [])]
+            )
+
+        self.assertIn(realpath(alias_sibling), active)
 
     def test_make_manifest_and_recipe_sources_must_match(self):
         self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")

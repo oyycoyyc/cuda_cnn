@@ -416,3 +416,61 @@ The symlink-escape regression now uses a directory junction fallback when
 unprivileged Windows cannot create a symbolic link, so all five named tests ran
 without skips. Python 3.6 runtime execution and all CUDA/H20 evidence remain
 unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.2 Fix Round 1
+
+### Review Issues Addressed
+
+- Preserved each selected include's lexical path through recursive traversal so
+  a symlinked header resolves its nested quoted includes relative to the path
+  seen by the compiler, not the target file's canonical directory.
+- Kept full-file canonical paths for source-root containment, file identity,
+  reads, and emitted active-input paths. The visited key now includes the
+  lexical route and compile search context, so a second route to the same real
+  header is not suppressed when it has different quoted-include semantics.
+- Strengthened the angle-include ordering regression with same-name decoys in
+  the source and both `-iquote` directories plus candidates in both `-I`
+  directories. Only the first `-I` candidate is active.
+- Retained the external symlink/junction escape rejection regression unchanged.
+
+### TDD Evidence
+
+The real file-symlink regression was added before the production change, but
+this Windows host denied file-symlink creation with `WinError 1314`. A
+deterministic companion models two lexical routes with one real file identity;
+restoring either pre-fix behavior produced the expected RED:
+
+```text
+canonical-path visited key: FAILED (alias/sibling.h not found in active set)
+dirname(real_path) quoted search: FAILED (alias/sibling.h not found in active set)
+```
+
+The angle-order fixture also failed under both intentional mutations:
+
+```text
+angle searched as quote: selected tests/source dir/project_angle.h
+reversed -I order: selected tests/include second/project_angle.h
+```
+
+### Focused Verification
+
+```text
+python -m unittest -v <7 focused Subtask 13.2 active-header tests>
+Ran 7 tests in 2.647s
+OK (skipped=1: unprivileged Windows file-symlink creation)
+
+python -m py_compile \
+  scripts/analyze_build_graph.py tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The deterministic same-real-file regression and the junction-backed external
+escape regression both ran locally. Python 3.6 runtime execution and all
+CUDA/H20 evidence remain unavailable locally and are not claimed. Subtask 13.3
+and later behavior was not intentionally changed.
