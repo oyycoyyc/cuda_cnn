@@ -18,6 +18,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write(
             "Makefile",
             "BUILD_DIR := build\n"
+            ".DEFAULT_GOAL := all\n"
             "TEST_SOURCES := $(wildcard tests/*_tests.cpp tests/*_tests.cu)\n"
             "TEST_OUTPUTS := $(patsubst tests/%,build/%,$(TEST_SOURCES))\n"
             "all: $(BUILD_DIR)/lenet_cuda $(TEST_OUTPUTS)\n"
@@ -29,6 +30,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "\tnvcc $< -o $@\n",
         )
         self.write("src/model.cu", "void LaunchModel() {}\n")
+        self.write("tests/smoke_tests.cpp", "int main() { return 0; }\n")
 
     def tearDown(self):
         shutil.rmtree(self.temporary)
@@ -221,7 +223,10 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write(
             "Makefile",
             "BUILD_DIR := build\n"
+            ".DEFAULT_GOAL := all\n"
             "CPU_REFERENCE_OBJECT := $(BUILD_DIR)/cpu_reference.o\n"
+            ".PHONY: all\n"
+            "all: $(BUILD_DIR)/lenet_cuda\n"
             "$(BUILD_DIR)/lenet_cuda: main.o $(CPU_REFERENCE_OBJECT)\n"
             "\tnvcc $^ -o $@\n"
             "$(BUILD_DIR)/cpu_reference.o: tests/cpu_reference.cpp\n"
@@ -236,12 +241,47 @@ class ProhibitedCheckerTest(unittest.TestCase):
     def test_dormant_negative_fixture_is_ignored_but_compiled_test_is_scanned(self):
         violation = "void test() { cudnnCreate(nullptr); }\n"
         self.write("tests/dormant_negative_fixture.cu", violation)
+        self.write("tests/dormant_negative_fixture.h", "#include <cublas_v2.h>\n")
         clean = self.run_checker("source", self.temporary)
         self.assertEqual(0, clean.returncode, clean.stdout)
         self.write("tests/active_tests.cu", violation)
         active = self.run_checker("source", self.temporary)
         self.assertNotEqual(0, active.returncode, active.stdout)
         self.assertIn("active_tests.cu", active.stdout)
+
+    def test_active_test_transitive_headers_are_scanned_without_dependency_files(self):
+        self.write("tests/smoke_tests.cpp", '#include "test_harness.h"\n')
+        self.write("tests/test_harness.h", '#include "cpu_reference.h"\n')
+        self.write("tests/cpu_reference.h", "#include <cudnn.h>\n")
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("cpu_reference.h", result.stdout)
+
+    def test_active_test_unresolved_quoted_include_fails_closed(self):
+        self.write("tests/smoke_tests.cpp", '#include "missing_project_header.h"\n')
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("cannot resolve", result.stdout.lower())
+        self.assertIn("missing_project_header.h", result.stdout)
+
+    def test_source_scan_fails_when_make_scope_extraction_is_malformed(self):
+        self.write(
+            "Makefile",
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tnvcc src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tg++ -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("test source", result.stdout.lower())
 
     def test_build_scan_rejects_every_prohibited_linker_flag(self):
         for library in ("cudnn", "cublas", "nvinfer", "nvonnxparser", "curand"):
@@ -252,6 +292,50 @@ class ProhibitedCheckerTest(unittest.TestCase):
                     "nvcc objects.o -l{0} -o build/other\n".format(library),
                     mode="build",
                 )
+
+    def test_production_link_rejects_renamed_object_compiled_from_test_source(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda: build/oracle.o\n"
+            "\tnvcc $^ -o $@\n"
+            "build/oracle.o: tests/cpu_reference.cpp\n"
+            "\tg++ -c $< -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tg++ $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("oracle.o", result.stdout.lower())
+
+    def test_production_link_rejects_transitively_renamed_test_object(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda: build/model_support.o\n"
+            "\tnvcc $^ -o $@\n"
+            "build/model_support.o: build/oracle.o\n"
+            "\tnvcc -r $< -o $@\n"
+            "build/oracle.o: tests/cpu_reference.cpp\n"
+            "\tg++ -c $< -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tg++ $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("model_support.o", result.stdout.lower())
 
     def valid_build_log(self, completion=True):
         log = (
@@ -274,6 +358,40 @@ class ProhibitedCheckerTest(unittest.TestCase):
         )
         result = self.run_checker("build", log)
         self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_actual_build_scan_requires_marker_as_final_nonempty_line(self):
+        log = self.write(
+            "verbose-build.log",
+            self.valid_build_log() + "nvcc --version\n",
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("final nonempty line", result.stdout.lower())
+
+    def test_actual_build_scan_rejects_failure_after_success_marker(self):
+        log = self.write(
+            "verbose-build.log",
+            self.valid_build_log() + "make: *** [Makefile:80: all] Error 2\n",
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("failure record", result.stdout.lower())
+
+    def test_actual_build_scan_rejects_earlier_compiler_fatal_error(self):
+        log = self.write(
+            "verbose-build.log",
+            "src/main.cu:4:2: fatal error: missing.h: No such file or directory\n" +
+            self.valid_build_log(),
+        )
+
+        result = self.run_checker("build", log)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("failure record", result.stdout.lower())
 
     def test_dry_run_scan_is_explicit_and_does_not_require_completion_marker(self):
         log = self.write("verbose-build.log", self.valid_build_log(False))
@@ -311,6 +429,11 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 "linker",
             ),
             (self.valid_build_log(False), "completion"),
+            (
+                self.valid_build_log(False) +
+                "event=build status=pass target=\n",
+                "final nonempty line",
+            ),
         )
         for content, expected in cases:
             with self.subTest(expected=expected):

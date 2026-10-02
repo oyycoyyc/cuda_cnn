@@ -68,12 +68,18 @@ The verbose commands must contain both exact targets:
 event=build status=pass target=all
 ```
 
-The final marker is emitted only after `make all` completes. The `build` scan
-rejects logs that are empty, stale relative to production inputs, missing
-compiler/linker commands or either architecture flag, or lacking this marker.
-For command inspection without execution, use `make -Bn V=1` and scan that
-output with `check_prohibited.sh dry-run`; dry-run output is not successful-build
-evidence.
+The final marker is emitted only after `make all` completes and must be the
+final nonempty log line. The `build` scan rejects logs that are empty, stale
+relative to production inputs, contain compiler or Make failure records, miss
+compiler/linker commands or either architecture flag, or end without the exact
+marker. For command inspection without execution, use `make -Bn V=1` and scan
+that output with `check_prohibited.sh dry-run`; dry-run output is not
+successful-build evidence.
+
+The source scan derives compiled test translation units and transitive output
+provenance from the forced `all` dry run, recursively scans their project-local
+headers, and rejects any tests-owned source or object in the `lenet_cuda` link.
+Dormant fixtures that are absent from the build graph are outside that scope.
 
 ## CUDA Operator And Workflow Tests
 

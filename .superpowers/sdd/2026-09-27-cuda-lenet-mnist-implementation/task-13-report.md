@@ -182,3 +182,69 @@ workflow execution, Compute Sanitizer, `cuobjdump`, dynamic dependency
 inspection, default training, timing, and the >=99% H20 accuracy gate remain
 unavailable locally and are not claimed. The semantic checklist remains
 deliberately unchecked.
+
+## Fix Round 2
+
+### Review Issues Addressed
+
+- Replaced Make-database token scraping and unchecked process substitution with
+  checked `make -Bn all` recipe analysis. The source gate now extracts every
+  tests-owned translation unit from actual compiler commands, requires a
+  resolvable output for each, recursively resolves project-local includes, and
+  fails closed when Make execution, extraction, file reads, or required quoted
+  include resolution fails. Active `tests/test_harness.h` and
+  `tests/cpu_reference.h` are covered without generated dependency files;
+  dormant fixtures outside the build graph remain excluded.
+- Added transitive source-to-output provenance for tests-owned compilation
+  recipes and reject any such source or output in the `lenet_cuda` link. This
+  catches a CPU reference renamed to an unrelated object such as `oracle.o`,
+  including another compiler/link output layer, while preserving the
+  production-source CPU fallback identifier scan.
+- Tightened actual build-log acceptance so common compiler and Make failure
+  records reject the log wherever they occur, and the exact success marker must
+  be the final nonempty line. Architecture, compile/link, freshness, prohibited
+  dependency, and explicit dry-run non-acceptance checks remain in force.
+- Updated the H20 guide with the final-line, failure-record, active-header, and
+  production-link provenance rules.
+
+### TDD Evidence
+
+After adding the core regressions and before changing the checker, the focused
+suite reported six expected failures:
+
+```text
+Ran 23 tests in 23.071s
+FAILED (failures=6)
+```
+
+The failures covered a clean-tree transitive active-header violation, malformed
+Make scope extraction, a renamed test-owned production object, a marker followed
+by another command, a marker followed by `make ... Error 2`, and an earlier
+compiler fatal error. Dormant-header exclusion, unresolved quoted includes, and
+truncated-marker behavior are also retained as focused regressions. A separate
+RED/GREEN regression proves provenance survives an additional renamed
+relocatable-link output.
+
+### GREEN Evidence
+
+- `tests.test_check_prohibited`: 25 focused scanner tests passed.
+- Seven-module aggregate Python run: 75 tests passed.
+- `make host-tests makefile-tests python-tests compliance`: all nine host suites,
+  the distinct host/CUDA basename regression, 15 data tests, 60 compliance
+  tests, the 147-item comment inventory, and the source policy gate passed.
+- `bash -n scripts/check_prohibited.sh` passed, and the real clean-tree source
+  scan reported `scope=make-compiled-inputs`.
+- Python byte compilation and Python 3.6 grammar parsing passed for the changed
+  checker test module.
+- Forced `all` and `cuda-tests` Make dry-runs exposed the expected commands and
+  both exact `sm_90` and `compute_90` code-generation targets without executing
+  CUDA tools.
+- `git diff --check` is rerun immediately before the fix-round commit.
+
+### Remaining Target-Only Work
+
+Python 3.6 runtime/package execution, CUDA compilation, CUDA numerical and
+workflow execution, Compute Sanitizer, `cuobjdump`, dynamic dependency
+inspection, default training, timing, and the >=99% H20 accuracy gate remain
+unavailable locally and are not claimed. The semantic checklist remains
+deliberately unchecked.
