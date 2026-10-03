@@ -851,3 +851,68 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 ```
 
 No broad, CUDA, or H20 command was run, and 13.3b/c remains untouched.
+
+## Compliance Hardening Subtask 13.3b
+
+### Extensionless And Positional Inputs Hardened
+
+- Production-reachable positional inputs now participate in the artifact graph
+  regardless of filename suffix. Missing extensionless producers fail closed,
+  while unrelated test-only commands remain outside the production closure.
+- Both separated `-o PATH` and attached `-oPATH` outputs support extensionless
+  producers. Distinct `-opt-info`, `-openmp`, and `-objc` option families are
+  not interpreted as attached outputs.
+- Command-prefix classification is independent of compiler basename. Arbitrary
+  wrapper/tool words preceding source compile syntax are excluded, and
+  `ccache`, `sccache`, and `distcc` are recognized explicitly for non-source
+  commands. Linker positional token 1 remains an input, including on a command
+  that also carries a source token.
+- Separated operands for `-MF`, `-MT`, `-MQ`, `-isystem`, `-include`,
+  `-imacros`, and `--sysroot` are excluded from provenance. Attached short
+  forms and equals forms are covered without hiding source, output, forwarding,
+  or ordinary positional inputs.
+- Positional paths that cannot be normalized inside the source root are retained
+  as command-local analysis errors and rejected only when their command is in
+  the `lenet_cuda` closure.
+
+### TDD Evidence
+
+The inherited 13.3b WIP and seven initial focused tests were present in the
+worktree. Audit added a source-bearing linker regression before changing the
+prefix classifier. It failed because positional token 1 was silently discarded:
+
+```text
+test_source_bearing_link_preserves_first_positional_input ... FAIL
+AssertionError: 0 == 0 : tests/cpu_reference.cpp
+Ran 1 test
+FAILED (failures=1)
+```
+
+Prefix inference was then limited to arbitrary pre-`-c` compile prefixes;
+source-bearing link commands use the same explicit common-wrapper/executable
+classification as other link commands. The wrapper-link test was strengthened
+to require traversal into a tests-owned extensionless producer rather than only
+asserting command acceptance.
+
+### Focused Verification
+
+```text
+python -m unittest -v <9 focused Subtask 13.3b analyzer tests>
+Ran 9 tests in 2.002s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No canonical source-ownership or archive-grammar behavior was changed. No broad,
+CUDA, or H20 command was run. Python 3.6 runtime execution and all CUDA/H20
+evidence remain unavailable locally and are not claimed; Subtask 13.3c and later
+remain unchanged.

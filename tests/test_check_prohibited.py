@@ -845,6 +845,126 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("renamed_blob", result.stdout)
 
+    def test_reachable_extensionless_input_without_producer_is_rejected(self):
+        result = self.run_analyzer(
+            "unknown-linker missing_blob -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("no analyzed producer", result.stdout.lower())
+        self.assertIn("missing_blob", result.stdout)
+
+    def test_attached_extensionless_outputs_trace_multilayer_provenance(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+
+        result = self.run_analyzer(
+            "cache-wrapper unknown-clang -c tests/cpu_reference.cpp "
+            "-ooracle_blob\n"
+            "unknown-relocator -r oracle_blob -orenamed_blob\n"
+            "unknown-linker renamed_blob -obuild/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("renamed_blob", result.stdout)
+
+    def test_ccache_link_prefix_preserves_first_positional_input(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        result = self.run_analyzer(
+            "unknown-compiler -c tests/cpu_reference.cpp -o oracle_blob\n"
+            "ccache unknown-linker oracle_blob -o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("oracle_blob", result.stdout)
+
+    def test_source_bearing_link_preserves_first_positional_input(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        result = self.run_analyzer(
+            "unknown-compiler -c tests/cpu_reference.cpp -o oracle_blob\n"
+            "unknown-linker oracle_blob src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("oracle_blob", result.stdout)
+
+    def test_nonartifact_option_operands_do_not_create_provenance_edges(self):
+        options = (
+            "-MF build/option_operand.o",
+            "-MFbuild/option_operand.o",
+            "-MF=build/option_operand.o",
+            "-MT build/option_operand.o",
+            "-MTbuild/option_operand.o",
+            "-MT=build/option_operand.o",
+            "-MQ build/option_operand.o",
+            "-MQbuild/option_operand.o",
+            "-MQ=build/option_operand.o",
+            "-isystem build/option_operand.o",
+            "-isystem=build/option_operand.o",
+            "-include build/option_operand.o",
+            "-include=build/option_operand.o",
+            "-imacros build/option_operand.o",
+            "-imacros=build/option_operand.o",
+            "--sysroot build/option_operand.o",
+            "--sysroot=build/option_operand.o",
+        )
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        for option in options:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "unknown-compiler -c tests/cpu_reference.cpp "
+                    "-o build/option_operand.o\n"
+                    "unknown-linker {0} src/model.cu "
+                    "-o build/lenet_cuda\n".format(option),
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_distinct_o_option_families_are_not_attached_outputs(self):
+        result = self.run_analyzer(
+            "unknown-linker -opt-info=build/report.o -openmp -objc-arc "
+            "src/model.cu -obuild/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -obuild/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_unrelated_extensionless_input_does_not_taint_production(self):
+        result = self.run_analyzer(
+            "unknown-linker src/model.cu -o build/lenet_cuda\n"
+            "unknown-linker missing_test_blob -o build/workflow_tests\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_normal_project_compile_and_link_commands_are_accepted(self):
+        gencode = (
+            "-gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90"
+        )
+        result = self.run_analyzer(
+            "nvcc -Iinclude -std=c++14 -O2 -lineinfo {0} -MMD -MP "
+            "-c src/model.cu -o build/model.o\n".format(gencode) +
+            "nvcc -std=c++14 -O2 -lineinfo {0} build/model.o "
+            "-o build/lenet_cuda\n".format(gencode) +
+            "g++ -Iinclude -std=c++14 -O2 -Wall -Wextra -Wpedantic "
+            "-MMD -MP -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
     def test_archive_tool_common_forms_trace_provenance(self):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
         archive_commands = (

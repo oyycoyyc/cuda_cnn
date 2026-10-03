@@ -15,6 +15,12 @@ INCLUDE_RE = re.compile(
 )
 SHELL_CONTROL_CHARS = ";&|<>"
 ARCHIVE_TOOLS = ("ar", "llvm-ar", "gcc-ar")
+COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
+DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
+SEPARATED_NON_ARTIFACT_OPTIONS = (
+    "-MF", "-MT", "-MQ", "-isystem", "-include", "-imacros", "--sysroot",
+)
+ATTACHED_NON_ARTIFACT_OPTIONS = ("-MF", "-MT", "-MQ")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -67,6 +73,46 @@ def executable_basename(token):
     if basename.endswith(".exe"):
         basename = basename[:-4]
     return basename
+
+
+def non_artifact_option_indexes(tokens):
+    option_indexes = set()
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token in SEPARATED_NON_ARTIFACT_OPTIONS:
+            if index + 1 >= len(tokens):
+                raise AnalysisError(
+                    "option has no value: {0}".format(token)
+                )
+            option_indexes.update((index, index + 1))
+            index += 2
+            continue
+        if token.startswith("--sysroot="):
+            option_indexes.add(index)
+        elif any(token.startswith(option) and len(token) > len(option)
+                 for option in ATTACHED_NON_ARTIFACT_OPTIONS):
+            option_indexes.add(index)
+        index += 1
+    return option_indexes
+
+
+def command_prefix_indexes(tokens, source_indexes):
+    if source_indexes and "-c" in tokens:
+        syntax_indexes = list(source_indexes)
+        syntax_indexes.extend(
+            index for index, token in enumerate(tokens) if token == "-c"
+        )
+        return set(range(min(syntax_indexes)))
+
+    prefix_indexes = set()
+    index = 0
+    while index < len(tokens) and executable_basename(tokens[index]) in COMMAND_WRAPPERS:
+        prefix_indexes.add(index)
+        index += 1
+    if index < len(tokens):
+        prefix_indexes.add(index)
+    return prefix_indexes
 
 
 def positional_archive_output(tokens):
@@ -137,13 +183,13 @@ def output_token(tokens, opaque_indexes):
                 index += 2
                 continue
             if token.startswith("-o") and len(token) > 2:
-                attached = token[2:]
-                lower = attached.lower()
-                if ("/" in attached or "\\" in attached or
-                        lower.endswith(ARTIFACT_SUFFIXES) or
-                        os.path.basename(lower) in ("lenet_cuda", "lenet_cuda.exe")):
-                    outputs.append(attached)
-                    output_indexes.add(index)
+                lower = token.lower()
+                if any(lower.startswith(prefix)
+                       for prefix in DISTINCT_O_OPTION_PREFIXES):
+                    index += 1
+                    continue
+                outputs.append(token[2:])
+                output_indexes.add(index)
             index += 1
     if len(outputs) > 1:
         raise AnalysisError("recipe command has multiple output paths")
@@ -426,7 +472,10 @@ def parse_recipes(root, recipe_path, require_sources=True):
             if not tokens:
                 continue
             input_metadata, opaque_input_indexes = command_input_metadata(tokens)
-            output, output_indexes = output_token(tokens, opaque_input_indexes)
+            non_artifact_indexes = non_artifact_option_indexes(tokens)
+            output, output_indexes = output_token(
+                tokens, opaque_input_indexes | non_artifact_indexes
+            )
             quote_dirs, include_dirs, include_option_indexes = include_directories(
                 root, tokens
             )
@@ -434,7 +483,8 @@ def parse_recipes(root, recipe_path, require_sources=True):
             source_indexes = set()
             for index, token in enumerate(tokens):
                 if (index in output_indexes or index in include_option_indexes or
-                        index in opaque_input_indexes):
+                        index in opaque_input_indexes or
+                        index in non_artifact_indexes):
                     continue
                 parsed = source_token(root, token, require_sources)
                 if parsed is not None:
@@ -469,19 +519,22 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output_path = None
             if output is not None:
                 _, output_path = resolve_path(root, output)
+            prefix_indexes = command_prefix_indexes(tokens, source_indexes)
             candidates = []
+            invalid_candidates = []
             for index, token in enumerate(tokens):
                 if (index in output_indexes or index in source_indexes or
                         index in include_option_indexes or
-                        index in opaque_input_indexes):
+                        index in opaque_input_indexes or
+                        index in non_artifact_indexes or
+                        index in prefix_indexes):
                     continue
                 if token.startswith("-") or token.startswith("@"):
                     continue
                 try:
                     _, candidate = resolve_path(root, token)
-                except AnalysisError:
-                    if token.lower().endswith(ARTIFACT_SUFFIXES):
-                        raise
+                except AnalysisError as error:
+                    invalid_candidates.append(str(error))
                     continue
                 candidates.append(candidate)
             commands.append({
@@ -491,6 +544,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 "sources": sources,
                 "output": output_path,
                 "candidate_inputs": candidates,
+                "invalid_candidate_inputs": invalid_candidates,
                 "quote_dirs": quote_dirs,
                 "include_dirs": include_dirs,
                 "input_metadata": input_metadata,
@@ -660,8 +714,6 @@ def build_artifact_graph(root, commands):
         inputs = []
         for candidate in command["candidate_inputs"]:
             if (candidate != command["output"] and
-                    (candidate in producers or
-                     candidate.lower().endswith(ARTIFACT_SUFFIXES)) and
                     candidate not in inputs):
                 inputs.append(candidate)
         command["artifact_inputs"] = inputs
@@ -710,6 +762,8 @@ def build_artifact_graph(root, commands):
                     command["line"]
                 )
             )
+        if command["invalid_candidate_inputs"]:
+            raise AnalysisError(command["invalid_candidate_inputs"][0])
         for source in command["sources"]:
             if source["relative"].startswith("tests/"):
                 rendered = [display_path(root, item) for item in chain]
