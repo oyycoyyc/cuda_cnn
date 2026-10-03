@@ -916,3 +916,59 @@ No canonical source-ownership or archive-grammar behavior was changed. No broad,
 CUDA, or H20 command was run. Python 3.6 runtime execution and all CUDA/H20
 evidence remain unavailable locally and are not claimed; Subtask 13.3c and later
 remain unchanged.
+
+## Compliance Hardening Subtask 13.3b Fix Round 1
+
+### Prefix Classification Blocker Addressed
+
+The prior 13.3b statement that arbitrary wrapper/tool words preceding source
+compile syntax are excluded is superseded. A command prefix is now exactly zero
+or more explicitly supported `ccache`, `sccache`, or `distcc` wrappers followed
+by one executable/tool token. No source or `-c` position is used to infer
+additional prefix words.
+
+As a result, every later non-option positional token remains a candidate input,
+including tokens before a genuine `-c`. Option and forwarding operands retain
+their existing opaque indexes and cannot become syntax or artifact inputs.
+Unknown wrapper chains fail closed when production-reachable while unrelated
+commands retain production-closure isolation.
+
+### TDD Evidence
+
+Three regressions were added before the production change. The composed
+`oracle_blob -MT -c src/model.cu` case and a genuine compile with a stray object
+before `-c` both incorrectly returned success; the supported-wrapper positive
+case already passed:
+
+```text
+test_opaque_c_operand_cannot_hide_pre_source_positional_input ... FAIL
+test_compile_preserves_stray_positional_input_before_real_c ... FAIL
+test_common_wrapper_and_tool_prefixes_are_excluded ... ok
+Ran 3 tests
+FAILED (failures=2)
+```
+
+Removing source/`-c` prefix inference made all three pass. The composed case now
+traces `oracle_blob` to its tests-owned producer, and the stray object reaches
+the existing missing-producer rejection.
+
+### Focused Verification
+
+```text
+python -m unittest -v <12 focused Subtask 13.3b analyzer tests>
+Ran 12 tests in 2.495s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No 13.3c, broad-suite, CUDA, or H20 command was run. Python 3.6 runtime and
+CUDA/H20 evidence remain unavailable locally and are not claimed.

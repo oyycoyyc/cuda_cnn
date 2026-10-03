@@ -97,14 +97,7 @@ def non_artifact_option_indexes(tokens):
     return option_indexes
 
 
-def command_prefix_indexes(tokens, source_indexes):
-    if source_indexes and "-c" in tokens:
-        syntax_indexes = list(source_indexes)
-        syntax_indexes.extend(
-            index for index, token in enumerate(tokens) if token == "-c"
-        )
-        return set(range(min(syntax_indexes)))
-
+def command_prefix_indexes(tokens):
     prefix_indexes = set()
     index = 0
     while index < len(tokens) and executable_basename(tokens[index]) in COMMAND_WRAPPERS:
@@ -519,7 +512,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output_path = None
             if output is not None:
                 _, output_path = resolve_path(root, output)
-            prefix_indexes = command_prefix_indexes(tokens, source_indexes)
+            prefix_indexes = command_prefix_indexes(tokens)
             candidates = []
             invalid_candidates = []
             for index, token in enumerate(tokens):

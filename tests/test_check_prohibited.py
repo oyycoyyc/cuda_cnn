@@ -895,6 +895,44 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("oracle_blob", result.stdout)
 
+    def test_opaque_c_operand_cannot_hide_pre_source_positional_input(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        result = self.run_analyzer(
+            "unknown-compiler -c tests/cpu_reference.cpp -o oracle_blob\n"
+            "unknown-linker oracle_blob -MT -c src/model.cu "
+            "-o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("oracle_blob", result.stdout)
+
+    def test_compile_preserves_stray_positional_input_before_real_c(self):
+        result = self.run_analyzer(
+            "unknown-compiler build/stray.o -c src/model.cu "
+            "-o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("no analyzed producer", result.stdout.lower())
+        self.assertIn("stray.o", result.stdout)
+
+    def test_common_wrapper_and_tool_prefixes_are_excluded(self):
+        for wrapper in ("ccache", "sccache", "distcc"):
+            with self.subTest(wrapper=wrapper):
+                result = self.run_analyzer(
+                    "{0} unknown-compiler -c src/model.cu "
+                    "-o build/main.o\n".format(wrapper) +
+                    "unknown-linker build/main.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertEqual(0, result.returncode, result.stdout)
+
     def test_nonartifact_option_operands_do_not_create_provenance_edges(self):
         options = (
             "-MF build/option_operand.o",
