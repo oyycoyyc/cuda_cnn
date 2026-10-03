@@ -880,6 +880,157 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("response", result.stdout.lower())
 
+    def test_reachable_wl_input_hiding_test_archive_is_rejected(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        result = self.run_analyzer(
+            "clang++ -c tests/cpu_reference.cpp -o build/oracle.o\n"
+            "ar rcs build/libsupport.a build/oracle.o\n"
+            "unknown-linker -Wl,build/libsupport.a -o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("linker", result.stdout.lower())
+
+    def test_reachable_direct_linker_forwarding_is_rejected(self):
+        linker_options = (
+            "-Xlinker build/model.o",
+            "-Xlinker=build/model.o",
+            "--linker-options build/model.o",
+            "--linker-options=build/model.o",
+        )
+        for options in linker_options:
+            with self.subTest(options=options):
+                result = self.run_analyzer(
+                    "clang++ -c src/model.cu -o build/model.o\n"
+                    "nvcc {0} -o build/lenet_cuda\n".format(options) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("linker", result.stdout.lower())
+
+    def test_tests_owned_source_rejects_linker_encoded_inputs(self):
+        result = self.run_analyzer(
+            "clang++ -Wl,build/libsupport.a -c tests/smoke_tests.cpp "
+            "-o build/smoke.o\n"
+            "clang++ src/model.cu -o build/lenet_cuda\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("linker", result.stdout.lower())
+
+    def test_reachable_library_search_and_library_name_are_rejected(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        link_options = (
+            "-L build -l:libsupport.a",
+            "-Lbuild -lsupport",
+        )
+        for options in link_options:
+            with self.subTest(options=options):
+                result = self.run_analyzer(
+                    "clang++ -c tests/cpu_reference.cpp -o build/oracle.o\n"
+                    "ar rcs build/libsupport.a build/oracle.o\n"
+                    "unknown-linker {0} -o build/lenet_cuda\n".format(options),
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("linker", result.stdout.lower())
+
+    def test_response_option_forms_are_rejected_in_relevant_commands(self):
+        response_options = (
+            "@build/objects.rsp",
+            "-Wl,@build/objects.rsp",
+            "--options-file build/objects.rsp",
+            "--options-file=build/objects.rsp",
+            "-optf build/objects.rsp",
+            "-optf=build/objects.rsp",
+            "-optfbuild/objects.rsp",
+        )
+        for options in response_options:
+            recipes = (
+                "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+                "nvcc {0} src/model.cu -o build/lenet_cuda\n".format(options)
+            )
+            with self.subTest(context="production", options=options):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("response", result.stdout.lower())
+
+            recipes = (
+                "clang++ -c tests/smoke_tests.cpp {0} -o build/smoke.o\n"
+                "nvcc src/model.cu -o build/lenet_cuda\n".format(options)
+            )
+            with self.subTest(context="tests-owned", options=options):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("response", result.stdout.lower())
+
+    def test_shell_expansions_are_rejected_in_relevant_commands(self):
+        expansions = (
+            "$OBJECTS",
+            "${OBJECTS}",
+            "build/*.o",
+            "build/?.o",
+            "build/[ab].o",
+        )
+        for expansion in expansions:
+            recipes = (
+                "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+                "unknown-linker {0} -o build/lenet_cuda\n".format(expansion)
+            )
+            with self.subTest(context="production", expansion=expansion):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("shell", result.stdout.lower())
+
+            recipes = (
+                "clang++ -c tests/smoke_tests.cpp {0} -o build/smoke.o\n"
+                "unknown-linker src/model.cu -o build/lenet_cuda\n".format(expansion)
+            )
+            with self.subTest(context="tests-owned", expansion=expansion):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("shell", result.stdout.lower())
+
+    def test_ordinary_flags_and_literal_shell_metacharacters_are_allowed(self):
+        literal_flags = (
+            "'-DVARIABLE=$OBJECTS' '-DGLOB=*?[abc]' "
+            "-DESCAPED=\\$OBJECTS -DESCAPED_GLOB=\\*\\?\\[abc\\]"
+        )
+        result = self.run_analyzer(
+            "nvcc -std=c++14 -O2 -lineinfo "
+            "-gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90 "
+            "-c src/model.cu -o build/main.o\n"
+            "nvcc {0} build/main.o -o build/lenet_cuda\n".format(literal_flags) +
+            "clang++ {0} -c tests/smoke_tests.cpp -o build/smoke.o\n".format(
+                literal_flags
+            ),
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
     def test_reachable_artifact_without_producer_is_rejected(self):
         result = self.run_analyzer(
             "unknown-linker build/missing.o -o build/lenet_cuda\n"

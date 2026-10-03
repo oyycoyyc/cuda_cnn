@@ -645,3 +645,57 @@ No active-header, scanner-wrapper, build-log, or public documentation behavior
 was changed, and no broad, CUDA, or H20 command was run. Python 3.6 runtime
 execution and all CUDA/H20 evidence remain unavailable locally and are not
 claimed. Subtasks 13.4 and later remain unchanged.
+
+## Compliance Hardening Subtask 13.3a
+
+### Review Issues Addressed
+
+- Added explicit per-command metadata for response/options files, encoded
+  linker inputs, and unsupported shell syntax. Metadata is rejected only for a
+  command in the `build/lenet_cuda` producer closure or a recipe containing a
+  normalized tests-owned source; unrelated test-only link commands retain the
+  existing reachability isolation.
+- Rejected `-Wl,` and direct `-Xlinker`/`--linker-options` forwarding, plus
+  paired separated or attached `-L` and `-l`/`-l:` forms, rather than trying to
+  infer hidden artifact provenance.
+- Expanded response-file recognition to bare `@file`, `-Wl,@file`, NVCC
+  `--options-file` separated/equal forms, and `-optf` separated/equal/attached
+  forms. Encoded option operands are excluded from ordinary source/output/input
+  classification, preventing `-optf` from being mistaken for attached `-o`.
+- Expanded quote-aware shell rejection to remaining `$` expansions and
+  unquoted `*`, `?`, and bracket globs. Single-quoted and backslash-escaped
+  literal metacharacters remain accepted, as do the project's current ordinary
+  NVCC and exact gencode flags.
+
+### TDD Evidence
+
+The first RED run covered the hidden `-Wl,` archive, paired `-L`/`-l` forms,
+all response variants, variable/glob expansion, and the positive literal case.
+It reported 25 expected failing subcases while the positive case passed. Two
+additional RED runs reported four direct-linker-forwarding failures and one
+tests-owned linker-input failure. Failures showed the encoded inputs were
+accepted, glob paths reached the wrong missing-producer diagnostic, and attached
+`-optf` forms were mistaken for extra output options.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+$env:MAKE = 'C:\personal_apps\msys64\usr\bin\make.exe'
+python -m unittest -v <15 focused Subtask 13.3a analyzer/checker tests>
+Ran 15 tests in 4.721s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No extensionless-token handling, general option-operand taxonomy, canonical
+tests ownership, archive grammar, broad suite, CUDA, or H20 work is included.

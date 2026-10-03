@@ -112,7 +112,7 @@ def positional_archive_output(tokens):
     return archive, index, excluded_indexes
 
 
-def output_token(tokens):
+def output_token(tokens, opaque_indexes):
     outputs = []
     output_indexes = set()
     if tokens and executable_basename(tokens[0]) in ARCHIVE_TOOLS:
@@ -125,6 +125,9 @@ def output_token(tokens):
     else:
         index = 0
         while index < len(tokens):
+            if index in opaque_indexes:
+                index += 1
+                continue
             token = tokens[index]
             if token == "-o":
                 if index + 1 >= len(tokens):
@@ -188,6 +191,77 @@ def include_directories(root, tokens):
     return quote_dirs, include_dirs, option_indexes
 
 
+def command_input_metadata(tokens):
+    response_file = False
+    direct_linker = False
+    library_search = False
+    library_name = False
+    opaque_indexes = set()
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith("@"):
+            response_file = True
+            opaque_indexes.add(index)
+        if token.startswith("-Wl,"):
+            direct_linker = True
+            opaque_indexes.add(index)
+            if any(part.startswith("@") for part in token[4:].split(",")):
+                response_file = True
+        if token in ("--options-file", "-optf"):
+            response_file = True
+            opaque_indexes.add(index)
+            if index + 1 < len(tokens):
+                opaque_indexes.add(index + 1)
+                index += 1
+        elif (token.startswith("--options-file=") or
+              token.startswith("-optf=") or
+              (token.startswith("-optf") and len(token) > len("-optf"))):
+            response_file = True
+            opaque_indexes.add(index)
+        if token in ("-Xlinker", "--linker-options"):
+            direct_linker = True
+            opaque_indexes.add(index)
+            if index + 1 < len(tokens):
+                opaque_indexes.add(index + 1)
+                index += 1
+        elif (token.startswith("-Xlinker=") or
+              token.startswith("--linker-options=")):
+            direct_linker = True
+            opaque_indexes.add(index)
+        if token == "-L":
+            library_search = True
+        elif token.startswith("-L") and len(token) > 2:
+            library_search = True
+        if token == "-l":
+            library_name = True
+        elif (token.startswith("-l") and len(token) > 2 and
+              token != "-lineinfo"):
+            library_name = True
+        index += 1
+    return {
+        "response_file": response_file,
+        "linker_input": direct_linker or (library_search and library_name),
+    }, opaque_indexes
+
+
+def has_glob_bracket(line, start):
+    escaped = False
+    index = start + 1
+    while index < len(line):
+        character = line[index]
+        if escaped:
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif character == "]":
+            return index > start + 1
+        elif character.isspace() or character in "'\"":
+            return False
+        index += 1
+    return False
+
+
 def has_unsupported_shell(line):
     single_quoted = False
     double_quoted = False
@@ -214,11 +288,13 @@ def has_unsupported_shell(line):
         if single_quoted:
             index += 1
             continue
-        if character == "`" or (character == "$" and
-                                  index + 1 < len(line) and
-                                  line[index + 1] == "("):
+        if character == "`" or character == "$":
             return True
         if not double_quoted and character in SHELL_CONTROL_CHARS:
+            return True
+        if (not double_quoted and
+                (character in "*?" or
+                 (character == "[" and has_glob_bracket(line, index)))):
             return True
         index += 1
     return False
@@ -248,27 +324,34 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 )
             if not tokens:
                 continue
-            output, output_indexes = output_token(tokens)
+            input_metadata, opaque_input_indexes = command_input_metadata(tokens)
+            output, output_indexes = output_token(tokens, opaque_input_indexes)
             quote_dirs, include_dirs, include_option_indexes = include_directories(
                 root, tokens
             )
             sources = []
             source_indexes = set()
             for index, token in enumerate(tokens):
-                if index in output_indexes or index in include_option_indexes:
+                if (index in output_indexes or index in include_option_indexes or
+                        index in opaque_input_indexes):
                     continue
                 parsed = source_token(root, token, require_sources)
                 if parsed is not None:
                     sources.append(parsed)
                     source_indexes.add(index)
-            response = any(token.startswith("@") for token in tokens)
             unsupported_shell = has_unsupported_shell(line)
+            input_metadata["unsupported_shell"] = unsupported_shell
             tests_owned = any(
                 source["relative"].startswith("tests/") for source in sources
             )
-            if tests_owned and response:
+            if tests_owned and input_metadata["response_file"]:
                 raise AnalysisError(
                     "unsupported response-file input in tests-owned source recipe "
+                    "on line {0}".format(line_number)
+                )
+            if tests_owned and input_metadata["linker_input"]:
+                raise AnalysisError(
+                    "unsupported linker-encoded input in tests-owned source recipe "
                     "on line {0}".format(line_number)
                 )
             if tests_owned and unsupported_shell:
@@ -288,7 +371,8 @@ def parse_recipes(root, recipe_path, require_sources=True):
             candidates = []
             for index, token in enumerate(tokens):
                 if (index in output_indexes or index in source_indexes or
-                        index in include_option_indexes):
+                        index in include_option_indexes or
+                        index in opaque_input_indexes):
                     continue
                 if token.startswith("-") or token.startswith("@"):
                     continue
@@ -308,8 +392,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 "candidate_inputs": candidates,
                 "quote_dirs": quote_dirs,
                 "include_dirs": include_dirs,
-                "response": response,
-                "unsupported_shell": unsupported_shell,
+                "input_metadata": input_metadata,
             })
     return commands
 
@@ -508,13 +591,19 @@ def build_artifact_graph(root, commands):
                     display_path(root, artifact)
                 )
             )
-        if command["response"]:
+        if command["input_metadata"]["response_file"]:
             raise AnalysisError(
                 "unsupported response-file input affects lenet_cuda: {0}".format(
                     command["line"]
                 )
             )
-        if command["unsupported_shell"]:
+        if command["input_metadata"]["linker_input"]:
+            raise AnalysisError(
+                "unsupported linker-encoded input affects lenet_cuda: {0}".format(
+                    command["line"]
+                )
+            )
+        if command["input_metadata"]["unsupported_shell"]:
             raise AnalysisError(
                 "unsupported obfuscated shell recipe affects lenet_cuda: {0}".format(
                     command["line"]
@@ -569,7 +658,7 @@ def analyze_build_log(args):
             "lenet_cuda linker command is missing required compute_90 architecture flags"
         )
     for command in links:
-        if command["response"]:
+        if command["input_metadata"]["response_file"]:
             raise AnalysisError(
                 "unsupported response-file input affects lenet_cuda build log"
             )
