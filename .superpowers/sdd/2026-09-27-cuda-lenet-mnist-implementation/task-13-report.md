@@ -801,3 +801,53 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 ```
 
 No broad, CUDA, or H20 command was run, and 13.3b/c remains untouched.
+
+## Compliance Hardening Subtask 13.3a Fix Round 3
+
+### Bash Fallback Semantics Corrected
+
+The Fix Round 2 statement that a completed POSIX-looking inner subexpression
+without a later outer close is non-expanding was incorrect. Bash can fall back
+to interpreting that inner `]` as the close of an ordinary bracket expression:
+for example, `[[:alpha:]` can match `[a`.
+
+- The bracket scanner now records each complete POSIX-looking inner terminator
+  as a usable fallback close while continuing to search for a later unquoted
+  outer close. Either route makes the bracket expression active.
+- Removed the caller logic that skipped the same completed inner expression
+  after the outer scan returned false. Truly unmatched forms with no usable
+  unquoted `]` remain non-active, and partial quoting, initial literal `]`,
+  negation, and escapes retain their prior behavior.
+- Replaced the three incorrect helper expectations and removed the fallback
+  form from the literal-positive analyzer case. Checker-level regressions now
+  pair `[[:alpha:]`, `[[.t.]`, and `[[=a=]` recipes with matching dormant
+  prohibited files `[aclass.h`, `[tcollating.h`, and `[aequiv.h` respectively.
+
+### TDD Evidence
+
+Before the analyzer correction, six subcases failed: the three helper cases
+returned non-active and all three matching dormant-file checker cases passed
+open. The complete POSIX-class plus outer-close checker case and quoted/escaped
+literal case remained green.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+$env:MAKE = 'C:\personal_apps\msys64\usr\bin\make.exe'
+python -m unittest -v <26 focused Subtask 13.3a analyzer/checker tests>
+Ran 26 tests in 9.071s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No broad, CUDA, or H20 command was run, and 13.3b/c remains untouched.

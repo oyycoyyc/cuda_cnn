@@ -291,6 +291,7 @@ def has_glob_bracket(line, start):
     single_quoted = False
     double_quoted = False
     escaped = False
+    fallback_close = False
     index = start + 1
     if index < len(line) and line[index] in "!^":
         index += 1
@@ -311,14 +312,15 @@ def has_glob_bracket(line, start):
                     line[index + 1] in ".:="):
                 subexpression_end = bracket_subexpression_end(line, index)
                 if subexpression_end is not None:
+                    fallback_close = True
                     index = subexpression_end
                     continue
             if character == "]":
                 return True
             if character.isspace():
-                return False
+                return fallback_close
         index += 1
-    return False
+    return fallback_close
 
 
 def shell_command_portion(line):
@@ -395,12 +397,6 @@ def has_unsupported_shell(line):
         if not double_quoted and character == "[":
             if has_glob_bracket(line, index):
                 return True
-            if (index + 2 < len(line) and line[index + 1] == "[" and
-                    line[index + 2] in ".:="):
-                subexpression_end = bracket_subexpression_end(line, index + 1)
-                if subexpression_end is not None:
-                    index = subexpression_end
-                    continue
         index += 1
     return False
 

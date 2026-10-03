@@ -1114,11 +1114,14 @@ class ProhibitedCheckerTest(unittest.TestCase):
             ("[]]", True),
             ("[!]]", True),
             ("[a\\]]", True),
-            ("[[:alpha:]", False),
-            ("[[.ch.]", False),
-            ("[[=a=]", False),
+            ("[[:alpha:]", True),
+            ("[[.ch.]", True),
+            ("[[=a=]", True),
             ('[a"]"', False),
             ("[a\\]", False),
+            ("[[:alpha:", False),
+            ("[[.ch.", False),
+            ("[[=a=", False),
             ("[plain", False),
         )
         for pattern, expected in cases:
@@ -1158,9 +1161,36 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("shell", result.stdout.lower())
 
-    def test_malformed_quoted_and_escaped_brackets_are_not_globs(self):
+    def test_posix_looking_fallback_globs_cannot_activate_dormant_headers(self):
+        cases = (
+            ("tests/[[:alpha:]class.h", "tests/[aclass.h"),
+            ("tests/[[.t.]collating.h", "tests/[tcollating.h"),
+            ("tests/[[=a=]equiv.h", "tests/[aequiv.h"),
+        )
+        for pattern, matching_file in cases:
+            with self.subTest(pattern=pattern):
+                self.write(matching_file, "#include <cublas_v2.h>\n")
+                self.write(
+                    "Makefile",
+                    ".DEFAULT_GOAL := all\n"
+                    ".PHONY: all compliance-test-sources\n"
+                    "compliance-test-sources:\n"
+                    "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+                    "all: build/lenet_cuda build/smoke.o\n"
+                    "build/lenet_cuda:\n"
+                    "\tclang++ src/model.cu {0} -o $@\n".format(pattern) +
+                    "build/smoke.o: tests/smoke_tests.cpp\n"
+                    "\tclang++ -c $< -o $@\n",
+                )
+
+                result = self.run_checker("source", self.temporary)
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("shell", result.stdout.lower())
+
+    def test_quoted_and_escaped_brackets_are_not_globs(self):
         literal_flags = (
-            "-DMALFORMED=[[:alpha:] '-DQUOTED=[[:alpha:]]' "
+            "'-DQUOTED=[[:alpha:]]' "
             "-DESCAPED=\\[\\[:alpha:\\]\\]"
         )
         result = self.run_analyzer(
