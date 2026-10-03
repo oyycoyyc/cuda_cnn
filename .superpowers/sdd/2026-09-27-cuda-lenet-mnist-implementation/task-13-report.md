@@ -699,3 +699,53 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No extensionless-token handling, general option-operand taxonomy, canonical
 tests ownership, archive grammar, broad suite, CUDA, or H20 work is included.
+
+## Compliance Hardening Subtask 13.3a Fix Round 1
+
+### Review Issues Addressed
+
+- Inspected separated and equals-form NVCC `-Xcompiler`/
+  `--compiler-options` and `-Xlinker`/`--linker-options` values for response
+  files before making their option/value indexes opaque to normal input
+  discovery. Any `@` in a forwarded scalar or comma-list value is rejected for
+  production-reachable and tests-owned source commands. Existing direct-linker
+  rejection remains in force when no response file is present.
+- Corrected bracket-glob recognition for expressions whose optional negation is
+  followed by a literal leading `]`. A real checker regression proves
+  `tests/[]]hidden.h` cannot activate a dormant prohibited header without being
+  rejected, while an unclosed `[` remains a literal.
+- Added one quote/escape-aware shell command-prefix pass before both recipe
+  tokenization and ambiguity scanning. A `#` starts a comment only at an
+  unquoted, unescaped shell word boundary; quoted, escaped, and in-word hashes
+  remain part of the command.
+
+### TDD Evidence
+
+Before the analyzer change, the six new test methods reported 16 expected
+failures. Fourteen production/tests-owned forwarding subcases were accepted or
+reported only as generic linker forwarding, `[]]hidden.h` passed the complete
+source checker, and response/glob text in a genuine trailing comment caused
+rejection. The unmatched-bracket and quoted/escaped/in-word hash boundary cases
+were already green and protect against overcorrection.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+$env:MAKE = 'C:\personal_apps\msys64\usr\bin\make.exe'
+python -m unittest -v <21 focused Subtask 13.3a analyzer/checker tests>
+Ran 21 tests in 6.809s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No broad, CUDA, or H20 command was run, and 13.3b/c scope remains unchanged.

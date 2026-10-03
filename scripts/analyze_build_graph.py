@@ -206,7 +206,7 @@ def command_input_metadata(tokens):
         if token.startswith("-Wl,"):
             direct_linker = True
             opaque_indexes.add(index)
-            if any(part.startswith("@") for part in token[4:].split(",")):
+            if "@" in token[4:]:
                 response_file = True
         if token in ("--options-file", "-optf"):
             response_file = True
@@ -219,16 +219,32 @@ def command_input_metadata(tokens):
               (token.startswith("-optf") and len(token) > len("-optf"))):
             response_file = True
             opaque_indexes.add(index)
+        if token in ("-Xcompiler", "--compiler-options"):
+            opaque_indexes.add(index)
+            if index + 1 < len(tokens):
+                opaque_indexes.add(index + 1)
+                if "@" in tokens[index + 1]:
+                    response_file = True
+                index += 1
+        elif (token.startswith("-Xcompiler=") or
+              token.startswith("--compiler-options=")):
+            opaque_indexes.add(index)
+            if "@" in token.split("=", 1)[1]:
+                response_file = True
         if token in ("-Xlinker", "--linker-options"):
             direct_linker = True
             opaque_indexes.add(index)
             if index + 1 < len(tokens):
                 opaque_indexes.add(index + 1)
+                if "@" in tokens[index + 1]:
+                    response_file = True
                 index += 1
         elif (token.startswith("-Xlinker=") or
               token.startswith("--linker-options=")):
             direct_linker = True
             opaque_indexes.add(index)
+            if "@" in token.split("=", 1)[1]:
+                response_file = True
         if token == "-L":
             library_search = True
         elif token.startswith("-L") and len(token) > 2:
@@ -248,6 +264,10 @@ def command_input_metadata(tokens):
 def has_glob_bracket(line, start):
     escaped = False
     index = start + 1
+    if index < len(line) and line[index] in "!^":
+        index += 1
+    if index < len(line) and line[index] == "]":
+        index += 1
     while index < len(line):
         character = line[index]
         if escaped:
@@ -260,6 +280,45 @@ def has_glob_bracket(line, start):
             return False
         index += 1
     return False
+
+
+def shell_command_portion(line):
+    single_quoted = False
+    double_quoted = False
+    escaped = False
+    word_start = True
+    index = 0
+    while index < len(line):
+        character = line[index]
+        if escaped:
+            escaped = False
+            word_start = False
+            index += 1
+            continue
+        if character == "\\" and not single_quoted:
+            escaped = True
+            word_start = False
+            index += 1
+            continue
+        if character == "'" and not double_quoted:
+            single_quoted = not single_quoted
+            word_start = False
+            index += 1
+            continue
+        if character == '"' and not single_quoted:
+            double_quoted = not double_quoted
+            word_start = False
+            index += 1
+            continue
+        if not single_quoted and not double_quoted:
+            if character == "#" and word_start:
+                return line[:index].rstrip()
+            if character.isspace() or character in SHELL_CONTROL_CHARS:
+                word_start = True
+            else:
+                word_start = False
+        index += 1
+    return line
 
 
 def has_unsupported_shell(line):
@@ -313,7 +372,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
     commands = []
     with io.open(recipe_path, "r", encoding="utf-8") as recipe_file:
         for line_number, raw_line in enumerate(recipe_file, 1):
-            line = raw_line.rstrip("\r\n")
+            line = shell_command_portion(raw_line.rstrip("\r\n"))
             if not line.strip():
                 continue
             try:

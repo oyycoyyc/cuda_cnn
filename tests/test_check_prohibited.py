@@ -977,6 +977,45 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("response", result.stdout.lower())
 
+    def test_forwarded_response_files_are_rejected_in_relevant_commands(self):
+        response_options = (
+            "-Xcompiler=@build/host.rsp",
+            "--compiler-options=@build/host.rsp",
+            "-Xcompiler @build/host.rsp",
+            "--compiler-options @build/host.rsp",
+            "-Xcompiler=-Wall,@build/host.rsp",
+            "--compiler-options=-Wall,@build/host.rsp",
+            "-Xlinker @build/link.rsp",
+            "-Xlinker=-z,@build/link.rsp",
+            "--linker-options=@build/link.rsp",
+        )
+        for options in response_options:
+            recipes = (
+                "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+                "nvcc {0} src/model.cu -o build/lenet_cuda\n".format(options)
+            )
+            with self.subTest(context="production", options=options):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("response", result.stdout.lower())
+
+            recipes = (
+                "clang++ {0} -c tests/smoke_tests.cpp -o build/smoke.o\n"
+                "nvcc src/model.cu -o build/lenet_cuda\n".format(options)
+            )
+            with self.subTest(context="tests-owned", options=options):
+                result = self.run_analyzer(
+                    recipes,
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("response", result.stdout.lower())
+
     def test_shell_expansions_are_rejected_in_relevant_commands(self):
         expansions = (
             "$OBJECTS",
@@ -1030,6 +1069,67 @@ class ProhibitedCheckerTest(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_literal_closing_bracket_glob_cannot_activate_dormant_header(self):
+        self.write("tests/]hidden.h", "#include <cublas_v2.h>\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke.o\n"
+            "build/lenet_cuda:\n"
+            "\tclang++ src/model.cu tests/[]]hidden.h -o $@\n"
+            "build/smoke.o: tests/smoke_tests.cpp\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("shell", result.stdout.lower())
+
+    def test_unclosed_bracket_is_not_treated_as_shell_expansion(self):
+        result = self.run_analyzer(
+            "clang++ -DOPEN=[ src/model.cu -o build/lenet_cuda\n"
+            "clang++ -DOPEN=[ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_trailing_shell_comments_do_not_add_ambiguous_inputs(self):
+        result = self.run_analyzer(
+            "clang++ src/model.cu -o build/lenet_cuda # build/*.o @hidden.rsp\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o "
+            "# ${OBJECTS} -Wl,@hidden.rsp\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_quoted_and_escaped_hash_literals_are_not_comments(self):
+        result = self.run_analyzer(
+            "clang++ '-DCOMMENT=# build/*.o' \\#literal -DESCAPED=\\#\\* "
+            "src/model.cu -o build/lenet_cuda\n"
+            "clang++ '-DCOMMENT=# ${OBJECTS}' \\#literal "
+            "-DESCAPED=\\#\\$OBJECTS -c tests/smoke_tests.cpp "
+            "-o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_hash_inside_word_does_not_hide_following_glob(self):
+        result = self.run_analyzer(
+            "clang++ -DPATH=prefix#build/*.o src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("shell", result.stdout.lower())
 
     def test_reachable_artifact_without_producer_is_rejected(self):
         result = self.run_analyzer(
