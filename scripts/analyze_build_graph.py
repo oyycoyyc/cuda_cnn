@@ -261,7 +261,35 @@ def command_input_metadata(tokens):
     }, opaque_indexes
 
 
+def bracket_subexpression_end(line, start):
+    delimiter = line[start + 1]
+    single_quoted = False
+    double_quoted = False
+    escaped = False
+    index = start + 2
+    while index < len(line):
+        character = line[index]
+        if escaped:
+            escaped = False
+        elif character == "\\" and not single_quoted:
+            escaped = True
+        elif character == "'" and not double_quoted:
+            single_quoted = not single_quoted
+        elif character == '"' and not single_quoted:
+            double_quoted = not double_quoted
+        elif not single_quoted and not double_quoted:
+            if (character == delimiter and index + 1 < len(line) and
+                    line[index + 1] == "]"):
+                return index + 2
+            if character.isspace():
+                return None
+        index += 1
+    return None
+
+
 def has_glob_bracket(line, start):
+    single_quoted = False
+    double_quoted = False
     escaped = False
     index = start + 1
     if index < len(line) and line[index] in "!^":
@@ -272,12 +300,23 @@ def has_glob_bracket(line, start):
         character = line[index]
         if escaped:
             escaped = False
-        elif character == "\\":
+        elif character == "\\" and not single_quoted:
             escaped = True
-        elif character == "]":
-            return index > start + 1
-        elif character.isspace() or character in "'\"":
-            return False
+        elif character == "'" and not double_quoted:
+            single_quoted = not single_quoted
+        elif character == '"' and not single_quoted:
+            double_quoted = not double_quoted
+        elif not single_quoted and not double_quoted:
+            if (character == "[" and index + 1 < len(line) and
+                    line[index + 1] in ".:="):
+                subexpression_end = bracket_subexpression_end(line, index)
+                if subexpression_end is not None:
+                    index = subexpression_end
+                    continue
+            if character == "]":
+                return True
+            if character.isspace():
+                return False
         index += 1
     return False
 
@@ -351,10 +390,17 @@ def has_unsupported_shell(line):
             return True
         if not double_quoted and character in SHELL_CONTROL_CHARS:
             return True
-        if (not double_quoted and
-                (character in "*?" or
-                 (character == "[" and has_glob_bracket(line, index)))):
+        if not double_quoted and character in "*?":
             return True
+        if not double_quoted and character == "[":
+            if has_glob_bracket(line, index):
+                return True
+            if (index + 2 < len(line) and line[index + 1] == "[" and
+                    line[index + 2] in ".:="):
+                subexpression_end = bracket_subexpression_end(line, index + 1)
+                if subexpression_end is not None:
+                    index = subexpression_end
+                    continue
         index += 1
     return False
 

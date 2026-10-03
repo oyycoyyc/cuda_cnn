@@ -1099,6 +1099,82 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
 
+    def test_glob_bracket_state_machine_handles_shell_lexical_forms(self):
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        cases = (
+            ('[a"]"]', True),
+            ("[a']']", True),
+            ("[[:alpha:]]", True),
+            ("[[.ch.]]", True),
+            ("[[=a=]]", True),
+            ("[]]", True),
+            ("[!]]", True),
+            ("[a\\]]", True),
+            ("[[:alpha:]", False),
+            ("[[.ch.]", False),
+            ("[[=a=]", False),
+            ('[a"]"', False),
+            ("[a\\]", False),
+            ("[plain", False),
+        )
+        for pattern, expected in cases:
+            with self.subTest(pattern=pattern):
+                self.assertEqual(
+                    expected,
+                    analyzer.has_glob_bracket(pattern, 0),
+                )
+
+    def test_partially_quoted_closing_bracket_is_rejected_as_glob(self):
+        result = self.run_analyzer(
+            "clang++ -DPATTERN=[a\"]\"] src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("shell", result.stdout.lower())
+
+    def test_posix_class_glob_cannot_activate_dormant_header(self):
+        self.write("tests/ahidden.h", "#include <cublas_v2.h>\n")
+        self.write(
+            "Makefile",
+            ".DEFAULT_GOAL := all\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' tests/smoke_tests.cpp\n"
+            "all: build/lenet_cuda build/smoke.o\n"
+            "build/lenet_cuda:\n"
+            "\tclang++ src/model.cu tests/[[:alpha:]]hidden.h -o $@\n"
+            "build/smoke.o: tests/smoke_tests.cpp\n"
+            "\tclang++ -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("shell", result.stdout.lower())
+
+    def test_malformed_quoted_and_escaped_brackets_are_not_globs(self):
+        literal_flags = (
+            "-DMALFORMED=[[:alpha:] '-DQUOTED=[[:alpha:]]' "
+            "-DESCAPED=\\[\\[:alpha:\\]\\]"
+        )
+        result = self.run_analyzer(
+            "clang++ {0} src/model.cu -o build/lenet_cuda\n".format(
+                literal_flags
+            ) +
+            "clang++ {0} -c tests/smoke_tests.cpp -o build/smoke.o\n".format(
+                literal_flags
+            ),
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
     def test_trailing_shell_comments_do_not_add_ambiguous_inputs(self):
         result = self.run_analyzer(
             "clang++ src/model.cu -o build/lenet_cuda # build/*.o @hidden.rsp\n"

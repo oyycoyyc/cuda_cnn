@@ -749,3 +749,55 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 ```
 
 No broad, CUDA, or H20 command was run, and 13.3b/c scope remains unchanged.
+
+## Compliance Hardening Subtask 13.3a Fix Round 2
+
+### Final Bracket-Glob Issue Addressed
+
+- Replaced first-terminator bracket detection with a deterministic scanner that
+  tracks shell single quotes, double quotes, and escapes inside a bracket word.
+  A quoted or escaped `]` remains a member, while a later unquoted `]` closes
+  the expression. Existing optional negation and initial literal `]` handling
+  is retained.
+- Added a bounded POSIX bracket-subexpression scanner for character classes,
+  collating symbols, and equivalence classes. Complete inner `:]`, `.]`, and
+  `=]` terminators are skipped so only an outer close activates the glob; a
+  completed inner subexpression without an outer close remains non-expanding.
+- Prevented the top-level shell scan from revisiting the inner opener of a
+  malformed outer POSIX bracket candidate as an independent glob. Scanning
+  resumes after the inner subexpression so later unrelated expansions are
+  still detected.
+
+### TDD Evidence
+
+The four new test methods initially reported seven failures: double- and
+single-quoted `]` members were rejected as non-globs, each inner POSIX
+subexpression terminator was mistaken for the outer close in malformed input,
+the partial-quote analyzer case passed open, and the combined malformed/literal
+case failed closed incorrectly. The first implementation left one focused
+failure because the top-level scan revisited the inner POSIX opener; the caller
+skip was then added and the same four tests passed. A checker regression also
+proves `[[:alpha:]]hidden.h` cannot activate a matching dormant prohibited
+header without shell-ambiguity rejection.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+$env:MAKE = 'C:\personal_apps\msys64\usr\bin\make.exe'
+python -m unittest -v <25 focused Subtask 13.3a analyzer/checker tests>
+Ran 25 tests in 7.454s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No broad, CUDA, or H20 command was run, and 13.3b/c remains untouched.
