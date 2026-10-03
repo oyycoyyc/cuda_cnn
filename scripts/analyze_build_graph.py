@@ -15,6 +15,10 @@ INCLUDE_RE = re.compile(
 )
 SHELL_CONTROL_CHARS = ";&|<>"
 ARCHIVE_TOOLS = ("ar", "llvm-ar", "gcc-ar")
+ARCHIVE_VALUE_OPTIONS = ("--plugin", "--target", "--format")
+ARCHIVE_ATTACHED_VALUE_OPTIONS = (
+    "--plugin=", "--target=", "--format=", "--record-libdeps=",
+)
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
@@ -68,6 +72,12 @@ def source_token(root, token, require_file):
     }
 
 
+def source_is_tests_owned(root, source):
+    tests_root = os.path.normcase(os.path.realpath(os.path.join(root, "tests")))
+    source_real = os.path.normcase(os.path.abspath(os.path.normpath(source["real"])))
+    return is_within(tests_root, source_real)
+
+
 def executable_basename(token):
     basename = token.replace("\\", "/").rsplit("/", 1)[-1].lower()
     if basename.endswith(".exe"):
@@ -109,45 +119,90 @@ def command_prefix_indexes(tokens):
 
 
 def positional_archive_output(tokens):
-    if len(tokens) < 4 or executable_basename(tokens[0]) not in ARCHIVE_TOOLS:
+    if not tokens or executable_basename(tokens[0]) not in ARCHIVE_TOOLS:
         return None
-    operation = tokens[1]
+
+    excluded_indexes = set()
+    index = 1
+
+    def consume_options(current):
+        while current < len(tokens):
+            token = tokens[current]
+            if token in ARCHIVE_VALUE_OPTIONS:
+                if current + 1 >= len(tokens):
+                    raise AnalysisError(
+                        "archive option has no value: {0}".format(token)
+                    )
+                excluded_indexes.update((current, current + 1))
+                current += 2
+                continue
+            if token == "--thin" or any(
+                    token.startswith(prefix) and len(token) > len(prefix)
+                    for prefix in ARCHIVE_ATTACHED_VALUE_OPTIONS):
+                excluded_indexes.add(current)
+                current += 1
+                continue
+            break
+        return current
+
+    index = consume_options(index)
+    if index >= len(tokens):
+        raise AnalysisError("archive command has no operation")
+    operation_index = index
+    operation = tokens[index]
     if operation.startswith("-"):
         operation = operation[1:]
+    allowed = set("qrabicDflNPTsSuvU")
     if (not operation or not operation.isalpha() or
-            not any(action in operation.lower() for action in ("q", "r"))):
-        return None
-    excluded_indexes = set((1,))
-    index = 2
-    while index < len(tokens):
-        token = tokens[index]
-        if token == "--":
-            excluded_indexes.add(index)
-            index += 1
-            break
-        if token in ("--plugin", "--target", "--format"):
-            if index + 1 >= len(tokens):
-                raise AnalysisError(
-                    "archive option has no value: {0}".format(token)
-                )
-            excluded_indexes.update((index, index + 1))
-            index += 2
-            continue
-        if (token == "--thin" or token.startswith("--plugin=") or
-                token.startswith("--target=") or
-                token.startswith("--format=") or
-                token.startswith("--record-libdeps=")):
-            excluded_indexes.add(index)
-            index += 1
-            continue
-        break
+            any(character not in allowed for character in operation)):
+        raise AnalysisError(
+            "unsupported archive operation: {0}".format(tokens[operation_index])
+        )
+    if operation.count("q") + operation.count("r") != 1 or any(
+            action in operation for action in "dmptx"):
+        raise AnalysisError(
+            "ambiguous archive operation: {0}".format(tokens[operation_index])
+        )
+    placement = [modifier for modifier in "abi" if modifier in operation]
+    if len(placement) > 1 or (placement and "r" not in operation):
+        raise AnalysisError(
+            "ambiguous archive position modifiers: {0}".format(
+                tokens[operation_index]
+            )
+        )
+    if any(operation.count(modifier) > 1 for modifier in allowed):
+        raise AnalysisError(
+            "duplicate archive operation modifier: {0}".format(
+                tokens[operation_index]
+            )
+        )
+
+    excluded_indexes.add(operation_index)
+    index = consume_options(operation_index + 1)
+    if index < len(tokens) and tokens[index] == "--":
+        excluded_indexes.add(index)
+        index += 1
+    if placement:
+        if index >= len(tokens):
+            raise AnalysisError("archive position modifier has no relative member")
+        excluded_indexes.add(index)
+        index += 1
+    if "N" in operation:
+        if (index >= len(tokens) or not tokens[index].isdigit() or
+                int(tokens[index]) < 1):
+            raise AnalysisError("archive N modifier requires a positive count")
+        excluded_indexes.add(index)
+        index += 1
     if index >= len(tokens):
-        return None
+        raise AnalysisError("archive command has no archive path")
     archive = tokens[index]
     if archive.startswith("-") or not archive.lower().endswith((".a", ".lib")):
-        return None
-    if index + 1 >= len(tokens):
-        return None
+        raise AnalysisError("archive command has invalid archive path: {0}".format(archive))
+    for member in tokens[index + 1:]:
+        if member.startswith("-"):
+            raise AnalysisError(
+                "unsupported archive option after archive path: {0}".format(member)
+            )
     return archive, index, excluded_indexes
 
 
@@ -485,9 +540,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                     source_indexes.add(index)
             unsupported_shell = has_unsupported_shell(line)
             input_metadata["unsupported_shell"] = unsupported_shell
-            tests_owned = any(
-                source["relative"].startswith("tests/") for source in sources
-            )
+            tests_owned = any(source_is_tests_owned(root, source) for source in sources)
             if tests_owned and input_metadata["response_file"]:
                 raise AnalysisError(
                     "unsupported response-file input in tests-owned source recipe "
@@ -559,7 +612,8 @@ def read_manifest(root, manifest_path):
             token = line[len("test-source="):]
             lexical, resolved = resolve_path(root, token, require_file=True)
             relative = display_path(root, lexical)
-            if not relative.startswith("tests/"):
+            source = {"real": resolved, "relative": relative}
+            if not source_is_tests_owned(root, source):
                 raise AnalysisError(
                     "test-source manifest entry is not tests-owned: {0}".format(token)
                 )
@@ -567,11 +621,12 @@ def read_manifest(root, manifest_path):
                 raise AnalysisError(
                     "test-source manifest entry is not a translation unit: {0}".format(token)
                 )
-            if relative in expected:
+            canonical_relative = display_path(root, resolved)
+            if canonical_relative in expected:
                 raise AnalysisError(
                     "duplicate test-source manifest entry: {0}".format(relative)
                 )
-            expected[relative] = resolved
+            expected[canonical_relative] = resolved
     if not expected:
         raise AnalysisError("test-source manifest is empty")
     return expected
@@ -582,8 +637,9 @@ def reconcile_test_sources(root, commands, expected):
     compile_contexts = []
     for command in commands:
         for source in command["sources"]:
-            if source["relative"].startswith("tests/"):
-                actual[source["relative"]] = source["real"]
+            if source_is_tests_owned(root, source):
+                canonical_relative = display_path(root, source["real"])
+                actual[canonical_relative] = source["real"]
                 compile_contexts.append((
                     source["lexical"],
                     command["quote_dirs"],
@@ -758,7 +814,7 @@ def build_artifact_graph(root, commands):
         if command["invalid_candidate_inputs"]:
             raise AnalysisError(command["invalid_candidate_inputs"][0])
         for source in command["sources"]:
-            if source["relative"].startswith("tests/"):
+            if source_is_tests_owned(root, source):
                 rendered = [display_path(root, item) for item in chain]
                 raise AnalysisError(
                     "production lenet_cuda graph includes tests-owned source {0} via {1}".format(

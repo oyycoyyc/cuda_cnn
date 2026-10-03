@@ -1,3 +1,4 @@
+import errno
 import importlib.util
 import os
 import shutil
@@ -423,6 +424,56 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("oracle.o", result.stdout.lower())
+
+    def test_source_ownership_uses_canonical_test_tree_metadata(self):
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.realpath(self.temporary)
+        test_real = os.path.join(root, "tests", "cpu_reference.cpp")
+        production_real = os.path.join(root, "src", "model.cu")
+
+        self.assertTrue(analyzer.source_is_tests_owned(
+            root,
+            {"real": test_real, "relative": "src/oracle_alias.cpp"},
+        ))
+        self.assertFalse(analyzer.source_is_tests_owned(
+            root,
+            {"real": production_real, "relative": "tests/model_alias.cu"},
+        ))
+        if os.name == "nt":
+            self.assertTrue(analyzer.source_is_tests_owned(
+                root,
+                {"real": test_real.swapcase(), "relative": "src/oracle_alias.cpp"},
+            ))
+
+    def test_posix_production_source_symlink_to_test_source_is_rejected(self):
+        if os.name == "nt":
+            self.skipTest("POSIX source-symlink regression")
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        alias = os.path.join(self.temporary, "src", "oracle_alias.cpp")
+        try:
+            os.symlink(os.path.join("..", "tests", "cpu_reference.cpp"), alias)
+        except OSError as error:
+            unavailable = (errno.EACCES, errno.EPERM, errno.ENOSYS)
+            if hasattr(errno, "EOPNOTSUPP"):
+                unavailable += (errno.EOPNOTSUPP,)
+            if error.errno in unavailable:
+                self.skipTest("source symlink creation unavailable: {0}".format(error))
+            raise
+
+        result = self.run_analyzer(
+            "clang++ -c tests/cpu_reference.cpp -o build/test_oracle.o\n"
+            "clang++ -c src/oracle_alias.cpp -o build/oracle.o\n"
+            "clang++ build/oracle.o -o build/lenet_cuda\n",
+            "test-source=tests/cpu_reference.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("src/oracle_alias.cpp", result.stdout)
 
     def test_production_link_rejects_transitively_renamed_test_object(self):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
@@ -1026,6 +1077,59 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("tests-owned", result.stdout.lower())
                 self.assertIn("libsupport.a", result.stdout)
+
+    def test_archive_preoperation_options_and_position_operands_trace_provenance(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        archive_commands = (
+            "ar --plugin plugin rcs build/libsupport.a build/renamed.o",
+            "ar --plugin=plugin rcs build/libsupport.a build/renamed.o",
+            "ar ra anchor.o build/libsupport.a build/renamed.o",
+            "ar rb anchor.o build/libsupport.a build/renamed.o",
+            "ar ri anchor.o build/libsupport.a build/renamed.o",
+            "ar rN 2 build/libsupport.a build/renamed.o",
+        )
+        for archive_command in archive_commands:
+            with self.subTest(archive_command=archive_command):
+                result = self.run_analyzer(
+                    "clang++ -c tests/cpu_reference.cpp -o build/oracle.o\n"
+                    "ld -r build/oracle.o -o build/renamed.o\n" +
+                    archive_command + "\n" +
+                    "unknown-linker build/libsupport.a -o build/lenet_cuda\n",
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned", result.stdout.lower())
+                self.assertIn("libsupport.a", result.stdout)
+
+    def test_empty_archive_creation_is_a_producer_without_members(self):
+        result = self.run_analyzer(
+            "ar rcs build/libempty.a\n"
+            "unknown-linker build/libempty.a src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_malformed_or_ambiguous_archive_producers_are_rejected(self):
+        archive_commands = (
+            "ar rq build/libsupport.a build/model.o",
+            "ar rab build/libsupport.a build/model.o",
+            "ar rN build/libsupport.a build/model.o",
+        )
+        for archive_command in archive_commands:
+            with self.subTest(archive_command=archive_command):
+                result = self.run_analyzer(
+                    "clang++ -c src/model.cu -o build/model.o\n" +
+                    archive_command + "\n" +
+                    "unknown-linker build/libsupport.a -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("archive", result.stdout.lower())
 
     def test_reachable_archive_response_file_is_rejected(self):
         result = self.run_analyzer(

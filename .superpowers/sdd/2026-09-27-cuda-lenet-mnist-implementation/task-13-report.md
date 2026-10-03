@@ -972,3 +972,72 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No 13.3c, broad-suite, CUDA, or H20 command was run. Python 3.6 runtime and
 CUDA/H20 evidence remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.3c
+
+### Canonical Ownership And Archive Grammar
+
+Source ownership now compares each source's canonical real path with canonical
+`ROOT/tests` using platform case normalization. Manifest reconciliation uses the
+same canonical source identity, while diagnostics retain the lexical recipe
+path. A production lexical alias into `tests/` therefore remains tests-owned and
+is rejected when reachable even when the normal test path independently
+satisfies the manifest.
+
+Recognized `ar`, `llvm-ar`, and `gcc-ar` path/`.exe` commands now parse supported
+options before or after the operation, including separated and attached
+`--plugin`. The parser consumes `a`/`b`/`i` relative-position operands and the
+positive count required by `N`, keeps those grammar operands out of provenance,
+and accepts archive creation with no members. Conflicting producer operations,
+ambiguous position modifiers, missing/invalid counts, unsupported operations,
+and misplaced post-archive options fail closed.
+
+### TDD Evidence
+
+Five focused tests were added before production changes. The deterministic
+ownership helper was absent; all four valid member-bearing archive forms failed
+to reach the tests-owned producer; empty archive creation had no producer; and
+all three malformed forms were incorrectly accepted:
+
+```text
+test_source_ownership_uses_canonical_test_tree_metadata ... ERROR
+test_archive_preoperation_options_and_position_operands_trace_provenance ...
+  four subtests FAIL
+test_empty_archive_creation_is_a_producer_without_members ... FAIL
+test_malformed_or_ambiguous_archive_producers_are_rejected ...
+  three subtests FAIL
+Ran 5 tests
+FAILED (failures=8, errors=1, skipped=1)
+```
+
+The POSIX source-symlink integration test was skipped on Windows by design; its
+cross-platform metadata companion exercised canonical ownership and Windows
+case normalization. Symlink creation errors on POSIX are skipped only for
+access or platform-capability errors.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <16 focused Subtask 13.3c tests>
+Ran 16 tests in 5.381s
+OK (skipped=1: POSIX-only source-symlink integration on Windows)
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+An initial expanded focused run with `BASH` unset encountered the existing
+Windows subprocess GBK decode issue in six checker-backed cases. Repeating the
+identical tests with the recorded MSYS2 Bash path produced the result above.
+
+No build-log or documentation behavior was modified. No broad, CUDA, or H20
+command was run. The POSIX end-to-end symlink case and Python 3.6 runtime
+execution remain unavailable locally and are not claimed.
