@@ -1041,3 +1041,71 @@ identical tests with the recorded MSYS2 Bash path produced the result above.
 No build-log or documentation behavior was modified. No broad, CUDA, or H20
 command was run. The POSIX end-to-end symlink case and Python 3.6 runtime
 execution remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.3c Fix Round 1
+
+### Review Findings Addressed
+
+- Added one canonical path identity function defined as absolute real path plus
+  platform case normalization. Tests ownership, manifest entries, and recipe
+  sources now share that identity. Reconciliation dictionaries use it as their
+  key and retain normalized lexical-relative paths only as diagnostic values.
+- Case-equivalent manifest/recipe spellings now reconcile on case-insensitive
+  platforms, canonical duplicate manifest entries reject, and distinct real
+  files retain distinct keys. A deterministic Windows regression exercises
+  recipe parsing, manifest reading, reconciliation, and production graph
+  rejection with a lexical `src/` alias resolving into `tests/` under varied
+  case spellings.
+- Replaced the shared archive modifier set with operation-specific `q` and `r`
+  sets. Placement modifiers and `u` are accepted only with `r`; `qu` rejects;
+  and `N` rejects for this supported producer subset rather than consuming a
+  count. Valid plugin options, `a`/`b`/`i` placement, `ru`, empty creation, and
+  member provenance remain covered.
+
+### TDD Evidence
+
+The first focused RED run showed the case-variant alias failing during
+reconciliation and both newly unsupported producer forms being accepted:
+
+```text
+test_windows_case_variant_alias_reconciles_then_taints_production ... ERROR
+test_windows_case_variant_manifest_alias_is_duplicate ... ok
+test_archive_preoperation_options_and_position_operands_trace_provenance ... ok
+test_malformed_or_ambiguous_archive_producers_are_rejected ...
+  ar rN 2 ... FAIL
+  ar qu ... FAIL
+Ran 4 tests
+FAILED (failures=2, errors=1)
+```
+
+The duplicate fixture was then strengthened to preserve different diagnostic
+case spellings for one canonical file. Before production changes it failed with
+`AnalysisError not raised`, proving the shared identity was required rather
+than relying on rendered path behavior.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <17 focused Subtask 13.3c tests>
+Ran 17 tests in 5.583s
+OK (skipped=1: POSIX-only source-symlink integration on Windows)
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The first byte-compilation attempt ran concurrently with unittest and hit a
+Windows `__pycache__` replacement access error. Its standalone rerun produced
+the successful result above.
+
+No build-log or documentation behavior was modified. No broad, CUDA, H20,
+subagent, or reviewer command was run. The POSIX end-to-end symlink case and
+Python 3.6 runtime execution remain unavailable locally and are not claimed.

@@ -425,29 +425,123 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("oracle.o", result.stdout.lower())
 
-    def test_source_ownership_uses_canonical_test_tree_metadata(self):
+    def test_windows_case_variant_alias_reconciles_then_taints_production(self):
+        if os.name != "nt":
+            self.skipTest("Windows canonical case-normalization regression")
         specification = importlib.util.spec_from_file_location(
             "analyze_build_graph", ANALYZER
         )
         analyzer = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(analyzer)
         root = os.path.realpath(self.temporary)
-        test_real = os.path.join(root, "tests", "cpu_reference.cpp")
-        production_real = os.path.join(root, "src", "model.cu")
+        test_lexical = self.write(
+            "tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n"
+        )
+        alias_lexical = os.path.join(root, "src", "oracle_alias.cpp")
+        recipe_path = self.write(
+            "recipes.log",
+            "clang++ -c tests/cpu_reference.cpp -o build/test_oracle.o\n"
+            "clang++ -c src/oracle_alias.cpp -o build/oracle.o\n"
+            "clang++ build/oracle.o -o build/lenet_cuda\n",
+        )
+        manifest_path = self.write(
+            "manifest.log", "test-source=tests/cpu_reference.cpp\n"
+        )
+        original_realpath = os.path.realpath
+        original_normcase = os.path.normcase
+        original_display_path = analyzer.display_path
 
-        self.assertTrue(analyzer.source_is_tests_owned(
-            root,
-            {"real": test_real, "relative": "src/oracle_alias.cpp"},
-        ))
-        self.assertFalse(analyzer.source_is_tests_owned(
-            root,
-            {"real": production_real, "relative": "tests/model_alias.cu"},
-        ))
-        if os.name == "nt":
-            self.assertTrue(analyzer.source_is_tests_owned(
-                root,
-                {"real": test_real.swapcase(), "relative": "src/oracle_alias.cpp"},
-            ))
+        def case_variant_realpath(path):
+            absolute = os.path.abspath(path)
+            if original_normcase(absolute) == original_normcase(alias_lexical):
+                return test_lexical.lower()
+            if original_normcase(absolute) == original_normcase(test_lexical):
+                return test_lexical.upper()
+            if original_normcase(absolute) == original_normcase(
+                    os.path.join(root, "tests")):
+                return os.path.join(root, "tests").swapcase()
+            return original_realpath(path)
+
+        def case_variant_display_path(display_root, path):
+            if original_normcase(path) == original_normcase(test_lexical):
+                if path == test_lexical.upper():
+                    return "TESTS/CPU_REFERENCE.CPP"
+                return "tests/cpu_reference.cpp"
+            return original_display_path(display_root, path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=case_variant_realpath), \
+                mock.patch.object(
+                    analyzer.os.path,
+                    "normcase",
+                    side_effect=lambda path: path.replace("/", "\\").lower(),
+                ), mock.patch.object(
+                    analyzer, "display_path", side_effect=case_variant_display_path
+                ):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            expected = analyzer.read_manifest(root, manifest_path)
+            contexts = analyzer.reconcile_test_sources(root, commands, expected)
+
+            self.assertEqual(2, len(contexts))
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.build_artifact_graph(root, commands)
+        self.assertIn("tests-owned", str(caught.exception).lower())
+        self.assertIn("src/oracle_alias.cpp", str(caught.exception))
+
+    def test_windows_case_variant_manifest_alias_is_duplicate(self):
+        if os.name != "nt":
+            self.skipTest("Windows canonical case-normalization regression")
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.realpath(self.temporary)
+        test_lexical = self.write(
+            "tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n"
+        )
+        manifest_path = self.write(
+            "manifest.log",
+            "test-source=tests/cpu_reference.cpp\n"
+            "test-source=TESTS/CPU_REFERENCE.CPP\n",
+        )
+        original_realpath = os.path.realpath
+        original_normcase = os.path.normcase
+        original_display_path = analyzer.display_path
+
+        def case_variant_realpath(path):
+            absolute = os.path.abspath(path)
+            if original_normcase(absolute) == original_normcase(test_lexical):
+                if absolute == test_lexical:
+                    return test_lexical.upper()
+                return test_lexical.lower()
+            if original_normcase(absolute) == original_normcase(
+                    os.path.join(root, "tests")):
+                return os.path.join(root, "tests").swapcase()
+            return original_realpath(path)
+
+        display_calls = [0]
+
+        def case_variant_display_path(display_root, path):
+            if original_normcase(path) == original_normcase(test_lexical):
+                display_calls[0] += 1
+                if display_calls[0] <= 2:
+                    return "TESTS/CPU_REFERENCE.CPP"
+                return "tests/cpu_reference.cpp"
+            return original_display_path(display_root, path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=case_variant_realpath), \
+                mock.patch.object(
+                    analyzer.os.path,
+                    "normcase",
+                    side_effect=lambda path: path.replace("/", "\\").lower(),
+                ), mock.patch.object(
+                    analyzer, "display_path", side_effect=case_variant_display_path
+                ):
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.read_manifest(root, manifest_path)
+        self.assertIn("duplicate", str(caught.exception).lower())
 
     def test_posix_production_source_symlink_to_test_source_is_rejected(self):
         if os.name == "nt":
@@ -1086,7 +1180,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "ar ra anchor.o build/libsupport.a build/renamed.o",
             "ar rb anchor.o build/libsupport.a build/renamed.o",
             "ar ri anchor.o build/libsupport.a build/renamed.o",
-            "ar rN 2 build/libsupport.a build/renamed.o",
+            "ar ru build/libsupport.a build/renamed.o",
         )
         for archive_command in archive_commands:
             with self.subTest(archive_command=archive_command):
@@ -1117,6 +1211,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "ar rq build/libsupport.a build/model.o",
             "ar rab build/libsupport.a build/model.o",
             "ar rN build/libsupport.a build/model.o",
+            "ar rN 2 build/libsupport.a build/model.o",
+            "ar qu build/libsupport.a build/model.o",
         )
         for archive_command in archive_commands:
             with self.subTest(archive_command=archive_command):

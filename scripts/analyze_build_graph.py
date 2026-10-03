@@ -19,6 +19,10 @@ ARCHIVE_VALUE_OPTIONS = ("--plugin", "--target", "--format")
 ARCHIVE_ATTACHED_VALUE_OPTIONS = (
     "--plugin=", "--target=", "--format=", "--record-libdeps=",
 )
+ARCHIVE_OPERATION_MODIFIERS = {
+    "q": "cDflPsSTUv",
+    "r": "abicDflPsSTUuv",
+}
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
@@ -72,10 +76,13 @@ def source_token(root, token, require_file):
     }
 
 
+def canonical_path_identity(path):
+    return os.path.normcase(os.path.abspath(os.path.realpath(path)))
+
+
 def source_is_tests_owned(root, source):
-    tests_root = os.path.normcase(os.path.realpath(os.path.join(root, "tests")))
-    source_real = os.path.normcase(os.path.abspath(os.path.normpath(source["real"])))
-    return is_within(tests_root, source_real)
+    tests_root = canonical_path_identity(os.path.join(root, "tests"))
+    return is_within(tests_root, canonical_path_identity(source["real"]))
 
 
 def executable_basename(token):
@@ -152,9 +159,7 @@ def positional_archive_output(tokens):
     operation = tokens[index]
     if operation.startswith("-"):
         operation = operation[1:]
-    allowed = set("qrabicDflNPTsSuvU")
-    if (not operation or not operation.isalpha() or
-            any(character not in allowed for character in operation)):
+    if not operation or not operation.isalpha():
         raise AnalysisError(
             "unsupported archive operation: {0}".format(tokens[operation_index])
         )
@@ -163,8 +168,18 @@ def positional_archive_output(tokens):
         raise AnalysisError(
             "ambiguous archive operation: {0}".format(tokens[operation_index])
         )
+    producer_operation = "q" if "q" in operation else "r"
+    allowed = set(
+        producer_operation + ARCHIVE_OPERATION_MODIFIERS[producer_operation]
+    )
+    if any(character not in allowed for character in operation):
+        raise AnalysisError(
+            "unsupported archive modifier for {0}: {1}".format(
+                producer_operation, tokens[operation_index]
+            )
+        )
     placement = [modifier for modifier in "abi" if modifier in operation]
-    if len(placement) > 1 or (placement and "r" not in operation):
+    if len(placement) > 1:
         raise AnalysisError(
             "ambiguous archive position modifiers: {0}".format(
                 tokens[operation_index]
@@ -185,12 +200,6 @@ def positional_archive_output(tokens):
     if placement:
         if index >= len(tokens):
             raise AnalysisError("archive position modifier has no relative member")
-        excluded_indexes.add(index)
-        index += 1
-    if "N" in operation:
-        if (index >= len(tokens) or not tokens[index].isdigit() or
-                int(tokens[index]) < 1):
-            raise AnalysisError("archive N modifier requires a positive count")
         excluded_indexes.add(index)
         index += 1
     if index >= len(tokens):
@@ -621,12 +630,12 @@ def read_manifest(root, manifest_path):
                 raise AnalysisError(
                     "test-source manifest entry is not a translation unit: {0}".format(token)
                 )
-            canonical_relative = display_path(root, resolved)
-            if canonical_relative in expected:
+            identity = canonical_path_identity(resolved)
+            if identity in expected:
                 raise AnalysisError(
                     "duplicate test-source manifest entry: {0}".format(relative)
                 )
-            expected[canonical_relative] = resolved
+            expected[identity] = relative
     if not expected:
         raise AnalysisError("test-source manifest is empty")
     return expected
@@ -638,15 +647,19 @@ def reconcile_test_sources(root, commands, expected):
     for command in commands:
         for source in command["sources"]:
             if source_is_tests_owned(root, source):
-                canonical_relative = display_path(root, source["real"])
-                actual[canonical_relative] = source["real"]
+                identity = canonical_path_identity(source["real"])
+                actual[identity] = source["relative"]
                 compile_contexts.append((
                     source["lexical"],
                     command["quote_dirs"],
                     command["include_dirs"],
                 ))
-    missing = sorted(set(expected) - set(actual))
-    extra = sorted(set(actual) - set(expected))
+    missing = sorted(
+        expected[identity] for identity in set(expected) - set(actual)
+    )
+    extra = sorted(
+        actual[identity] for identity in set(actual) - set(expected)
+    )
     if missing or extra:
         details = []
         if missing:
