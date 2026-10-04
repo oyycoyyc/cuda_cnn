@@ -1317,6 +1317,87 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("option", result.stdout.lower())
 
+    def test_empty_forwarded_active_option_values_fail_closed(self):
+        variants = (
+            "-Xcompiler=-I,",
+            "--compiler-options=-iquote,",
+            "--compiler-options=-isystem,",
+            "-Xcompiler=-include,",
+            "--compiler-options=-imacros,",
+        )
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "nvcc -c src/model.cu -o build/model.o {0}\n".format(option) +
+                    "nvcc build/model.o -o build/lenet_cuda\n"
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option", result.stdout.lower())
+
+    def test_empty_direct_include_directory_values_fail_closed(self):
+        variants = (
+            "-I ''",
+            "-I=",
+            "-iquote ''",
+            "-iquote=",
+            "-isystem ''",
+            "-isystem=",
+        )
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ {0} -c src/model.cu -o build/model.o\n".format(option) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("include option", result.stdout.lower())
+
+    def test_empty_forced_input_forms_fail_closed(self):
+        variants = (
+            "-include ''",
+            "-include=",
+            "-include",
+            "-imacros ''",
+            "-imacros=",
+            "-imacros",
+        )
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ -c src/model.cu -o build/model.o {0}\n".format(option) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("forced-input option", result.stdout.lower())
+
+    def test_empty_unrelated_nvcc_forwarding_fields_fail_closed(self):
+        variants = (
+            "-Xcompiler=,-Wall",
+            "-Xcompiler=-Wall,,-Wextra",
+            "--compiler-options=-Wall,",
+            "--compiler-options ,-Wall",
+        )
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "nvcc -c src/model.cu -o build/model.o {0}\n".format(option) +
+                    "nvcc build/model.o -o build/lenet_cuda\n"
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("forwarding option", result.stdout.lower())
+
     def test_ordinary_nvcc_host_forwarding_values_remain_accepted(self):
         result = self.run_analyzer(
             "nvcc -Xcompiler=-Wall,-Wextra -c src/model.cu "

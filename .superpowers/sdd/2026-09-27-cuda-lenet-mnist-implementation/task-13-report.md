@@ -1256,3 +1256,60 @@ No linker-script, library, archive, general-option, build-log, documentation,
 broad-suite, CUDA, H20, subagent, or reviewer work was performed. Python 3.6
 runtime execution and the POSIX symlink integration remain unavailable locally
 and are not claimed.
+
+## Compliance Hardening Subtask 13.3d Fix Round 2
+
+### Final Empty-Value Finding
+
+- Include-directory values are now checked before any path join or
+  normalization, so empty separated `-I`, `-iquote`, and `-isystem` operands
+  cannot become `ROOT`. Exactly empty attached `-I=` and `-iquote=` spellings
+  reject without changing existing nonempty attached path handling.
+- Every comma-delimited NVCC host compiler forwarding field must be nonempty.
+  This rejects empty values for forwarded `-I`, `-iquote`, `-isystem`,
+  `-include`, and `-imacros`, and fails closed on unrelated leading, middle, or
+  trailing empty fields rather than silently changing active search semantics.
+- Existing forced-input checks reject empty separated, equals, and missing
+  attached values for both `-include` and `-imacros`. Valid forwarding and
+  forwarded response-file rejection remain unchanged.
+
+### TDD Evidence
+
+The four focused test matrices were added before the implementation change.
+The RED run reported 12 failures: three forwarded include-directory families,
+five direct include-directory spellings, and four unrelated empty forwarding
+field cases were accepted. The forced-input empty-form matrix already passed,
+confirming that its existing fail-closed behavior only needed regression
+coverage.
+
+```text
+Ran 4 tests in 1.516s
+FAILED (failures=12)
+```
+
+After adding pre-normalization and forwarding-field validation, the four empty
+matrices plus valid forwarding, attached include, and response-file regressions
+all passed with the configured MSYS2 Bash.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <35 focused Subtask 13.3d tests>
+Ran 35 tests in 9.482s
+OK (skipped=1: POSIX-only header-symlink integration on Windows)
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No later task, broad-suite, CUDA, H20, subagent, or reviewer work was
+performed. Python 3.6 runtime execution and the POSIX symlink integration
+remain unavailable locally and are not claimed.

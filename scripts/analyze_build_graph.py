@@ -281,11 +281,15 @@ def include_directories(root, tokens, ignored_indexes=None):
             index += 2
         elif token.startswith("-iquote") and len(token) > len("-iquote"):
             value = token[len("-iquote"):]
+            if value == "=":
+                value = ""
             destination = quote_dirs
             option_indexes.add(index)
             index += 1
         elif token.startswith("-I") and len(token) > 2:
             value = token[2:]
+            if value == "=":
+                value = ""
             destination = include_dirs
             option_indexes.add(index)
             index += 1
@@ -302,6 +306,8 @@ def include_directories(root, tokens, ignored_indexes=None):
             index += 1
         if destination is None:
             continue
+        if not value:
+            raise AnalysisError("include option has no directory: {0}".format(token))
         lexical = value if os.path.isabs(value) else os.path.join(root, value)
         lexical = os.path.abspath(os.path.normpath(lexical))
         resolved = os.path.realpath(lexical)
@@ -381,7 +387,12 @@ def active_compiler_tokens(tokens):
             raise AnalysisError(
                 "host compiler forwarding option has no value: {0}".format(token)
             )
-        active_tokens.extend(payload.split(","))
+        fields = payload.split(",")
+        if any(not field for field in fields):
+            raise AnalysisError(
+                "host compiler forwarding option has an empty field: {0}".format(token)
+            )
+        active_tokens.extend(fields)
     return active_tokens
 
 
