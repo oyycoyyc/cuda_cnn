@@ -24,12 +24,15 @@ ARCHIVE_OPERATION_MODIFIERS = {
     "r": "abicDflPsSTUuv",
 }
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
+COMPILER_TOOLS = ("cc", "c++", "gcc", "g++", "clang", "clang++", "nvcc")
+DIRECT_LINKER_TOOLS = ("ld", "ld.bfd", "ld.gold", "ld.lld", "lld")
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
     "-MF", "-MT", "-MQ", "--sysroot",
 )
 ATTACHED_NON_ARTIFACT_OPTIONS = ("-MF", "-MT", "-MQ")
 NVCC_NON_LIBRARY_L_OPTIONS = ("-link", "-lib", "-ltoir", "-lineinfo")
+ENVIRONMENT_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -96,28 +99,62 @@ def executable_basename(token):
 def command_executable_index(tokens):
     index = 0
     while (index < len(tokens) and
+           ENVIRONMENT_ASSIGNMENT_RE.match(tokens[index]) is not None):
+        index += 1
+    while (index < len(tokens) and
            executable_basename(tokens[index]) in COMMAND_WRAPPERS):
         index += 1
+    if (index >= len(tokens) or not tokens[index] or
+            tokens[index].startswith("-")):
+        raise AnalysisError("recipe command has no executable")
     return index
 
 
 def non_artifact_option_indexes(tokens):
     option_indexes = set()
+    executable_index = command_executable_index(tokens)
+    executable = executable_basename(tokens[executable_index])
+    compiler_command = executable in COMPILER_TOOLS
+    nvcc_command = executable == "nvcc"
+    direct_linker_command = executable in DIRECT_LINKER_TOOLS
     index = 0
+
+    def consume_required_value(option_index):
+        option = tokens[option_index]
+        if (option_index + 1 >= len(tokens) or not tokens[option_index + 1] or
+                tokens[option_index + 1].startswith("-")):
+            raise AnalysisError("option has no value: {0}".format(option))
+        option_indexes.update((option_index, option_index + 1))
+        return option_index + 2
+
     while index < len(tokens):
         token = tokens[index]
-        if token in SEPARATED_NON_ARTIFACT_OPTIONS:
-            if index + 1 >= len(tokens):
-                raise AnalysisError(
-                    "option has no value: {0}".format(token)
-                )
-            option_indexes.update((index, index + 1))
-            index += 2
+        if (token in SEPARATED_NON_ARTIFACT_OPTIONS or
+                (compiler_command and token == "-x") or
+                (nvcc_command and token in (
+                    "--threads", "-t", "-ccbin", "--compiler-bindir"
+                )) or
+                (direct_linker_command and token in ("-m", "-e", "-u"))):
+            index = consume_required_value(index)
             continue
         if token.startswith("--sysroot="):
             option_indexes.add(index)
         elif any(token.startswith(option) and len(token) > len(option)
-                 for option in ATTACHED_NON_ARTIFACT_OPTIONS):
+                  for option in ATTACHED_NON_ARTIFACT_OPTIONS):
+            option_indexes.add(index)
+        elif nvcc_command and any(token.startswith(prefix) for prefix in (
+                "--threads=", "-ccbin=", "--compiler-bindir=")):
+            if not token.split("=", 1)[1]:
+                raise AnalysisError(
+                    "option has no value: {0}".format(token.split("=", 1)[0])
+                )
+            option_indexes.add(index)
+        elif direct_linker_command and any(token.startswith(prefix) for prefix in (
+                "--emulation=", "--entry=", "--undefined=", "--defsym=")):
+            if not token.split("=", 1)[1]:
+                raise AnalysisError(
+                    "option has no value: {0}".format(token.split("=", 1)[0])
+                )
             option_indexes.add(index)
         index += 1
     return option_indexes
@@ -132,11 +169,14 @@ def command_prefix_indexes(tokens):
 
 
 def positional_archive_output(tokens):
-    if not tokens or executable_basename(tokens[0]) not in ARCHIVE_TOOLS:
+    if not tokens:
+        return None
+    executable_index = command_executable_index(tokens)
+    if executable_basename(tokens[executable_index]) not in ARCHIVE_TOOLS:
         return None
 
     excluded_indexes = set()
-    index = 1
+    index = executable_index + 1
 
     def consume_options(current):
         while current < len(tokens):
@@ -225,7 +265,8 @@ def output_token(tokens, opaque_indexes):
     outputs = []
     output_indexes = set()
     stateful_archive = False
-    if tokens and executable_basename(tokens[0]) in ARCHIVE_TOOLS:
+    executable_index = command_executable_index(tokens)
+    if executable_basename(tokens[executable_index]) in ARCHIVE_TOOLS:
         archive_output = positional_archive_output(tokens)
         if archive_output is not None:
             output, index, excluded_indexes = archive_output
@@ -685,6 +726,14 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 )
             if not tokens:
                 continue
+            try:
+                command_executable_index(tokens)
+            except AnalysisError:
+                if (not require_sources and all(
+                        ENVIRONMENT_ASSIGNMENT_RE.match(token) is not None
+                        for token in tokens)):
+                    continue
+                raise
             input_metadata, opaque_input_indexes = command_input_metadata(tokens)
             non_artifact_indexes = non_artifact_option_indexes(tokens)
             output, output_indexes, stateful_archive = output_token(
@@ -740,7 +789,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 )
             output_path = None
             if output is not None:
-                _, output_path = resolve_path(root, output)
+                output_path, _ = resolve_path(root, output)
             prefix_indexes = command_prefix_indexes(tokens)
             candidates = []
             invalid_candidates = []
@@ -754,7 +803,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 if token.startswith("-") or token.startswith("@"):
                     continue
                 try:
-                    _, candidate = resolve_path(root, token)
+                    candidate, _ = resolve_path(root, token)
                 except AnalysisError as error:
                     invalid_candidates.append(str(error))
                     continue
@@ -1007,28 +1056,36 @@ def build_artifact_graph(root, commands):
         output = command["output"]
         if output is None:
             continue
-        if output in producers:
+        identity = canonical_path_identity(output)
+        if identity in producers:
             raise AnalysisError(
                 "multiple recipe commands produce artifact: {0}".format(
                     display_path(root, output)
                 )
             )
-        producers[output] = command
+        producers[identity] = command
 
     for command in commands:
         inputs = []
+        input_identities = set()
+        output_identity = (
+            canonical_path_identity(command["output"])
+            if command["output"] is not None else None
+        )
         for candidate in command["candidate_inputs"]:
-            if (candidate != command["output"] and
-                    candidate not in inputs):
-                inputs.append(candidate)
+            identity = canonical_path_identity(candidate)
+            if identity != output_identity and identity not in input_identities:
+                inputs.append({"identity": identity, "path": candidate})
+                input_identities.add(identity)
         command["artifact_inputs"] = inputs
 
     application_names = set(
-        os.path.normcase(path) for path in ("build/lenet_cuda", "build/lenet_cuda.exe")
+        canonical_path_identity(os.path.join(root, path))
+        for path in ("build/lenet_cuda", "build/lenet_cuda.exe")
     )
     applications = [
-        output for output in producers
-        if os.path.normcase(display_path(root, output)) in application_names
+        (identity, command["output"]) for identity, command in producers.items()
+        if identity in application_names
     ]
     if len(applications) != 1:
         raise AnalysisError(
@@ -1039,11 +1096,11 @@ def build_artifact_graph(root, commands):
     visited = set()
     reachable_commands = []
 
-    def walk(artifact, chain):
-        if artifact in visited:
+    def walk(identity, artifact, chain):
+        if identity in visited:
             return
-        visited.add(artifact)
-        command = producers.get(artifact)
+        visited.add(identity)
+        command = producers.get(identity)
         if command is None:
             raise AnalysisError(
                 "production graph has an input with no analyzed producer: {0}".format(
@@ -1098,10 +1155,13 @@ def build_artifact_graph(root, commands):
                     )
                 )
         for dependency in command["artifact_inputs"]:
-            walk(dependency, chain + [dependency])
+            walk(
+                dependency["identity"], dependency["path"],
+                chain + [dependency["path"]]
+            )
 
-    application = applications[0]
-    walk(application, [application])
+    application_identity, application = applications[0]
+    walk(application_identity, application, [application])
     return reachable_commands
 
 

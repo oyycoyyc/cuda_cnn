@@ -1962,6 +1962,184 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("option has no value: -ldir", result.stdout.lower())
 
+    def test_environment_assignment_and_wrapper_prefix_reaches_unknown_compiler(self):
+        result = self.run_analyzer(
+            "CUDA_CACHE_DISABLE=1 ccache unknown-compiler -c src/model.cu "
+            "-o build/main.o\n"
+            "CUDA_CACHE_DISABLE=1 ccache unknown-linker build/main.o "
+            "-o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_assignment_prefix_requires_an_executable(self):
+        result = self.run_analyzer(
+            "CUDA_CACHE_DISABLE=1 -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("executable", result.stdout.lower())
+
+    def test_assignment_only_build_log_record_is_not_a_command(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "event=build status=pass target=all\n"
+            "nvcc -c src/model.cu -o build/model.o\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+
+        commands = analyzer.parse_recipes(
+            os.path.realpath(self.temporary), recipe_path, require_sources=False
+        )
+
+        self.assertEqual(1, len(commands))
+        self.assertEqual("nvcc", commands[0]["tokens"][0])
+
+    def test_malformed_assignment_name_remains_visible_as_the_executable(self):
+        result = self.run_analyzer(
+            "BAD-NAME=value unknown-linker src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("unknown-linker", result.stdout)
+        self.assertIn("no analyzed producer", result.stdout.lower())
+
+    def test_current_project_recipe_with_assignment_and_nvcc_options_is_accepted(self):
+        gencode = (
+            "-gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90"
+        )
+        result = self.run_analyzer(
+            "CUDA_CACHE_DISABLE=1 ccache nvcc -Iinclude -std=c++14 -O2 "
+            "-lineinfo {0} --threads 2 -ccbin tools/g++.exe -MMD -MP "
+            "-x cu -c src/model.cu -o build/model.o\n".format(gencode) +
+            "CUDA_CACHE_DISABLE=1 ccache nvcc -std=c++14 -O2 -lineinfo "
+            "{0} --threads=2 --compiler-bindir=tools build/model.o "
+            "-o build/lenet_cuda\n".format(gencode) +
+            "g++ -Iinclude -std=c++14 -O2 -Wall -Wextra -Wpedantic "
+            "-MMD -MP -x c++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_scoped_option_operands_are_not_artifacts_but_following_input_is(self):
+        cases = (
+            ("clang++", "-x build/option.o"),
+            ("nvcc", "--threads build/option.o"),
+            ("nvcc", "-t build/option.o"),
+            ("nvcc", "-ccbin build/option.o"),
+            ("nvcc", "--compiler-bindir build/option.o"),
+            ("ld", "-m build/option.o"),
+            ("ld", "--emulation=build/option.o"),
+            ("ld", "-e build/option.o"),
+            ("ld", "--entry=build/option.o"),
+            ("ld", "-u build/option.o"),
+            ("ld", "--undefined=build/option.o"),
+            ("ld", "--defsym=build/option.o"),
+        )
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        for command, option in cases:
+            with self.subTest(command=command, option=option):
+                result = self.run_analyzer(
+                    "unknown-compiler -c tests/cpu_reference.cpp "
+                    "-o build/option.o\n"
+                    "unknown-compiler -c src/model.cu -o build/main.o\n"
+                    "{0} {1} build/main.o -o build/lenet_cuda\n".format(
+                        command, option
+                    ),
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_scoped_option_grammar_does_not_hide_following_artifact(self):
+        cases = (
+            ("clang++", "-x c++"),
+            ("nvcc", "--threads 2"),
+            ("nvcc", "-ccbin tools/g++"),
+            ("ld", "-e entry_point"),
+        )
+        for command, option in cases:
+            with self.subTest(command=command, option=option):
+                result = self.run_analyzer(
+                    "{0} {1} build/missing.o -o build/lenet_cuda\n".format(
+                        command, option
+                    ) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("missing.o", result.stdout)
+                self.assertIn("no analyzed producer", result.stdout.lower())
+
+    def test_required_scoped_option_operands_fail_closed(self):
+        cases = (
+            ("clang++", "-x"),
+            ("clang++", "-x -c"),
+            ("nvcc", "--threads"),
+            ("nvcc", "--threads -c"),
+            ("nvcc", "-t ''"),
+            ("nvcc", "-ccbin -c"),
+            ("nvcc", "--compiler-bindir ''"),
+            ("ld", "-m"),
+            ("ld", "-e -o"),
+            ("ld", "-u ''"),
+            ("ld", "--emulation="),
+            ("ld", "--entry="),
+            ("ld", "--undefined="),
+            ("ld", "--defsym="),
+        )
+        for command, option in cases:
+            with self.subTest(command=command, option=option):
+                result = self.run_analyzer(
+                    "{0} src/model.cu -o build/lenet_cuda {1}\n".format(
+                        command, option
+                    ) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option has no value", result.stdout.lower())
+
+    def test_nvcc_only_operands_remain_visible_for_other_tools(self):
+        for option in ("--threads build/option.o", "-ccbin build/option.o"):
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option.o", result.stdout)
+                self.assertIn("no analyzed producer", result.stdout.lower())
+
+    def test_direct_linker_operands_remain_visible_for_compiler_commands(self):
+        for option in ("-m build/option.o", "-e build/option.o", "-u build/option.o"):
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option.o", result.stdout)
+                self.assertIn("no analyzed producer", result.stdout.lower())
+
     def test_reachable_external_control_file_forms_are_rejected(self):
         control_options = (
             "-T build/link.ld",
@@ -2350,6 +2528,160 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("multiple recipe commands produce artifact", result.stdout.lower())
         self.assertIn("main.o", result.stdout)
+
+    def test_normalized_artifact_aliases_share_one_graph_identity(self):
+        result = self.run_analyzer(
+            "unknown-compiler -c src/model.cu -o build/parts/../main.o\n"
+            "unknown-linker build/main.o -o build/app/../lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_modeled_case_aliases_reconcile_nonexistent_artifacts(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "unknown-compiler -c src/model.cu -o BUILD/Main.o\n"
+            "unknown-linker build/main.o BUILD/Main.o -o BUILD/LENET_CUDA\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.abspath(self.temporary)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=os.path.abspath), \
+                mock.patch.object(
+                    analyzer.os.path,
+                    "normcase",
+                    side_effect=lambda path: path.replace("/", "\\").lower(),
+                ):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            reachable = analyzer.build_artifact_graph(root, commands)
+
+        self.assertEqual(2, len(reachable))
+
+    def test_modeled_realpath_aliases_share_producers_and_exact_application(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "unknown-compiler -c src/model.cu -o alias/main.o\n"
+            "unknown-linker build/main.o -o alias/application\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.abspath(self.temporary)
+        aliases = {
+            os.path.normcase(os.path.join(root, "alias", "main.o")):
+                os.path.join(root, "build", "main.o"),
+            os.path.normcase(os.path.join(root, "alias", "application")):
+                os.path.join(root, "build", "lenet_cuda"),
+        }
+
+        def modeled_realpath(path):
+            absolute = os.path.abspath(path)
+            return aliases.get(os.path.normcase(absolute), absolute)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            reachable = analyzer.build_artifact_graph(root, commands)
+
+        self.assertEqual(2, len(reachable))
+        self.assertEqual(
+            "alias/application",
+            os.path.relpath(commands[1]["output"], root).replace(os.sep, "/"),
+        )
+
+    def test_modeled_case_alias_duplicate_producers_are_rejected(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "unknown-compiler -c src/model.cu -o BUILD/Main.o\n"
+            "other-compiler -c src/model.cu -o build/main.o\n"
+            "unknown-linker build/main.o -o build/lenet_cuda\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.abspath(self.temporary)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=os.path.abspath), \
+                mock.patch.object(
+                    analyzer.os.path,
+                    "normcase",
+                    side_effect=lambda path: path.replace("/", "\\").lower(),
+                ):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.build_artifact_graph(root, commands)
+
+        self.assertIn("multiple recipe commands produce artifact", str(caught.exception))
+        self.assertIn("main.o", str(caught.exception).lower())
+
+    def test_modeled_realpath_alias_uses_lexical_path_in_missing_chain(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "unknown-linker alias/missing.o -o build/lenet_cuda\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.abspath(self.temporary)
+        alias = os.path.join(root, "alias", "missing.o")
+        target = os.path.join(root, "build", "missing.o")
+
+        def modeled_realpath(path):
+            absolute = os.path.abspath(path)
+            if os.path.normcase(absolute) == os.path.normcase(alias):
+                return target
+            return absolute
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.build_artifact_graph(root, commands)
+
+        self.assertIn("alias/missing.o", str(caught.exception).replace("\\", "/"))
+
+    def test_modeled_artifact_symlink_escape_is_rejected_before_graph_walk(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "unknown-linker build/escape/missing.o -o build/lenet_cuda\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.abspath(self.temporary)
+        outside = os.path.join(os.path.dirname(root), "outside", "missing.o")
+
+        def escaping_realpath(path):
+            absolute = os.path.abspath(path)
+            normalized = absolute.replace("\\", "/").lower()
+            if normalized.endswith("/build/escape/missing.o"):
+                return outside
+            return absolute
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=escaping_realpath):
+            commands = analyzer.parse_recipes(root, recipe_path)
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.build_artifact_graph(root, commands)
+
+        self.assertIn("escapes source root through symlink", str(caught.exception))
 
     def test_reachable_shell_control_is_rejected(self):
         result = self.run_analyzer(

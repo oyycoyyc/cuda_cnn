@@ -1562,3 +1562,85 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
 Python 3.6 runtime execution remains unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.3f
+
+### Changes
+
+- Artifact outputs and candidate edges retain their absolute normalized lexical
+  paths for diagnostics, while producer keys, edge deduplication, self-edge
+  removal, graph visits, duplicate producers, and exact
+  `build/lenet_cuda[.exe]` selection all use `canonical_path_identity`
+  (`realpath` plus `abspath` plus platform `normcase`). Nonexistent dry-run case
+  aliases and modeled in-root realpath aliases therefore reconcile, canonical
+  duplicate producers reject, and symlink escapes still fail at root-boundary
+  validation.
+- Recipe prefixes consume leading POSIX `NAME=value` words, then zero or more
+  supported wrappers, then one effective executable. Assignment-only source
+  recipes fail closed, malformed names remain visible as executable tokens, and
+  assignment-only completion records remain non-command build-log lines.
+- Recognized compiler `-x LANGUAGE`, NVCC `--threads N`/`-t N` and
+  `-ccbin PATH`/`--compiler-bindir PATH`, plus direct-linker emulation, entry,
+  undefined-symbol, and definition operands are excluded from artifact edges.
+  Their required separated/equals values fail closed when missing, empty, or a
+  following option where applicable. NVCC and direct-linker grammar is scoped
+  to the effective executable so the same tokens cannot hide artifacts for
+  commands with different semantics.
+- Added current-project recipe coverage, assignment plus `ccache` plus unknown
+  compiler/linker coverage, per-option known-producer decoys followed by real
+  artifacts, malformed/visibility matrices, deterministic Windows-modeled
+  case/realpath tests, normalized-path tests, and modeled symlink-boundary
+  coverage.
+
+### TDD Evidence
+
+The assignment, scoped-option, and canonical-identity regressions were added
+before changing the analyzer. The initial focused run failed because wrappers
+and option values became artifacts, malformed values passed, case aliases did
+not resolve or duplicate, and realpath diagnostics lost their lexical alias:
+
+```text
+python -m unittest -v <14 new Subtask 13.3f tests>
+Ran 14 tests in 2.936s
+FAILED (failures=32, errors=1)
+```
+
+An additional build-log prefix regression was then observed failing before its
+minimal log-mode handling was added:
+
+```text
+python -m unittest -v \
+  ...test_assignment_only_build_log_record_is_not_a_command \
+  ...test_modeled_case_aliases_reconcile_nonexistent_artifacts \
+  ...test_modeled_realpath_aliases_share_producers_and_exact_application
+Ran 3 tests in 0.025s
+FAILED (errors=1)
+```
+
+### Focused Verification
+
+```text
+set BASH=C:\personal_apps\msys64\usr\bin\bash.exe
+python -m unittest -v <31 focused Subtask 13.3f tests>
+Ran 31 tests in 8.638s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The Windows `bash.exe` WSL launcher emitted bytes incompatible with the local
+CP936 subprocess decoder during one integration-test attempt. Pinning the same
+MSYS2 Bash used by prior Task 13 verification made that unchanged test pass; no
+code change was made for the environment issue.
+
+No broad suite, build-log suite, CUDA, H20, subagent, reviewer, or later-task
+work was performed. Python 3.6 runtime execution remains unavailable locally
+and is not claimed.
