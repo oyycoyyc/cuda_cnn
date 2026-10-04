@@ -26,9 +26,10 @@ ARCHIVE_OPERATION_MODIFIERS = {
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
-    "-MF", "-MT", "-MQ", "--sysroot",
+    "-MF", "-MT", "-MQ", "--sysroot", "-ldir",
 )
 ATTACHED_NON_ARTIFACT_OPTIONS = ("-MF", "-MT", "-MQ")
+NVCC_NON_LIBRARY_L_OPTIONS = ("-link", "-lib", "-ltoir", "-lineinfo", "-ldir")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -98,7 +99,8 @@ def non_artifact_option_indexes(tokens):
     while index < len(tokens):
         token = tokens[index]
         if token in SEPARATED_NON_ARTIFACT_OPTIONS:
-            if index + 1 >= len(tokens):
+            if (index + 1 >= len(tokens) or
+                    (token == "-ldir" and not tokens[index + 1])):
                 raise AnalysisError(
                     "option has no value: {0}".format(token)
                 )
@@ -492,7 +494,7 @@ def command_input_metadata(tokens):
                 opaque_indexes.add(index + 1)
                 index += 1
         elif (token.startswith("-l") and len(token) > 2 and
-              token != "-lineinfo"):
+              token not in NVCC_NON_LIBRARY_L_OPTIONS):
             library_name = True
         index += 1
     return {

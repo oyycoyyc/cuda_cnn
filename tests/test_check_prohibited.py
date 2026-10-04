@@ -1751,14 +1751,19 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout)
 
     def test_malformed_or_ambiguous_archive_producers_are_rejected(self):
-        archive_commands = (
-            "ar rq build/libsupport.a build/model.o",
-            "ar rab build/libsupport.a build/model.o",
-            "ar rN build/libsupport.a build/model.o",
-            "ar rN 2 build/libsupport.a build/model.o",
-            "ar qu build/libsupport.a build/model.o",
+        archive_cases = (
+            ("ar", "archive command has no operation"),
+            ("ar 123 build/libsupport.a", "unsupported archive operation"),
+            ("ar rq build/libsupport.a build/model.o", "ambiguous archive operation"),
+            ("ar rab anchor.o build/libsupport.a", "ambiguous archive position"),
+            ("ar rN build/libsupport.a build/model.o", "unsupported archive modifier"),
+            ("ar qu build/libsupport.a build/model.o", "unsupported archive modifier"),
+            ("ar --plugin", "archive option has no value"),
+            ("ar r build/libsupport.a --thin", "unsupported archive option"),
+            ("ar ra", "archive position modifier has no relative member"),
+            ("ar r", "archive command has no archive path"),
         )
-        for archive_command in archive_commands:
+        for archive_command, diagnostic in archive_cases:
             with self.subTest(archive_command=archive_command):
                 result = self.run_analyzer(
                     "clang++ -c src/model.cu -o build/model.o\n" +
@@ -1769,7 +1774,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 )
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("archive", result.stdout.lower())
+                self.assertIn(diagnostic, result.stdout.lower())
+                self.assertNotIn("stateful archive", result.stdout.lower())
 
     def test_reachable_archive_response_file_is_rejected(self):
         result = self.run_analyzer(
@@ -1861,6 +1867,39 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("library", result.stdout.lower())
+
+    def test_practical_nvcc_l_options_are_not_explicit_libraries(self):
+        nvcc_options = ("-link", "-lib", "-ltoir", "-lineinfo")
+        for option in nvcc_options:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "nvcc {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_nvcc_library_directory_operand_is_not_an_artifact(self):
+        result = self.run_analyzer(
+            "nvcc -ldir build/nvvm src/model.cu -o build/lenet_cuda\n"
+            "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_missing_or_empty_nvcc_library_directory_fails_closed(self):
+        for option in ("-ldir", "-ldir ''"):
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "nvcc src/model.cu -o build/lenet_cuda {0}\n".format(option) +
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option has no value: -ldir", result.stdout.lower())
 
     def test_reachable_external_control_file_forms_are_rejected(self):
         control_options = (

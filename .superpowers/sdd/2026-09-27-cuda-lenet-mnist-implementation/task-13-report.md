@@ -1386,3 +1386,62 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 No general option/artifact identity work from 13.3f, build-log/documentation
 work, broad suite, CUDA, H20, subagent, or reviewer work was performed. Python
 3.6 runtime execution remains unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.3e Fix Round 1
+
+### Review Findings Addressed
+
+- Exact practical NVCC options `-link`, `-lib`, `-ltoir`, and `-lineinfo` are
+  classified before generic attached `-lNAME` libraries, so production-reachable
+  commands using them remain valid. Explicit `-lfoo`, `-l:libfoo.a`, and
+  separated `-l foo` inputs remain rejected.
+- Separated NVCC `-ldir VALUE` is a non-artifact option. Its option and operand
+  cannot become graph inputs, while missing or empty values fail during parsing.
+  No long alias was added because the current parser supports none.
+- Malformed archive regressions now pair each command with its parse-specific
+  operation, modifier, option, position, or missing-path diagnostic. Every case
+  explicitly asserts that a stateful-archive diagnostic is insufficient.
+
+### TDD Evidence
+
+The NVCC positive/malformed matrices and tightened archive assertions were
+added before the parser change. The archive cases already produced the required
+parse diagnostics. Six NVCC subcases failed because generic library detection
+captured three exact no-value options, valid `-ldir`, and both missing/empty
+`-ldir` forms:
+
+```text
+python -m unittest -v <4 focused review-finding tests>
+Ran 4 tests in 1.240s
+FAILED (failures=6)
+```
+
+Adding exact NVCC exclusions plus separated non-artifact `-ldir` parsing made
+the same command pass:
+
+```text
+Ran 4 tests in 1.221s
+OK
+```
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <19 focused Subtask 13.3e tests>
+Ran 19 tests in 4.682s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
+Python 3.6 runtime execution remains unavailable locally and is not claimed.
