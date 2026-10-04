@@ -1868,26 +1868,75 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("library", result.stdout.lower())
 
-    def test_practical_nvcc_l_options_are_not_explicit_libraries(self):
-        nvcc_options = ("-link", "-lib", "-ltoir", "-lineinfo")
-        for option in nvcc_options:
-            with self.subTest(option=option):
+    def test_practical_nvcc_l_options_are_exempt_for_nvcc_commands(self):
+        nvcc_commands = ("nvcc", "tools/nvcc.exe", "ccache nvcc")
+        nvcc_options = (
+            "-link", "-lib", "-ltoir", "-lineinfo", "-ldir build/nvvm",
+        )
+        for command in nvcc_commands:
+            for option in nvcc_options:
+                with self.subTest(command=command, option=option):
+                    result = self.run_analyzer(
+                        "{0} {1} src/model.cu -o build/lenet_cuda\n".format(
+                            command, option
+                        ) +
+                        "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                        "test-source=tests/smoke_tests.cpp\n",
+                    )
+
+                    self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_nvcc_l_options_remain_libraries_for_other_commands(self):
+        commands = ("clang++", "g++", "unknown-linker")
+        l_options = (
+            "-link", "-lib", "-ltoir", "-lineinfo", "-ldir build/oracle.o",
+        )
+        for command in commands:
+            for option in l_options:
+                with self.subTest(command=command, option=option):
+                    result = self.run_analyzer(
+                        "{0} {1} src/model.cu -o build/lenet_cuda\n".format(
+                            command, option
+                        ) +
+                        "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                        "test-source=tests/smoke_tests.cpp\n",
+                    )
+
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertIn("library", result.stdout.lower())
+
+    def test_non_nvcc_ldir_does_not_hide_following_artifact(self):
+        recipe_path = self.write(
+            "recipes.log",
+            "clang++ -ldir build/oracle.o src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+        )
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+
+        commands = analyzer.parse_recipes(
+            os.path.realpath(self.temporary), recipe_path
+        )
+
+        self.assertIn(
+            os.path.realpath(os.path.join(self.temporary, "build", "oracle.o")),
+            commands[0]["candidate_inputs"],
+        )
+
+    def test_nvcc_library_directory_operand_is_not_an_artifact(self):
+        for command in ("nvcc", "ccache nvcc"):
+            with self.subTest(command=command):
                 result = self.run_analyzer(
-                    "nvcc {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "{0} -ldir build/nvvm src/model.cu "
+                    "-o build/lenet_cuda\n".format(command) +
                     "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
                     "test-source=tests/smoke_tests.cpp\n",
                 )
 
                 self.assertEqual(0, result.returncode, result.stdout)
-
-    def test_nvcc_library_directory_operand_is_not_an_artifact(self):
-        result = self.run_analyzer(
-            "nvcc -ldir build/nvvm src/model.cu -o build/lenet_cuda\n"
-            "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
-            "test-source=tests/smoke_tests.cpp\n",
-        )
-
-        self.assertEqual(0, result.returncode, result.stdout)
 
     def test_missing_or_empty_nvcc_library_directory_fails_closed(self):
         for option in ("-ldir", "-ldir ''"):

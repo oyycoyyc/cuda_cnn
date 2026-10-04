@@ -1445,3 +1445,63 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
 Python 3.6 runtime execution remains unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.3e Fix Round 2
+
+### Final Review Finding Addressed
+
+- A shared wrapper-aware helper identifies the actual executable token after
+  zero or more supported `ccache`/`sccache`/`distcc` wrappers. Prefix exclusion
+  and NVCC-specific option parsing now use the same executable boundary.
+- Exact `-link`, `-lib`, `-ltoir`, and `-lineinfo` exemptions apply only when
+  that executable is `nvcc` or `nvcc.exe`, including path-qualified forms.
+  Direct and `ccache`-wrapped NVCC commands remain accepted.
+- `-ldir VALUE` is opaque only for an effective NVCC command and still requires
+  a nonempty operand. For clang++, g++, and unknown tools, all five `-l`-looking
+  forms remain explicit libraries. Non-NVCC `-ldir` does not consume or hide
+  its following artifact operand.
+- Existing explicit `-l` rejection and parse-specific malformed archive
+  diagnostics remain in the focused verification set.
+
+### TDD Evidence
+
+Executable-scoping and artifact-visibility tests were added before changing the
+parser. Direct, path-qualified, and wrapped NVCC positives were already green.
+All 15 clang++/g++/unknown-tool combinations were incorrectly accepted, and
+the parser-level clang++ case omitted the `-ldir` operand from candidate inputs:
+
+```text
+python -m unittest -v <4 focused final-review tests>
+Ran 4 tests in 2.366s
+FAILED (failures=16)
+```
+
+After sharing executable identification and scoping both the exact exemptions
+and `-ldir` consumption to NVCC, the same command passed:
+
+```text
+Ran 4 tests in 2.342s
+OK
+```
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <21 focused Subtask 13.3e tests>
+Ran 21 tests in 6.753s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
+Python 3.6 runtime execution remains unavailable locally and is not claimed.
