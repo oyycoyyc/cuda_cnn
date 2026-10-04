@@ -1890,6 +1890,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         commands = ("clang++", "g++", "unknown-linker")
         l_options = (
             "-link", "-lib", "-ltoir", "-lineinfo", "-ldir build/oracle.o",
+            "-ldir -lsupport",
         )
         for command in commands:
             for option in l_options:
@@ -1938,8 +1939,19 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
                 self.assertEqual(0, result.returncode, result.stdout)
 
-    def test_missing_or_empty_nvcc_library_directory_fails_closed(self):
-        for option in ("-ldir", "-ldir ''"):
+    def test_invalid_nvcc_library_directory_values_fail_closed(self):
+        invalid_options = (
+            "-ldir",
+            "-ldir ''",
+            "-ldir -lsupport",
+            "-ldir -link",
+            "-ldir -lib",
+            "-ldir -ltoir",
+            "-ldir -lineinfo",
+            "-ldir -Lbuild",
+            "-ldir -o",
+        )
+        for option in invalid_options:
             with self.subTest(option=option):
                 result = self.run_analyzer(
                     "nvcc src/model.cu -o build/lenet_cuda {0}\n".format(option) +

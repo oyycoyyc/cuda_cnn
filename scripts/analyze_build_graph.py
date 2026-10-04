@@ -420,7 +420,8 @@ def command_input_metadata(tokens):
     while index < len(tokens):
         token = tokens[index]
         if nvcc_command and token == "-ldir":
-            if index + 1 >= len(tokens) or not tokens[index + 1]:
+            if (index + 1 >= len(tokens) or not tokens[index + 1] or
+                    tokens[index + 1].startswith("-")):
                 raise AnalysisError("option has no value: -ldir")
             opaque_indexes.update((index, index + 1))
             index += 2

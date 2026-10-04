@@ -1505,3 +1505,60 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
 Python 3.6 runtime execution remains unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.3e Fix Round 3
+
+### Final Review Finding Addressed
+
+- Effective NVCC `-ldir VALUE` parsing now requires `VALUE` to be present,
+  nonempty, and not begin with `-`. An option in operand position rejects
+  immediately with the existing missing-value diagnostic instead of becoming
+  opaque and bypassing its own classification.
+- The regression matrix covers `-lsupport`, every exempt NVCC `-l...` option,
+  a library-search option, and an output option after `-ldir`. The valid direct
+  and wrapped NVCC path cases remain accepted.
+- Non-NVCC `-ldir -lsupport` remains explicit-library input and rejects through
+  the production library gate rather than the NVCC-only operand validator.
+
+### TDD Evidence
+
+The dash-prefixed operand matrix and non-NVCC scope guard were added before the
+parser change. Missing and empty values already rejected, and the non-NVCC
+case remained green, while all seven next-option NVCC forms were consumed and
+incorrectly accepted:
+
+```text
+python -m unittest -v <2 focused final-review tests>
+Ran 2 tests in 1.876s
+FAILED (failures=7)
+```
+
+Rejecting an effective NVCC `-ldir` operand whose first character is `-` made
+the same command pass:
+
+```text
+Ran 2 tests in 1.841s
+OK
+```
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <21 focused Subtask 13.3e tests>
+Ran 21 tests in 7.108s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No later task, broad suite, CUDA, H20, subagent, or reviewer work was performed.
+Python 3.6 runtime execution remains unavailable locally and is not claimed.
