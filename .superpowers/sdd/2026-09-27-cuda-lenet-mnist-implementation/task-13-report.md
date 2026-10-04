@@ -1313,3 +1313,76 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 No later task, broad-suite, CUDA, H20, subagent, or reviewer work was
 performed. Python 3.6 runtime execution and the POSIX symlink integration
 remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.3e
+
+### Production Closure Findings Addressed
+
+- Direct linker/compiler control files are classified in separated, attached,
+  and equals forms for `-T`, `--script`, GCC `-specs`, and Clang `--config`.
+  Missing or empty values fail during recipe parsing. Valid control inputs on
+  commands outside the `lenet_cuda` closure remain isolated.
+- Every explicit attached or practical separated `-lNAME`/`-l:FILE` input on a
+  production-reachable command now rejects without requiring a paired `-L`.
+  Existing direct linker forwarding and paired search/library rejection remain
+  fail-closed.
+- Recognized `ar`, `llvm-ar`, and `gcc-ar` `q`/`r` commands are treated as
+  stateful updates. If reachable from `lenet_cuda`, they reject before member
+  traversal because the command cannot prove that an existing archive lacks
+  unlisted stale members. Malformed grammar still rejects during parsing.
+- Archive output recognition no longer depends on `.a`/`.lib`, so a valid
+  extensionless archive output remains in the graph and receives the stateful
+  rejection. Existing pre/post-operation options and placement parsing remain
+  covered. An unrelated extensionless test-only archive remains accepted.
+- The normal NVCC compile/link shape without explicit libraries, control files,
+  or archives remains accepted. Direct non-archive multilayer provenance tests
+  remain unchanged elsewhere in the focused module.
+
+### TDD Evidence
+
+The production-closure matrices and revised archive expectations were added
+before implementation. The RED run demonstrated each missing behavior:
+
+```text
+python -m unittest -v <16 focused Subtask 13.3e tests>
+Ran 16 tests in 3.875s
+FAILED (failures=36)
+```
+
+Failures included all archive forms still reporting listed test-owned members
+instead of stateful provenance, empty and stale-member updates being accepted,
+extensionless archives being rejected only as invalid paths, all eight control
+spellings and eight missing/empty forms lacking control diagnostics, and all
+four bare/separated library forms bypassing the linker gate. The normal link
+and valid test-only control isolation were already green; the extensionless
+test-only archive was RED only because its output was not recognized.
+
+The minimal implementation then made the same 16-test command pass:
+
+```text
+Ran 16 tests in 3.795s
+OK
+```
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <16 focused Subtask 13.3e tests>
+Ran 16 tests in 3.788s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No general option/artifact identity work from 13.3f, build-log/documentation
+work, broad suite, CUDA, H20, subagent, or reviewer work was performed. Python
+3.6 runtime execution remains unavailable locally and is not claimed.

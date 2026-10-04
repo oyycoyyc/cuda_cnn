@@ -995,7 +995,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         result = self.run_checker("source", self.temporary)
 
         self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("tests-owned", result.stdout.lower())
+        self.assertIn("stateful archive", result.stdout.lower())
         self.assertIn("libsupport.a", result.stdout)
 
     def test_unknown_tools_trace_extensionless_multilayer_provenance(self):
@@ -1673,7 +1673,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 )
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("tests-owned", result.stdout.lower())
+                self.assertIn("stateful archive", result.stdout.lower())
                 self.assertIn("libsupport.a", result.stdout)
 
     def test_archive_preoperation_options_and_position_operands_trace_provenance(self):
@@ -1697,14 +1697,54 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 )
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("tests-owned", result.stdout.lower())
+                self.assertIn("stateful archive", result.stdout.lower())
                 self.assertIn("libsupport.a", result.stdout)
 
-    def test_empty_archive_creation_is_a_producer_without_members(self):
+    def test_empty_archive_update_is_rejected_as_stateful(self):
         result = self.run_analyzer(
             "ar rcs build/libempty.a\n"
             "unknown-linker build/libempty.a src/model.cu -o build/lenet_cuda\n"
             "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("stateful archive", result.stdout.lower())
+        self.assertIn("libempty.a", result.stdout)
+
+    def test_extensionless_archive_update_is_rejected_as_stateful(self):
+        result = self.run_analyzer(
+            "clang++ -c src/model.cu -o build/model.o\n"
+            "ar rcs build/support_archive build/model.o\n"
+            "unknown-linker build/support_archive -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("stateful archive", result.stdout.lower())
+        self.assertIn("support_archive", result.stdout)
+
+    def test_archive_update_cannot_claim_stale_members_are_absent(self):
+        result = self.run_analyzer(
+            "clang++ -c src/model.cu -o build/model.o\n"
+            "ar r build/libsupport.a build/model.o\n"
+            "unknown-linker build/libsupport.a -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("stateful archive provenance", result.stdout.lower())
+        self.assertIn("libsupport.a", result.stdout)
+
+    def test_test_only_archive_update_remains_isolated(self):
+        result = self.run_analyzer(
+            "clang++ -c src/model.cu -o build/model.o\n"
+            "unknown-linker build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n"
+            "ar rcs build/test_support build/smoke.o\n"
+            "unknown-linker build/test_support -o build/workflow_tests\n",
             "test-source=tests/smoke_tests.cpp\n",
         )
 
@@ -1740,7 +1780,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         )
 
         self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("response", result.stdout.lower())
+        self.assertIn("stateful archive", result.stdout.lower())
 
     def test_reachable_wl_input_hiding_test_archive_is_rejected(self):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
@@ -1801,6 +1841,82 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("linker", result.stdout.lower())
+
+    def test_reachable_explicit_library_inputs_are_always_rejected(self):
+        library_options = (
+            "-lsupport",
+            "-l:libsupport.a",
+            "-l support",
+            "-l :libsupport.a",
+        )
+        for options in library_options:
+            with self.subTest(options=options):
+                result = self.run_analyzer(
+                    "unknown-linker src/model.cu {0} -o build/lenet_cuda\n".format(
+                        options
+                    ) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("library", result.stdout.lower())
+
+    def test_reachable_external_control_file_forms_are_rejected(self):
+        control_options = (
+            "-T build/link.ld",
+            "-Tbuild/link.ld",
+            "--script build/link.ld",
+            "--script=build/link.ld",
+            "-specs build/compiler.specs",
+            "-specs=build/compiler.specs",
+            "--config build/clang.cfg",
+            "--config=build/clang.cfg",
+        )
+        for options in control_options:
+            with self.subTest(options=options):
+                result = self.run_analyzer(
+                    "unknown-linker src/model.cu {0} -o build/lenet_cuda\n".format(
+                        options
+                    ) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("external control input", result.stdout.lower())
+
+    def test_missing_or_empty_external_control_values_fail_during_parse(self):
+        control_options = (
+            "-T",
+            "-T ''",
+            "--script",
+            "--script=",
+            "-specs",
+            "-specs=",
+            "--config",
+            "--config=",
+        )
+        for options in control_options:
+            with self.subTest(options=options):
+                result = self.run_analyzer(
+                    "clang++ src/model.cu -o build/lenet_cuda {0}\n".format(options) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("control option has no file", result.stdout.lower())
+
+    def test_test_only_external_control_input_remains_isolated(self):
+        result = self.run_analyzer(
+            "clang++ src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp --config tests/clang.cfg "
+            "-o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
 
     def test_response_option_forms_are_rejected_in_relevant_commands(self):
         response_options = (

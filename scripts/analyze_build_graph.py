@@ -205,7 +205,7 @@ def positional_archive_output(tokens):
     if index >= len(tokens):
         raise AnalysisError("archive command has no archive path")
     archive = tokens[index]
-    if archive.startswith("-") or not archive.lower().endswith((".a", ".lib")):
+    if not archive or archive.startswith("-"):
         raise AnalysisError("archive command has invalid archive path: {0}".format(archive))
     for member in tokens[index + 1:]:
         if member.startswith("-"):
@@ -218,6 +218,7 @@ def positional_archive_output(tokens):
 def output_token(tokens, opaque_indexes):
     outputs = []
     output_indexes = set()
+    stateful_archive = False
     if tokens and executable_basename(tokens[0]) in ARCHIVE_TOOLS:
         archive_output = positional_archive_output(tokens)
         if archive_output is not None:
@@ -225,6 +226,7 @@ def output_token(tokens, opaque_indexes):
             outputs.append(output)
             output_indexes.add(index)
             output_indexes.update(excluded_indexes)
+            stateful_archive = True
     else:
         index = 0
         while index < len(tokens):
@@ -250,7 +252,7 @@ def output_token(tokens, opaque_indexes):
             index += 1
     if len(outputs) > 1:
         raise AnalysisError("recipe command has multiple output paths")
-    return (outputs[0] if outputs else None), output_indexes
+    return (outputs[0] if outputs else None), output_indexes, stateful_archive
 
 
 def include_directories(root, tokens, ignored_indexes=None):
@@ -401,10 +403,39 @@ def command_input_metadata(tokens):
     direct_linker = False
     library_search = False
     library_name = False
+    external_control = False
     opaque_indexes = set()
     index = 0
     while index < len(tokens):
         token = tokens[index]
+        if token in ("-T", "--script", "-specs", "--config"):
+            if index + 1 >= len(tokens) or not tokens[index + 1]:
+                raise AnalysisError(
+                    "control option has no file: {0}".format(token)
+                )
+            external_control = True
+            opaque_indexes.update((index, index + 1))
+            index += 2
+            continue
+        control_value = None
+        if token.startswith("-T") and len(token) > len("-T"):
+            control_value = token[len("-T"):]
+            if control_value.startswith("="):
+                control_value = control_value[1:]
+        else:
+            for prefix in ("--script=", "-specs=", "--config="):
+                if token.startswith(prefix):
+                    control_value = token[len(prefix):]
+                    break
+        if control_value is not None:
+            if not control_value:
+                raise AnalysisError(
+                    "control option has no file: {0}".format(token)
+                )
+            external_control = True
+            opaque_indexes.add(index)
+            index += 1
+            continue
         if token.startswith("@"):
             response_file = True
             opaque_indexes.add(index)
@@ -456,6 +487,10 @@ def command_input_metadata(tokens):
             library_search = True
         if token == "-l":
             library_name = True
+            opaque_indexes.add(index)
+            if index + 1 < len(tokens):
+                opaque_indexes.add(index + 1)
+                index += 1
         elif (token.startswith("-l") and len(token) > 2 and
               token != "-lineinfo"):
             library_name = True
@@ -463,6 +498,8 @@ def command_input_metadata(tokens):
     return {
         "response_file": response_file,
         "linker_input": direct_linker or (library_search and library_name),
+        "library_input": library_name,
+        "external_control": external_control,
     }, opaque_indexes
 
 
@@ -632,9 +669,10 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 continue
             input_metadata, opaque_input_indexes = command_input_metadata(tokens)
             non_artifact_indexes = non_artifact_option_indexes(tokens)
-            output, output_indexes = output_token(
+            output, output_indexes, stateful_archive = output_token(
                 tokens, opaque_input_indexes | non_artifact_indexes
             )
+            input_metadata["stateful_archive"] = stateful_archive
             compiler_tokens = active_compiler_tokens(tokens)
             quote_dirs, include_dirs, system_dirs, include_option_indexes = \
                 include_directories(root, compiler_tokens)
@@ -995,9 +1033,27 @@ def build_artifact_graph(root, commands):
                 )
             )
         reachable_commands.append(command)
+        if command["input_metadata"]["stateful_archive"]:
+            raise AnalysisError(
+                "unsupported stateful archive provenance affects lenet_cuda: {0}".format(
+                    display_path(root, artifact)
+                )
+            )
         if command["input_metadata"]["response_file"]:
             raise AnalysisError(
                 "unsupported response-file input affects lenet_cuda: {0}".format(
+                    command["line"]
+                )
+            )
+        if command["input_metadata"]["external_control"]:
+            raise AnalysisError(
+                "unsupported external control input affects lenet_cuda: {0}".format(
+                    command["line"]
+                )
+            )
+        if command["input_metadata"]["library_input"]:
+            raise AnalysisError(
+                "unsupported linker library input affects lenet_cuda: {0}".format(
                     command["line"]
                 )
             )
