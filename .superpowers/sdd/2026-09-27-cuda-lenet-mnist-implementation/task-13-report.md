@@ -1644,3 +1644,84 @@ code change was made for the environment issue.
 No broad suite, build-log suite, CUDA, H20, subagent, reviewer, or later-task
 work was performed. Python 3.6 runtime execution remains unavailable locally
 and is not claimed.
+
+## Compliance Hardening Subtask 13.3f Fix Round 1
+
+### Review Findings Addressed
+
+- Command-prefix indexes are now computed before translation-unit detection and
+  excluded from both source and artifact classification. Valid source-looking
+  assignment values such as `SOURCE=src/model.cu` remain assignments, while a
+  malformed assignment name remains the effective executable and leaves later
+  tool-looking tokens visible to fail-closed provenance.
+- Known NVCC and direct-linker option forms reject immediately when used by the
+  wrong effective executable, including separated and attached/equals forms.
+  This prevents scoped options from disappearing through the generic
+  dash-prefixed-token rule. Direct linker recognition includes `ld`, `ld.lld`,
+  `lld`, `ld.bfd`, `ld.gold`, and `gold` executable forms.
+- Direct linkers now consume valid separated `--emulation`, `--entry`,
+  `--undefined`, and `--defsym` values in addition to their requested short and
+  long-equals forms.
+- Scoped values now follow explicit grammar: practical C/C++/CUDA/assembler
+  language names for `-x`; positive decimal NVCC thread counts for separated,
+  equals, and `-tN` forms; nonempty non-option compiler-bindir values;
+  non-path-like linker emulations; symbol-like entry/undefined values; and
+  `SYMBOL=EXPRESSION` definitions. The previous artifact-shaped option-value
+  positives were replaced with genuine values plus separate following-artifact
+  closure tests.
+- Canonical producer, edge, duplicate, application, and visited identities were
+  not changed and remain in the focused regression set.
+
+### TDD Evidence
+
+The corrected prefix, positive grammar, malformed grammar, separated linker,
+and wrong-tool tests were added before changing the analyzer. The initial run
+failed on all newly exposed behaviors:
+
+```text
+python -m unittest -v <8 focused review-finding tests>
+Ran 8 tests in 6.505s
+FAILED (failures=40)
+```
+
+Two attached compiler-bindir values beginning with an option marker and one
+attached option-like emulation were then added and observed RED independently:
+
+```text
+...test_malformed_scoped_option_values_fail_closed
+FAILED (failures=2)
+
+...test_malformed_scoped_option_values_fail_closed
+FAILED (failures=1)
+```
+
+Four additional practical C++ header and CUDA language names were also observed
+RED before extending the explicit language whitelist:
+
+```text
+...test_valid_scoped_option_grammar_is_accepted
+FAILED (failures=4)
+```
+
+### Focused Verification
+
+```text
+set BASH=C:\personal_apps\msys64\usr\bin\bash.exe
+python -m unittest -v <31 focused Subtask 13.3f tests>
+Ran 31 tests in 12.702s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No build-log suite, documentation tests, broad suite, CUDA, H20, subagent,
+reviewer, or later-task work was performed. Python 3.6 runtime execution remains
+unavailable locally and is not claimed.

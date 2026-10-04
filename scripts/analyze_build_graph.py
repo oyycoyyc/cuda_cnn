@@ -25,7 +25,12 @@ ARCHIVE_OPERATION_MODIFIERS = {
 }
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
 COMPILER_TOOLS = ("cc", "c++", "gcc", "g++", "clang", "clang++", "nvcc")
-DIRECT_LINKER_TOOLS = ("ld", "ld.bfd", "ld.gold", "ld.lld", "lld")
+DIRECT_LINKER_TOOLS = ("ld", "ld.bfd", "ld.gold", "ld.lld", "lld", "gold")
+COMPILER_LANGUAGES = (
+    "c", "c-header", "cpp-output", "c++", "c++-header",
+    "c++-system-header", "c++-user-header", "c++-cpp-output", "cu", "cuda",
+    "cuda-cpp-output", "assembler", "assembler-with-cpp", "none",
+)
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
     "-MF", "-MT", "-MQ", "--sysroot",
@@ -33,6 +38,10 @@ SEPARATED_NON_ARTIFACT_OPTIONS = (
 ATTACHED_NON_ARTIFACT_OPTIONS = ("-MF", "-MT", "-MQ")
 NVCC_NON_LIBRARY_L_OPTIONS = ("-link", "-lib", "-ltoir", "-lineinfo")
 ENVIRONMENT_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+POSITIVE_INTEGER_RE = re.compile(r"^[1-9][0-9]*$")
+LINKER_NAME_RE = re.compile(r"^[A-Za-z_.$][A-Za-z0-9_.$@+-]*$")
+LINKER_EMULATION_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_+.-]*$")
+LINKER_EXPRESSION_RE = re.compile(r"^[A-Za-z0-9_.$()+*/%<>&|~^?:+-]+$")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -119,42 +128,132 @@ def non_artifact_option_indexes(tokens):
     direct_linker_command = executable in DIRECT_LINKER_TOOLS
     index = 0
 
-    def consume_required_value(option_index):
+    def required_value(option_index):
         option = tokens[option_index]
         if (option_index + 1 >= len(tokens) or not tokens[option_index + 1] or
                 tokens[option_index + 1].startswith("-")):
             raise AnalysisError("option has no value: {0}".format(option))
         option_indexes.update((option_index, option_index + 1))
-        return option_index + 2
+        return tokens[option_index + 1], option_index + 2
+
+    def invalid_value(option, value):
+        raise AnalysisError(
+            "invalid option value for {0}: {1}".format(option, value)
+        )
+
+    def path_like(value):
+        lower = value.lower()
+        return ("/" in value or "\\" in value or
+                lower.endswith(SOURCE_SUFFIXES + ARTIFACT_SUFFIXES))
+
+    def validate_symbol(option, value):
+        if path_like(value) or LINKER_NAME_RE.match(value) is None:
+            invalid_value(option, value)
+
+    def validate_defsym(option, value):
+        if "=" not in value:
+            invalid_value(option, value)
+        symbol, expression = value.split("=", 1)
+        if (not symbol or not expression or path_like(value) or
+                LINKER_NAME_RE.match(symbol) is None or
+                LINKER_EXPRESSION_RE.match(expression) is None):
+            invalid_value(option, value)
+
+    def nvcc_option(token):
+        return (token in ("--threads", "-t", "-ccbin", "--compiler-bindir") or
+                token.startswith("--threads=") or token.startswith("-t=") or
+                (token.startswith("-t") and len(token) > 2 and
+                 (nvcc_command or token[2:].isdigit())) or
+                token.startswith("-ccbin=") or
+                token.startswith("--compiler-bindir="))
+
+    def linker_option(token):
+        return (token in (
+                    "-m", "-e", "-u", "--emulation", "--entry",
+                    "--undefined", "--defsym"
+                ) or any(token.startswith(prefix) for prefix in (
+                    "--emulation=", "--entry=", "--undefined=", "--defsym="
+                )))
 
     while index < len(tokens):
         token = tokens[index]
-        if (token in SEPARATED_NON_ARTIFACT_OPTIONS or
-                (compiler_command and token == "-x") or
-                (nvcc_command and token in (
-                    "--threads", "-t", "-ccbin", "--compiler-bindir"
-                )) or
-                (direct_linker_command and token in ("-m", "-e", "-u"))):
-            index = consume_required_value(index)
+        if nvcc_option(token) and not nvcc_command:
+            raise AnalysisError(
+                "unsupported scoped option for {0}: {1}".format(executable, token)
+            )
+        if linker_option(token) and not direct_linker_command:
+            raise AnalysisError(
+                "unsupported scoped option for {0}: {1}".format(executable, token)
+            )
+        if token in SEPARATED_NON_ARTIFACT_OPTIONS:
+            _, index = required_value(index)
+            continue
+        if compiler_command and token == "-x":
+            value, index = required_value(index)
+            if value not in COMPILER_LANGUAGES:
+                invalid_value(token, value)
+            continue
+        if nvcc_command and token in ("--threads", "-t"):
+            value, index = required_value(index)
+            if POSITIVE_INTEGER_RE.match(value) is None:
+                invalid_value(token, value)
+            continue
+        if nvcc_command and token in ("-ccbin", "--compiler-bindir"):
+            _, index = required_value(index)
+            continue
+        if direct_linker_command and token in ("-m", "--emulation"):
+            value, index = required_value(index)
+            if (path_like(value) or
+                    LINKER_EMULATION_RE.match(value) is None):
+                invalid_value(token, value)
+            continue
+        if direct_linker_command and token in (
+                "-e", "--entry", "-u", "--undefined"):
+            value, index = required_value(index)
+            validate_symbol(token, value)
+            continue
+        if direct_linker_command and token == "--defsym":
+            value, index = required_value(index)
+            validate_defsym(token, value)
             continue
         if token.startswith("--sysroot="):
             option_indexes.add(index)
         elif any(token.startswith(option) and len(token) > len(option)
                   for option in ATTACHED_NON_ARTIFACT_OPTIONS):
             option_indexes.add(index)
+        elif nvcc_command and token.startswith("--threads="):
+            value = token.split("=", 1)[1]
+            if POSITIVE_INTEGER_RE.match(value) is None:
+                invalid_value("--threads", value)
+            option_indexes.add(index)
+        elif nvcc_command and token.startswith("-t") and len(token) > 2:
+            value = token[2:]
+            if value.startswith("="):
+                value = value[1:]
+            if POSITIVE_INTEGER_RE.match(value) is None:
+                invalid_value("-t", value)
+            option_indexes.add(index)
         elif nvcc_command and any(token.startswith(prefix) for prefix in (
-                "--threads=", "-ccbin=", "--compiler-bindir=")):
-            if not token.split("=", 1)[1]:
+                "-ccbin=", "--compiler-bindir=")):
+            value = token.split("=", 1)[1]
+            if not value or value.startswith("-"):
                 raise AnalysisError(
                     "option has no value: {0}".format(token.split("=", 1)[0])
                 )
             option_indexes.add(index)
+        elif direct_linker_command and token.startswith("--emulation="):
+            value = token.split("=", 1)[1]
+            if (path_like(value) or
+                    LINKER_EMULATION_RE.match(value) is None):
+                invalid_value("--emulation", value)
+            option_indexes.add(index)
         elif direct_linker_command and any(token.startswith(prefix) for prefix in (
-                "--emulation=", "--entry=", "--undefined=", "--defsym=")):
-            if not token.split("=", 1)[1]:
-                raise AnalysisError(
-                    "option has no value: {0}".format(token.split("=", 1)[0])
-                )
+                "--entry=", "--undefined=")):
+            option, value = token.split("=", 1)
+            validate_symbol(option, value)
+            option_indexes.add(index)
+        elif direct_linker_command and token.startswith("--defsym="):
+            validate_defsym("--defsym", token[len("--defsym="):])
             option_indexes.add(index)
         index += 1
     return option_indexes
@@ -734,6 +833,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
                         for token in tokens)):
                     continue
                 raise
+            prefix_indexes = command_prefix_indexes(tokens)
             input_metadata, opaque_input_indexes = command_input_metadata(tokens)
             non_artifact_indexes = non_artifact_option_indexes(tokens)
             output, output_indexes, stateful_archive = output_token(
@@ -757,7 +857,8 @@ def parse_recipes(root, recipe_path, require_sources=True):
             for index, token in enumerate(tokens):
                 if (index in output_indexes or index in compiler_option_indexes or
                         index in opaque_input_indexes or
-                        index in non_artifact_indexes):
+                        index in non_artifact_indexes or
+                        index in prefix_indexes):
                     continue
                 parsed = source_token(root, token, require_sources)
                 if parsed is not None:
@@ -790,7 +891,6 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output_path = None
             if output is not None:
                 output_path, _ = resolve_path(root, output)
-            prefix_indexes = command_prefix_indexes(tokens)
             candidates = []
             invalid_candidates = []
             for index, token in enumerate(tokens):

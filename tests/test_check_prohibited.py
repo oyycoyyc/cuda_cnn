@@ -1974,6 +1974,17 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
 
+    def test_source_like_environment_assignment_is_not_a_translation_unit(self):
+        result = self.run_analyzer(
+            "SOURCE=src/model.cu CUDA_CACHE_DISABLE=1 ccache nvcc "
+            "-c src/model.cu -o build/main.o\n"
+            "nvcc build/main.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
     def test_assignment_prefix_requires_an_executable(self):
         result = self.run_analyzer(
             "CUDA_CACHE_DISABLE=1 -o build/lenet_cuda\n"
@@ -2005,7 +2016,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
     def test_malformed_assignment_name_remains_visible_as_the_executable(self):
         result = self.run_analyzer(
-            "BAD-NAME=value unknown-linker src/model.cu -o build/lenet_cuda\n"
+            "BAD-NAME=src/model.cu unknown-linker src/model.cu "
+            "-o build/lenet_cuda\n"
             "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
             "test-source=tests/smoke_tests.cpp\n",
         )
@@ -2033,42 +2045,65 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
 
-    def test_scoped_option_operands_are_not_artifacts_but_following_input_is(self):
+    def test_valid_scoped_option_grammar_is_accepted(self):
         cases = (
-            ("clang++", "-x build/option.o"),
-            ("nvcc", "--threads build/option.o"),
-            ("nvcc", "-t build/option.o"),
-            ("nvcc", "-ccbin build/option.o"),
-            ("nvcc", "--compiler-bindir build/option.o"),
-            ("ld", "-m build/option.o"),
-            ("ld", "--emulation=build/option.o"),
-            ("ld", "-e build/option.o"),
-            ("ld", "--entry=build/option.o"),
-            ("ld", "-u build/option.o"),
-            ("ld", "--undefined=build/option.o"),
-            ("ld", "--defsym=build/option.o"),
+            ("clang++", "-x c"),
+            ("clang++", "-x c-header"),
+            ("clang++", "-x cpp-output"),
+            ("clang++", "-x c++"),
+            ("clang++", "-x c++-header"),
+            ("clang++", "-x c++-system-header"),
+            ("clang++", "-x c++-user-header"),
+            ("clang++", "-x c++-cpp-output"),
+            ("clang++", "-x cuda"),
+            ("clang++", "-x cuda-cpp-output"),
+            ("clang++", "-x assembler"),
+            ("clang++", "-x assembler-with-cpp"),
+            ("clang++", "-x none"),
+            ("nvcc", "-x cu"),
+            ("nvcc", "--threads 2"),
+            ("nvcc", "--threads=2"),
+            ("nvcc", "-t 2"),
+            ("nvcc", "-t=2"),
+            ("nvcc", "-t2"),
+            ("nvcc", "-ccbin tools/g++"),
+            ("nvcc", "-ccbin=tools/g++"),
+            ("nvcc", "--compiler-bindir tools"),
+            ("nvcc", "--compiler-bindir=tools"),
+            ("ld", "-m elf_x86_64"),
+            ("ld.lld", "--emulation elf_x86_64"),
+            ("gold", "--emulation=elf_x86_64"),
+            ("ld", "-e _start"),
+            ("ld", "--entry _start"),
+            ("ld", "--entry=_start"),
+            ("ld", "-u required_symbol"),
+            ("ld", "--undefined required_symbol"),
+            ("ld", "--undefined=required_symbol"),
+            ("ld", "--defsym image_base=0x1000"),
+            ("ld", "--defsym=image_base=0x1000"),
         )
-        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
         for command, option in cases:
             with self.subTest(command=command, option=option):
                 result = self.run_analyzer(
-                    "unknown-compiler -c tests/cpu_reference.cpp "
-                    "-o build/option.o\n"
-                    "unknown-compiler -c src/model.cu -o build/main.o\n"
-                    "{0} {1} build/main.o -o build/lenet_cuda\n".format(
+                    "{0} {1} src/model.cu -o build/lenet_cuda\n".format(
                         command, option
-                    ),
-                    "test-source=tests/cpu_reference.cpp\n",
+                    ) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
                 )
 
                 self.assertEqual(0, result.returncode, result.stdout)
 
-    def test_scoped_option_grammar_does_not_hide_following_artifact(self):
+    def test_valid_scoped_options_do_not_hide_following_artifact(self):
         cases = (
             ("clang++", "-x c++"),
             ("nvcc", "--threads 2"),
+            ("nvcc", "-t=2"),
             ("nvcc", "-ccbin tools/g++"),
-            ("ld", "-e entry_point"),
+            ("ld", "--emulation elf_x86_64"),
+            ("ld", "--entry _start"),
+            ("ld", "--undefined required_symbol"),
+            ("ld", "--defsym image_base=0x1000"),
         )
         for command, option in cases:
             with self.subTest(command=command, option=option):
@@ -2084,21 +2119,40 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertIn("missing.o", result.stdout)
                 self.assertIn("no analyzed producer", result.stdout.lower())
 
-    def test_required_scoped_option_operands_fail_closed(self):
+    def test_malformed_scoped_option_values_fail_closed(self):
         cases = (
             ("clang++", "-x"),
             ("clang++", "-x -c"),
+            ("clang++", "-x rust"),
+            ("clang++", "-x build/model.o"),
             ("nvcc", "--threads"),
             ("nvcc", "--threads -c"),
+            ("nvcc", "--threads 0"),
+            ("nvcc", "--threads=1.5"),
+            ("nvcc", "-t build/model.o"),
             ("nvcc", "-t ''"),
+            ("nvcc", "-t="),
+            ("nvcc", "-tzero"),
             ("nvcc", "-ccbin -c"),
+            ("nvcc", "-ccbin=-c"),
             ("nvcc", "--compiler-bindir ''"),
+            ("nvcc", "--compiler-bindir=-c"),
             ("ld", "-m"),
+            ("ld", "--emulation build/elf.o"),
+            ("ld", "--emulation=elf/x86_64"),
+            ("ld", "--emulation=-elf_x86_64"),
             ("ld", "-e -o"),
+            ("ld", "--entry build/main.o"),
+            ("ld", "--entry=bad!symbol"),
             ("ld", "-u ''"),
+            ("ld", "--undefined build/main.o"),
             ("ld", "--emulation="),
             ("ld", "--entry="),
             ("ld", "--undefined="),
+            ("ld", "--defsym symbol"),
+            ("ld", "--defsym =value"),
+            ("ld", "--defsym symbol="),
+            ("ld", "--defsym bad!symbol=1"),
             ("ld", "--defsym="),
         )
         for command, option in cases:
@@ -2112,33 +2166,37 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 )
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("option has no value", result.stdout.lower())
+                self.assertIn("option", result.stdout.lower())
 
-    def test_nvcc_only_operands_remain_visible_for_other_tools(self):
-        for option in ("--threads build/option.o", "-ccbin build/option.o"):
-            with self.subTest(option=option):
+    def test_known_scoped_options_reject_on_wrong_executable(self):
+        cases = (
+            ("clang++", "--threads 2"),
+            ("clang++", "--threads=2"),
+            ("clang++", "-t=2"),
+            ("clang++", "-t2"),
+            ("clang++", "-ccbin=tools/g++"),
+            ("clang++", "--compiler-bindir=tools"),
+            ("clang++", "--entry _start"),
+            ("clang++", "--entry=_start"),
+            ("clang++", "--undefined=required_symbol"),
+            ("clang++", "--emulation=elf_x86_64"),
+            ("clang++", "--defsym=image_base=0x1000"),
+            ("ld", "--threads 2"),
+            ("ld", "--threads=2"),
+            ("ld", "-ccbin tools/g++"),
+        )
+        for command, option in cases:
+            with self.subTest(command=command, option=option):
                 result = self.run_analyzer(
-                    "clang++ {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "{0} {1} src/model.cu -o build/lenet_cuda\n".format(
+                        command, option
+                    ) +
                     "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
                     "test-source=tests/smoke_tests.cpp\n",
                 )
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("option.o", result.stdout)
-                self.assertIn("no analyzed producer", result.stdout.lower())
-
-    def test_direct_linker_operands_remain_visible_for_compiler_commands(self):
-        for option in ("-m build/option.o", "-e build/option.o", "-u build/option.o"):
-            with self.subTest(option=option):
-                result = self.run_analyzer(
-                    "clang++ {0} src/model.cu -o build/lenet_cuda\n".format(option) +
-                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
-                    "test-source=tests/smoke_tests.cpp\n",
-                )
-
-                self.assertNotEqual(0, result.returncode, result.stdout)
-                self.assertIn("option.o", result.stdout)
-                self.assertIn("no analyzed producer", result.stdout.lower())
+                self.assertIn("unsupported scoped option", result.stdout.lower())
 
     def test_reachable_external_control_file_forms_are_rejected(self):
         control_options = (
