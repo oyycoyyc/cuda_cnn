@@ -26,7 +26,7 @@ ARCHIVE_OPERATION_MODIFIERS = {
 COMMAND_WRAPPERS = ("ccache", "sccache", "distcc")
 DISTINCT_O_OPTION_PREFIXES = ("-opt-info", "-openmp", "-objc")
 SEPARATED_NON_ARTIFACT_OPTIONS = (
-    "-MF", "-MT", "-MQ", "-isystem", "-include", "-imacros", "--sysroot",
+    "-MF", "-MT", "-MQ", "--sysroot",
 )
 ATTACHED_NON_ARTIFACT_OPTIONS = ("-MF", "-MT", "-MQ")
 REQUIRED_GENCODE = (
@@ -256,17 +256,23 @@ def output_token(tokens, opaque_indexes):
 def include_directories(root, tokens):
     quote_dirs = []
     include_dirs = []
+    system_dirs = []
     option_indexes = set()
     index = 0
     while index < len(tokens):
         token = tokens[index]
         destination = None
         value = None
-        if token == "-I" or token == "-iquote":
+        if token in ("-I", "-iquote", "-isystem"):
             if index + 1 >= len(tokens):
                 raise AnalysisError("include option has no directory: {0}".format(token))
             value = tokens[index + 1]
-            destination = quote_dirs if token == "-iquote" else include_dirs
+            if token == "-iquote":
+                destination = quote_dirs
+            elif token == "-isystem":
+                destination = system_dirs
+            else:
+                destination = include_dirs
             option_indexes.update((index, index + 1))
             index += 2
         elif token.startswith("-iquote") and len(token) > len("-iquote"):
@@ -277,6 +283,15 @@ def include_directories(root, tokens):
         elif token.startswith("-I") and len(token) > 2:
             value = token[2:]
             destination = include_dirs
+            option_indexes.add(index)
+            index += 1
+        elif token.startswith("-isystem") and len(token) > len("-isystem"):
+            value = token[len("-isystem"):]
+            if value.startswith("="):
+                value = value[1:]
+            if not value:
+                raise AnalysisError("include option has no directory: -isystem")
+            destination = system_dirs
             option_indexes.add(index)
             index += 1
         else:
@@ -291,7 +306,41 @@ def include_directories(root, tokens):
                 "include directory escapes source root through symlink: {0}".format(value)
             )
         destination.append(lexical)
-    return quote_dirs, include_dirs, option_indexes
+    return quote_dirs, include_dirs, system_dirs, option_indexes
+
+
+def forced_input_options(tokens):
+    forced_inputs = []
+    option_indexes = set()
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        matched = None
+        value = None
+        if token in ("-include", "-imacros"):
+            if index + 1 >= len(tokens):
+                raise AnalysisError("forced-input option has no file: {0}".format(token))
+            matched = token
+            value = tokens[index + 1]
+            option_indexes.update((index, index + 1))
+            index += 2
+        else:
+            for option in ("-include", "-imacros"):
+                if token.startswith(option) and len(token) > len(option):
+                    matched = option
+                    value = token[len(option):]
+                    if value.startswith("="):
+                        value = value[1:]
+                    option_indexes.add(index)
+                    index += 1
+                    break
+        if matched is None:
+            index += 1
+            continue
+        if not value:
+            raise AnalysisError("forced-input option has no file: {0}".format(matched))
+        forced_inputs.append(value)
+    return forced_inputs, option_indexes
 
 
 def command_input_metadata(tokens):
@@ -533,13 +582,14 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output, output_indexes = output_token(
                 tokens, opaque_input_indexes | non_artifact_indexes
             )
-            quote_dirs, include_dirs, include_option_indexes = include_directories(
-                root, tokens
-            )
+            quote_dirs, include_dirs, system_dirs, include_option_indexes = \
+                include_directories(root, tokens)
+            forced_inputs, forced_option_indexes = forced_input_options(tokens)
+            compiler_option_indexes = include_option_indexes | forced_option_indexes
             sources = []
             source_indexes = set()
             for index, token in enumerate(tokens):
-                if (index in output_indexes or index in include_option_indexes or
+                if (index in output_indexes or index in compiler_option_indexes or
                         index in opaque_input_indexes or
                         index in non_artifact_indexes):
                     continue
@@ -579,7 +629,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
             invalid_candidates = []
             for index, token in enumerate(tokens):
                 if (index in output_indexes or index in source_indexes or
-                        index in include_option_indexes or
+                        index in compiler_option_indexes or
                         index in opaque_input_indexes or
                         index in non_artifact_indexes or
                         index in prefix_indexes):
@@ -602,6 +652,8 @@ def parse_recipes(root, recipe_path, require_sources=True):
                 "invalid_candidate_inputs": invalid_candidates,
                 "quote_dirs": quote_dirs,
                 "include_dirs": include_dirs,
+                "system_dirs": system_dirs,
+                "forced_inputs": forced_inputs,
                 "input_metadata": input_metadata,
             })
     return commands
@@ -649,11 +701,14 @@ def reconcile_test_sources(root, commands, expected):
             if source_is_tests_owned(root, source):
                 identity = canonical_path_identity(source["real"])
                 actual[identity] = source["relative"]
-                compile_contexts.append((
-                    source["lexical"],
-                    command["quote_dirs"],
-                    command["include_dirs"],
-                ))
+                compile_contexts.append({
+                    "source": source["lexical"],
+                    "quote_dirs": command["quote_dirs"],
+                    "include_dirs": command["include_dirs"],
+                    "system_dirs": command["system_dirs"],
+                    "forced_inputs": command["forced_inputs"],
+                    "production": False,
+                })
     missing = sorted(
         expected[identity] for identity in set(expected) - set(actual)
     )
@@ -670,38 +725,50 @@ def reconcile_test_sources(root, commands, expected):
     return compile_contexts
 
 
-def active_visit_key(path, quote_dirs, include_dirs):
+def active_visit_key(path, quote_dirs, include_dirs, system_dirs, production):
     lexical_path = os.path.abspath(os.path.normpath(path))
     return (
         lexical_path,
         tuple(quote_dirs),
         tuple(include_dirs),
+        tuple(system_dirs),
+        production,
     )
 
 
 def collect_active_inputs(root, compile_contexts):
-    active = set()
+    active = {}
     visited = set()
     recursion_stack = set()
+    tests_root = canonical_path_identity(os.path.join(root, "tests"))
 
-    def visit(path, quote_dirs, include_dirs):
+    def visit(path, quote_dirs, include_dirs, system_dirs, production):
         lexical_path = os.path.abspath(os.path.normpath(path))
-        key = active_visit_key(lexical_path, quote_dirs, include_dirs)
+        key = active_visit_key(
+            lexical_path, quote_dirs, include_dirs, system_dirs, production
+        )
         real_path = os.path.realpath(lexical_path)
         if not is_within(root, real_path):
             raise AnalysisError(
                 "active include escapes source root: {0}".format(lexical_path)
+            )
+        real_identity = canonical_path_identity(real_path)
+        if production and is_within(tests_root, real_identity):
+            raise AnalysisError(
+                "production uses tests-owned compiler input: {0}".format(
+                    display_path(root, lexical_path)
+                )
             )
         if key in visited:
             return
         # An unguarded recursive include cannot compile. Stopping a repeated
         # canonical file only in this chain models guarded/pragma-once
         # termination without hiding content from later independent routes.
-        if real_path in recursion_stack:
+        if real_identity in recursion_stack:
             return
         visited.add(key)
-        active.add(real_path)
-        recursion_stack.add(real_path)
+        active.setdefault(real_identity, real_path)
+        recursion_stack.add(real_identity)
         try:
             try:
                 source_file = io.open(real_path, "r", encoding="utf-8")
@@ -718,9 +785,10 @@ def collect_active_inputs(root, compile_contexts):
                         continue
                     delimiter, include_name = match.groups()
                     if delimiter == '"':
-                        search_dirs = [os.path.dirname(lexical_path)] + quote_dirs + include_dirs
+                        search_dirs = ([os.path.dirname(lexical_path)] + quote_dirs +
+                                       include_dirs + system_dirs)
                     else:
-                        search_dirs = include_dirs
+                        search_dirs = include_dirs + system_dirs
                     resolved = None
                     for directory in search_dirs:
                         candidate = os.path.abspath(os.path.normpath(
@@ -749,13 +817,63 @@ def collect_active_inputs(root, compile_contexts):
                                 )
                             )
                         continue
-                    visit(resolved, quote_dirs, include_dirs)
+                    visit(
+                        resolved, quote_dirs, include_dirs, system_dirs,
+                        production
+                    )
         finally:
-            recursion_stack.remove(real_path)
+            recursion_stack.remove(real_identity)
 
-    for source, quote_dirs, include_dirs in compile_contexts:
-        visit(source, quote_dirs, include_dirs)
-    return active
+    def resolve_forced_input(context, forced_input):
+        if os.path.isabs(forced_input):
+            candidates = [forced_input]
+        else:
+            direct = os.path.abspath(os.path.normpath(os.path.join(root, forced_input)))
+            if not is_within(root, direct):
+                raise AnalysisError(
+                    "forced compiler input escapes source root: {0}".format(
+                        forced_input
+                    )
+                )
+            candidates = [direct]
+            candidates.extend(
+                os.path.join(directory, forced_input)
+                for directory in (context["quote_dirs"] +
+                                  context["include_dirs"] +
+                                  context["system_dirs"])
+            )
+        for candidate in candidates:
+            lexical = os.path.abspath(os.path.normpath(candidate))
+            if not os.path.exists(lexical):
+                continue
+            real = os.path.realpath(lexical)
+            if not is_within(root, lexical) or not is_within(root, real):
+                raise AnalysisError(
+                    "forced compiler input escapes source root: {0}".format(
+                        forced_input
+                    )
+                )
+            if not os.path.isfile(real):
+                raise AnalysisError(
+                    "forced compiler input is not a file: {0}".format(forced_input)
+                )
+            return lexical
+        raise AnalysisError(
+            "cannot resolve forced compiler input: {0}".format(forced_input)
+        )
+
+    for context in compile_contexts:
+        for forced_input in context["forced_inputs"]:
+            forced_path = resolve_forced_input(context, forced_input)
+            visit(
+                forced_path, context["quote_dirs"], context["include_dirs"],
+                context["system_dirs"], context["production"]
+            )
+        visit(
+            context["source"], context["quote_dirs"], context["include_dirs"],
+            context["system_dirs"], context["production"]
+        )
+    return set(active.values())
 
 
 def build_artifact_graph(root, commands):
@@ -794,6 +912,7 @@ def build_artifact_graph(root, commands):
         )
 
     visited = set()
+    reachable_commands = []
 
     def walk(artifact, chain):
         if artifact in visited:
@@ -806,6 +925,7 @@ def build_artifact_graph(root, commands):
                     display_path(root, artifact)
                 )
             )
+        reachable_commands.append(command)
         if command["input_metadata"]["response_file"]:
             raise AnalysisError(
                 "unsupported response-file input affects lenet_cuda: {0}".format(
@@ -839,6 +959,7 @@ def build_artifact_graph(root, commands):
 
     application = applications[0]
     walk(application, [application])
+    return reachable_commands
 
 
 def analyze_source(args):
@@ -846,8 +967,18 @@ def analyze_source(args):
     commands = parse_recipes(root, args.recipes)
     expected = read_manifest(root, args.manifest)
     contexts = reconcile_test_sources(root, commands, expected)
+    reachable_commands = build_artifact_graph(root, commands)
+    for command in reachable_commands:
+        for source in command["sources"]:
+            contexts.append({
+                "source": source["lexical"],
+                "quote_dirs": command["quote_dirs"],
+                "include_dirs": command["include_dirs"],
+                "system_dirs": command["system_dirs"],
+                "forced_inputs": command["forced_inputs"],
+                "production": True,
+            })
     active = collect_active_inputs(root, contexts)
-    build_artifact_graph(root, commands)
     for path in sorted(active):
         sys.stdout.write(display_path(root, path) + "\n")
 

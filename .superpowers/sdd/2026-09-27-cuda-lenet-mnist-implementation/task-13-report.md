@@ -1109,3 +1109,78 @@ the successful result above.
 No build-log or documentation behavior was modified. No broad, CUDA, H20,
 subagent, or reviewer command was run. The POSIX end-to-end symlink case and
 Python 3.6 runtime execution remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.3d
+
+### Active Compiler Input Provenance
+
+- Production artifact traversal remains rooted at exactly one
+  `build/lenet_cuda[.exe]` producer and now returns the commands reached after
+  all existing provenance checks. Every source-bearing command in that closure
+  contributes its lexical source and compiler-search context to active-input
+  discovery; manifest-reconciled test translation units retain their own
+  contexts.
+- Active quoted and angle includes now retain production provenance. Any
+  selected input whose canonical real path is under canonical `ROOT/tests` is
+  rejected for production, including file aliases and platform case variants.
+  An unused `-Itests` remains accepted.
+- Separated and practical attached `-isystem`, `-include`, and `-imacros`
+  forms are compiler inputs rather than artifact edges. System directories are
+  searched after `-I` for angle includes and after the including directory,
+  `-iquote`, and `-I` for quoted includes. Forced inputs resolve first from the
+  root working directory and then through quote, ordinary, and system include
+  directories; unresolved, escaping, or non-file selections fail closed.
+- Forced inputs are recursively scanned for both test and production commands.
+  Analyzer output contains the canonical-deduplicated union of active test and
+  production inputs consumed by the Bash scanner.
+- The inherited WIP used one global lexical/search-context visit key for test
+  and production traversals. A test traversal could therefore visit a shared
+  header first and mask a later production route from that header into
+  `tests/`. The visit identity now includes provenance mode, while emitted
+  inputs remain canonical-deduplicated.
+
+### TDD Evidence
+
+The inherited Task 13.3d WIP and its focused tests were preserved and audited.
+The audit added a shared-header regression before changing the implementation;
+its RED run showed the production route being accepted and emitted instead of
+rejected:
+
+```text
+test_test_context_cannot_mask_production_route_to_tests_header ... FAIL
+AssertionError: 0 == 0 : include/shared.h
+src/model.cu
+tests/production_input.h
+tests/smoke_tests.cpp
+Ran 1 test
+FAILED (failures=1)
+```
+
+Adding production/test mode to the active visit key made the same isolated test
+pass before the complete focused run.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <20 focused Subtask 13.3d tests>
+Ran 20 tests in 4.483s
+OK (skipped=1: POSIX-only header-symlink integration on Windows)
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+The first checker-backed focused run used the default Windows Bash lookup and
+encountered the existing subprocess GBK decoding issue. The recorded MSYS2
+Bash run is the authoritative focused result. No linker-script, library,
+archive, general-option, build-log, documentation, broad-suite, CUDA, H20,
+subagent, or reviewer work was performed. Python 3.6 runtime execution and the
+POSIX symlink integration remain unavailable locally and are not claimed.

@@ -653,7 +653,9 @@ class ProhibitedCheckerTest(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stdout)
-        self.assertEqual("tests/space dir/active test.cpp\n", result.stdout)
+        self.assertEqual(
+            "src/model.cu\ntests/space dir/active test.cpp\n", result.stdout
+        )
 
     def test_attached_include_flags_resolve_active_header(self):
         self.write("tests/smoke_tests.cpp", '#include "selected.h"\n')
@@ -734,7 +736,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual(
-            set((source_directory + "/active tests.cpp",) + selected),
+            set(("src/model.cu", source_directory + "/active tests.cpp") + selected),
             set(result.stdout.splitlines()),
         )
 
@@ -812,7 +814,14 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 analyzer.os.path, "realpath", side_effect=modeled_realpath):
             with self.assertRaises(analyzer.AnalysisError) as context:
                 analyzer.collect_active_inputs(
-                    realpath(self.temporary), [(source, [], [])]
+                    realpath(self.temporary), [{
+                        "source": source,
+                        "quote_dirs": [],
+                        "include_dirs": [],
+                        "system_dirs": [],
+                        "forced_inputs": [],
+                        "production": False,
+                    }]
                 )
 
         self.assertIn(
@@ -842,7 +851,14 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 analyzer.os.path, "realpath", side_effect=modeled_realpath):
             try:
                 active = analyzer.collect_active_inputs(
-                    realpath(self.temporary), [(source, [], [])]
+                    realpath(self.temporary), [{
+                        "source": source,
+                        "quote_dirs": [],
+                        "include_dirs": [],
+                        "system_dirs": [],
+                        "forced_inputs": [],
+                        "production": False,
+                    }]
                 )
             except analyzer.AnalysisError as error:
                 self.fail("canonical recursion did not terminate: {0}".format(error))
@@ -874,7 +890,14 @@ class ProhibitedCheckerTest(unittest.TestCase):
         with mock.patch.object(
                 analyzer.os.path, "realpath", side_effect=modeled_realpath):
             active = analyzer.collect_active_inputs(
-                realpath(self.temporary), [(source, [], [])]
+                realpath(self.temporary), [{
+                    "source": source,
+                    "quote_dirs": [],
+                    "include_dirs": [],
+                    "system_dirs": [],
+                    "forced_inputs": [],
+                    "production": False,
+                }]
             )
 
         self.assertIn(realpath(alias_sibling), active)
@@ -1089,12 +1112,6 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "-MQ build/option_operand.o",
             "-MQbuild/option_operand.o",
             "-MQ=build/option_operand.o",
-            "-isystem build/option_operand.o",
-            "-isystem=build/option_operand.o",
-            "-include build/option_operand.o",
-            "-include=build/option_operand.o",
-            "-imacros build/option_operand.o",
-            "-imacros=build/option_operand.o",
             "--sysroot build/option_operand.o",
             "--sysroot=build/option_operand.o",
         )
@@ -1110,6 +1127,242 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 )
 
                 self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_production_quoted_and_angle_includes_cannot_resolve_tests_headers(self):
+        variants = (
+            ('#include "../tests/production_input.h"\n', ""),
+            ("#include <production_input.h>\n", "-Itests"),
+        )
+        self.write("tests/production_input.h", "void TestOnly();\n")
+        for source, options in variants:
+            with self.subTest(source=source):
+                self.write("src/model.cu", source)
+                result = self.run_analyzer(
+                    "clang++ {0} -c src/model.cu -o build/model.o\n".format(options) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned compiler input", result.stdout.lower())
+                self.assertIn("production_input.h", result.stdout)
+
+    def test_production_isystem_header_under_tests_is_rejected(self):
+        self.write("src/model.cu", "#include <production_input.h>\n")
+        self.write("tests/system/production_input.h", "void TestOnly();\n")
+        for option in ("-isystem tests/system", "-isystemtests/system"):
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ -Iinclude {0} -c src/model.cu "
+                    "-o build/model.o\n".format(option) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned compiler input", result.stdout.lower())
+                self.assertIn("production_input.h", result.stdout)
+
+    def test_ordinary_include_precedes_system_include_for_angle_lookup(self):
+        self.write("src/model.cu", "#include <selected.h>\n")
+        self.write("include/selected.h", "void ProductionSelected();\n")
+        self.write("tests/system/selected.h", "void TestOnly();\n")
+
+        result = self.run_analyzer(
+            "clang++ -isystem tests/system -Iinclude -c src/model.cu "
+            "-o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("include/selected.h", result.stdout.splitlines())
+        self.assertNotIn("tests/system/selected.h", result.stdout.splitlines())
+
+    def test_production_forced_tests_inputs_are_rejected(self):
+        variants = (
+            "-include tests/forced.h",
+            "-includetests/forced.h",
+            "-include=tests/forced.h",
+            "-imacros tests/forced_macros.h",
+            "-imacrostests/forced_macros.h",
+            "-imacros=tests/forced_macros.h",
+        )
+        self.write("tests/forced.h", "void TestOnly();\n")
+        self.write("tests/forced_macros.h", "#define TEST_ONLY 1\n")
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ {0} -c src/model.cu -o build/model.o\n".format(option) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned compiler input", result.stdout.lower())
+
+    def test_forced_inputs_fail_closed_when_unresolved_or_escaping(self):
+        variants = (
+            ("-include missing.h", "cannot resolve forced compiler input"),
+            ("-imacros ../outside.h", "escapes source root"),
+        )
+        for option, message in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "clang++ {0} -c src/model.cu -o build/model.o\n".format(option) +
+                    "clang++ build/model.o -o build/lenet_cuda\n"
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn(message, result.stdout.lower())
+
+    def test_unused_tests_include_directory_does_not_taint_production(self):
+        result = self.run_analyzer(
+            "clang++ -Itests -c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_test_context_cannot_mask_production_route_to_tests_header(self):
+        self.write("src/model.cu", "#include <shared.h>\n")
+        self.write("tests/smoke_tests.cpp", "#include <shared.h>\n")
+        self.write("include/shared.h", '#include "../tests/production_input.h"\n')
+        self.write("tests/production_input.h", "void TestOnly();\n")
+
+        result = self.run_analyzer(
+            "clang++ -Iinclude -c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -Iinclude -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned compiler input", result.stdout.lower())
+        self.assertIn("production_input.h", result.stdout)
+
+    def test_production_headers_under_include_and_src_are_active_inputs(self):
+        self.write(
+            "src/model.cu",
+            '#include "local_support.h"\n#include <public_support.h>\n',
+        )
+        self.write("src/local_support.h", "void LocalSupport();\n")
+        self.write("include/public_support.h", "void PublicSupport();\n")
+
+        result = self.run_analyzer(
+            "clang++ -Iinclude -c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(
+            {
+                "include/public_support.h",
+                "src/local_support.h",
+                "src/model.cu",
+                "tests/smoke_tests.cpp",
+            },
+            set(result.stdout.splitlines()),
+        )
+
+    def test_tests_owned_forced_header_is_scanned_for_prohibited_dependency(self):
+        self.write("tests/forced.h", "#include <cudnn.h>\n")
+        self.write(
+            "Makefile",
+            "BUILD_DIR := build\n"
+            ".DEFAULT_GOAL := all\n"
+            "TEST_SOURCES := tests/smoke_tests.cpp\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' $(TEST_SOURCES)\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tnvcc src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tclang++ -include forced.h -Itests -c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("forced.h", result.stdout)
+        self.assertIn("cudnn", result.stdout.lower())
+
+    def test_posix_production_header_symlink_to_tests_header_is_rejected(self):
+        if os.name == "nt":
+            self.skipTest("POSIX header-symlink regression")
+        self.write("tests/production_input.h", "void TestOnly();\n")
+        alias = os.path.join(self.temporary, "include", "production_alias.h")
+        try:
+            os.symlink(os.path.join("..", "tests", "production_input.h"), alias)
+        except OSError as error:
+            self.skipTest("header symlink creation unavailable: {0}".format(error))
+        self.write("src/model.cu", "#include <production_alias.h>\n")
+
+        result = self.run_analyzer(
+            "clang++ -Iinclude -c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned compiler input", result.stdout.lower())
+        self.assertIn("production_alias.h", result.stdout)
+
+    def test_windows_case_variant_production_header_alias_is_rejected(self):
+        if os.name != "nt":
+            self.skipTest("Windows canonical header regression")
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.realpath(self.temporary)
+        source = self.write("src/model.cu", '#include <production_alias.h>\n')
+        alias = self.write("include/production_alias.h", "void Alias();\n")
+        test_header = self.write("tests/production_input.h", "void TestOnly();\n")
+        original_realpath = os.path.realpath
+        original_normcase = os.path.normcase
+
+        def case_variant_realpath(path):
+            absolute = os.path.abspath(path)
+            if original_normcase(absolute) == original_normcase(alias):
+                return test_header.upper()
+            if original_normcase(absolute) == original_normcase(
+                    os.path.join(root, "tests")):
+                return os.path.join(root, "tests").lower()
+            return original_realpath(path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=case_variant_realpath), \
+                mock.patch.object(
+                    analyzer.os.path,
+                    "normcase",
+                    side_effect=lambda path: path.replace("/", "\\").lower(),
+                ):
+            with self.assertRaises(analyzer.AnalysisError) as caught:
+                analyzer.collect_active_inputs(root, [{
+                    "source": source,
+                    "quote_dirs": [],
+                    "include_dirs": [os.path.dirname(alias)],
+                    "system_dirs": [],
+                    "forced_inputs": [],
+                    "production": True,
+                }])
+
+        self.assertIn("tests-owned compiler input", str(caught.exception).lower())
+        self.assertIn("production_alias.h", str(caught.exception))
 
     def test_distinct_o_option_families_are_not_attached_outputs(self):
         result = self.run_analyzer(
@@ -1575,9 +1828,10 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
     def test_quoted_and_escaped_hash_literals_are_not_comments(self):
         result = self.run_analyzer(
-            "clang++ '-DCOMMENT=# build/*.o' \\#literal -DESCAPED=\\#\\* "
+            "clang++ '-DCOMMENT=# build/*.o' -DLITERAL=\\#literal "
+            "-DESCAPED=\\#\\* "
             "src/model.cu -o build/lenet_cuda\n"
-            "clang++ '-DCOMMENT=# ${OBJECTS}' \\#literal "
+            "clang++ '-DCOMMENT=# ${OBJECTS}' -DLITERAL=\\#literal "
             "-DESCAPED=\\#\\$OBJECTS -c tests/smoke_tests.cpp "
             "-o build/smoke.o\n",
             "test-source=tests/smoke_tests.cpp\n",
