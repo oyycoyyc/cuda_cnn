@@ -253,13 +253,17 @@ def output_token(tokens, opaque_indexes):
     return (outputs[0] if outputs else None), output_indexes
 
 
-def include_directories(root, tokens):
+def include_directories(root, tokens, ignored_indexes=None):
     quote_dirs = []
     include_dirs = []
     system_dirs = []
     option_indexes = set()
+    ignored_indexes = ignored_indexes or set()
     index = 0
     while index < len(tokens):
+        if index in ignored_indexes:
+            index += 1
+            continue
         token = tokens[index]
         destination = None
         value = None
@@ -306,14 +310,23 @@ def include_directories(root, tokens):
                 "include directory escapes source root through symlink: {0}".format(value)
             )
         destination.append(lexical)
+    system_identities = set(canonical_path_identity(path) for path in system_dirs)
+    include_dirs = [
+        path for path in include_dirs
+        if canonical_path_identity(path) not in system_identities
+    ]
     return quote_dirs, include_dirs, system_dirs, option_indexes
 
 
-def forced_input_options(tokens):
+def forced_input_options(tokens, ignored_indexes=None):
     forced_inputs = []
     option_indexes = set()
+    ignored_indexes = ignored_indexes or set()
     index = 0
     while index < len(tokens):
+        if index in ignored_indexes:
+            index += 1
+            continue
         token = tokens[index]
         matched = None
         value = None
@@ -341,6 +354,35 @@ def forced_input_options(tokens):
             raise AnalysisError("forced-input option has no file: {0}".format(matched))
         forced_inputs.append(value)
     return forced_inputs, option_indexes
+
+
+def active_compiler_tokens(tokens):
+    active_tokens = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        payload = None
+        if token in ("-Xcompiler", "--compiler-options"):
+            if index + 1 >= len(tokens):
+                raise AnalysisError(
+                    "host compiler forwarding option has no value: {0}".format(token)
+                )
+            payload = tokens[index + 1]
+            index += 2
+        elif (token.startswith("-Xcompiler=") or
+              token.startswith("--compiler-options=")):
+            payload = token.split("=", 1)[1]
+            index += 1
+        else:
+            active_tokens.append(token)
+            index += 1
+            continue
+        if not payload:
+            raise AnalysisError(
+                "host compiler forwarding option has no value: {0}".format(token)
+            )
+        active_tokens.extend(payload.split(","))
+    return active_tokens
 
 
 def command_input_metadata(tokens):
@@ -582,9 +624,17 @@ def parse_recipes(root, recipe_path, require_sources=True):
             output, output_indexes = output_token(
                 tokens, opaque_input_indexes | non_artifact_indexes
             )
+            compiler_tokens = active_compiler_tokens(tokens)
             quote_dirs, include_dirs, system_dirs, include_option_indexes = \
-                include_directories(root, tokens)
-            forced_inputs, forced_option_indexes = forced_input_options(tokens)
+                include_directories(root, compiler_tokens)
+            forced_inputs, _ = forced_input_options(compiler_tokens)
+            _, _, _, direct_include_option_indexes = include_directories(
+                root, tokens, opaque_input_indexes
+            )
+            _, forced_option_indexes = forced_input_options(
+                tokens, opaque_input_indexes
+            )
+            include_option_indexes = direct_include_option_indexes
             compiler_option_indexes = include_option_indexes | forced_option_indexes
             sources = []
             source_indexes = set()
@@ -695,20 +745,17 @@ def read_manifest(root, manifest_path):
 
 def reconcile_test_sources(root, commands, expected):
     actual = {}
-    compile_contexts = []
+    test_commands = []
     for command in commands:
-        for source in command["sources"]:
-            if source_is_tests_owned(root, source):
-                identity = canonical_path_identity(source["real"])
-                actual[identity] = source["relative"]
-                compile_contexts.append({
-                    "source": source["lexical"],
-                    "quote_dirs": command["quote_dirs"],
-                    "include_dirs": command["include_dirs"],
-                    "system_dirs": command["system_dirs"],
-                    "forced_inputs": command["forced_inputs"],
-                    "production": False,
-                })
+        tests_owned_sources = [
+            source for source in command["sources"]
+            if source_is_tests_owned(root, source)
+        ]
+        for source in tests_owned_sources:
+            identity = canonical_path_identity(source["real"])
+            actual[identity] = source["relative"]
+        if tests_owned_sources:
+            test_commands.append(command)
     missing = sorted(
         expected[identity] for identity in set(expected) - set(actual)
     )
@@ -722,6 +769,17 @@ def reconcile_test_sources(root, commands, expected):
         if extra:
             details.append("missing from manifest: {0}".format(", ".join(extra)))
         raise AnalysisError("test source manifest mismatch; {0}".format("; ".join(details)))
+    compile_contexts = []
+    for command in test_commands:
+        for source in command["sources"]:
+            compile_contexts.append({
+                "source": source["lexical"],
+                "quote_dirs": command["quote_dirs"],
+                "include_dirs": command["include_dirs"],
+                "system_dirs": command["system_dirs"],
+                "forced_inputs": command["forced_inputs"],
+                "production": False,
+            })
     return compile_contexts
 
 

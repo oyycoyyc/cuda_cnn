@@ -1184,3 +1184,75 @@ Bash run is the authoritative focused result. No linker-script, library,
 archive, general-option, build-log, documentation, broad-suite, CUDA, H20,
 subagent, or reviewer work was performed. Python 3.6 runtime execution and the
 POSIX symlink integration remain unavailable locally and are not claimed.
+
+## Compliance Hardening Subtask 13.3d Fix Round 1
+
+### Review Findings Addressed
+
+- GCC cross-class duplicate semantics now compare canonical real-path plus
+  platform-normalized directory identities. Any ordinary `-I` occurrence also
+  present in `-isystem` is removed from ordinary lookup and remains at its
+  system position; other lexical directories retain their order. A
+  deterministic modeled alias test covers the canonical comparison.
+- NVCC `-Xcompiler` and `--compiler-options` payloads now contribute active
+  compiler semantics in separated and `=` forms. Comma-separated forwarded
+  `-I`, `-isystem`, `-include`, and `-imacros` options are expanded in command
+  order, while original forwarding tokens remain opaque to artifact parsing.
+  Missing outer payloads or active option values fail closed; unrelated host
+  flags and prior response-file rejection remain intact.
+- Exact manifest reconciliation still accounts only for tests-owned
+  translation units. After it succeeds, every source translation unit in a
+  command containing a reconciled test TU receives that command's active
+  compiler context. Helpers outside `include/`, `src/`, and `tests/` and their
+  local headers therefore reach the Bash scanner without becoming manifest
+  entries. Production graph selection is unchanged.
+
+### TDD Evidence
+
+Each finding received a focused RED run before its implementation change:
+
+```text
+test_system_duplicate_removes_ordinary_include_precedence ... FAIL
+test_system_duplicate_matches_canonical_directory_alias ... FAIL
+Ran 2 tests
+FAILED (failures=2)
+
+test_nvcc_forwarded_active_inputs_are_enforced_for_production ... 5 FAIL
+test_nvcc_forwarded_test_forced_header_is_scanned ... FAIL
+test_malformed_nvcc_active_forwarding_fails_closed ... 3 FAIL
+test_ordinary_nvcc_host_forwarding_values_remain_accepted ... ok
+Ran 4 tests
+FAILED (failures=9)
+
+test_test_compile_scans_nonmanifest_helper_and_local_header ... FAIL
+test_clean_nonmanifest_helper_context_is_emitted ... FAIL
+Ran 2 tests
+FAILED (failures=2)
+```
+
+The isolated green runs then passed three duplicate-order tests, five NVCC
+forwarding/response tests, and four helper/manifest tests respectively.
+
+### Focused Verification
+
+```text
+$env:BASH = 'C:\personal_apps\msys64\usr\bin\bash.exe'
+python -m unittest -v <31 focused Subtask 13.3d tests>
+Ran 31 tests in 7.900s
+OK (skipped=1: POSIX-only header-symlink integration on Windows)
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No linker-script, library, archive, general-option, build-log, documentation,
+broad-suite, CUDA, H20, subagent, or reviewer work was performed. Python 3.6
+runtime execution and the POSIX symlink integration remain unavailable locally
+and are not claimed.

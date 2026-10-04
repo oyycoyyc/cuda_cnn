@@ -1182,6 +1182,51 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("include/selected.h", result.stdout.splitlines())
         self.assertNotIn("tests/system/selected.h", result.stdout.splitlines())
 
+    def test_system_duplicate_removes_ordinary_include_precedence(self):
+        self.write("src/model.cu", "#include <selected.h>\n")
+        self.write("include/selected.h", "void ProductionSelected();\n")
+        self.write("tests/system/selected.h", "void TestOnly();\n")
+
+        result = self.run_analyzer(
+            "clang++ -Iinclude -Itests/system -isystem include "
+            "-c src/model.cu -o build/model.o\n"
+            "clang++ build/model.o -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests-owned compiler input", result.stdout.lower())
+        self.assertIn("tests/system/selected.h", result.stdout.replace("\\", "/"))
+
+    def test_system_duplicate_matches_canonical_directory_alias(self):
+        specification = importlib.util.spec_from_file_location(
+            "analyze_build_graph", ANALYZER
+        )
+        analyzer = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(analyzer)
+        root = os.path.realpath(self.temporary)
+        include = os.path.join(root, "include")
+        alias = os.path.join(root, "include-alias")
+        system = os.path.join(root, "tests", "system")
+        original_realpath = os.path.realpath
+
+        def modeled_realpath(path):
+            if os.path.normcase(os.path.abspath(path)) == os.path.normcase(alias):
+                return include
+            return original_realpath(path)
+
+        with mock.patch.object(
+                analyzer.os.path, "realpath", side_effect=modeled_realpath):
+            _, include_dirs, system_dirs, _ = analyzer.include_directories(
+                root,
+                ["clang++", "-I" + alias, "-I" + system,
+                 "-isystem", include],
+            )
+
+        self.assertEqual([system], include_dirs)
+        self.assertEqual([include], system_dirs)
+
     def test_production_forced_tests_inputs_are_rejected(self):
         variants = (
             "-include tests/forced.h",
@@ -1204,6 +1249,85 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("tests-owned compiler input", result.stdout.lower())
+
+    def test_nvcc_forwarded_active_inputs_are_enforced_for_production(self):
+        variants = (
+            ("-Xcompiler=-I,tests", "#include <production_input.h>\n"),
+            ("-Xcompiler -isystem,tests/system", "#include <system_input.h>\n"),
+            ("-Xcompiler=-include,tests/forced.h", ""),
+            ("--compiler-options=-include,tests/forced.h", ""),
+            ("--compiler-options -imacros,tests/forced_macros.h", ""),
+        )
+        self.write("tests/production_input.h", "void TestOnly();\n")
+        self.write("tests/system/system_input.h", "void TestOnly();\n")
+        self.write("tests/forced.h", "void TestOnly();\n")
+        self.write("tests/forced_macros.h", "#define TEST_ONLY 1\n")
+        for option, source in variants:
+            with self.subTest(option=option):
+                self.write("src/model.cu", source)
+                result = self.run_analyzer(
+                    "nvcc {0} -c src/model.cu -o build/model.o\n".format(option) +
+                    "nvcc build/model.o -o build/lenet_cuda\n"
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned compiler input", result.stdout.lower())
+
+    def test_nvcc_forwarded_test_forced_header_is_scanned(self):
+        self.write("tests/forced.h", "#include <cudnn.h>\n")
+        self.write(
+            "Makefile",
+            "BUILD_DIR := build\n"
+            ".DEFAULT_GOAL := all\n"
+            "TEST_SOURCES := tests/smoke_tests.cpp\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' $(TEST_SOURCES)\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tnvcc src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp\n"
+            "\tnvcc --compiler-options=-I,tests,-include,forced.h "
+            "-c $< -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("forced.h", result.stdout)
+        self.assertIn("cudnn", result.stdout.lower())
+
+    def test_malformed_nvcc_active_forwarding_fails_closed(self):
+        variants = (
+            "-Xcompiler",
+            "-Xcompiler=-include",
+            "--compiler-options=-I",
+        )
+        for option in variants:
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "nvcc -c src/model.cu -o build/model.o {0}\n".format(option) +
+                    "nvcc build/model.o -o build/lenet_cuda\n"
+                    "nvcc -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option", result.stdout.lower())
+
+    def test_ordinary_nvcc_host_forwarding_values_remain_accepted(self):
+        result = self.run_analyzer(
+            "nvcc -Xcompiler=-Wall,-Wextra -c src/model.cu "
+            "-o build/model.o\n"
+            "nvcc build/model.o -o build/lenet_cuda\n"
+            "nvcc --compiler-options -Wall,-Wextra "
+            "-c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
 
     def test_forced_inputs_fail_closed_when_unresolved_or_escaping(self):
         variants = (
@@ -1297,6 +1421,52 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("forced.h", result.stdout)
         self.assertIn("cudnn", result.stdout.lower())
+
+    def test_test_compile_scans_nonmanifest_helper_and_local_header(self):
+        self.write("fixtures/helper.cpp", '#include "helper.h"\n')
+        self.write("fixtures/helper.h", "#include <cudnn.h>\n")
+        self.write(
+            "Makefile",
+            "BUILD_DIR := build\n"
+            ".DEFAULT_GOAL := all\n"
+            "TEST_SOURCES := tests/smoke_tests.cpp\n"
+            ".PHONY: all compliance-test-sources\n"
+            "compliance-test-sources:\n"
+            "\t@printf 'test-source=%s\\n' $(TEST_SOURCES)\n"
+            "all: build/lenet_cuda build/smoke_tests\n"
+            "build/lenet_cuda:\n"
+            "\tnvcc src/model.cu -o $@\n"
+            "build/smoke_tests: tests/smoke_tests.cpp fixtures/helper.cpp\n"
+            "\tclang++ -c $^ -o $@\n",
+        )
+
+        result = self.run_checker("source", self.temporary)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("fixtures/helper.h", result.stdout.replace("\\", "/"))
+        self.assertIn("cudnn", result.stdout.lower())
+
+    def test_clean_nonmanifest_helper_context_is_emitted(self):
+        self.write("fixtures/helper.cpp", '#include "helper.h"\n')
+        self.write("fixtures/helper.h", "void Helper();\n")
+
+        result = self.run_analyzer(
+            "nvcc src/model.cu -o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp fixtures/helper.cpp "
+            "-o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(
+            {
+                "fixtures/helper.cpp",
+                "fixtures/helper.h",
+                "src/model.cu",
+                "tests/smoke_tests.cpp",
+            },
+            set(result.stdout.splitlines()),
+        )
 
     def test_posix_production_header_symlink_to_tests_header_is_rejected(self):
         if os.name == "nt":
