@@ -3047,11 +3047,58 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
 
+    def test_actual_build_scan_rejects_more_than_one_lenet_cuda_link(self):
+        duplicates = (
+            "nvcc build/main.o -o build/lenet_cuda\n",
+            "nvcc -gencode=arch=compute_90,code=sm_90 "
+            "-gencode=arch=compute_90,code=compute_90 "
+            "build/main.o -o build/lenet_cuda\n",
+        )
+        for duplicate in duplicates:
+            with self.subTest(duplicate=duplicate):
+                log = self.write(
+                    "verbose-build.log",
+                    self.valid_build_log(False) + duplicate +
+                    "event=build status=pass target=all\n",
+                )
+
+                result = self.run_checker("build", log)
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("exactly one lenet_cuda", result.stdout.lower())
+
+    def test_actual_build_scan_rejects_each_missing_gencode_flag(self):
+        for flag in (
+            "-gencode=arch=compute_90,code=sm_90",
+            "-gencode=arch=compute_90,code=compute_90",
+        ):
+            with self.subTest(present=flag):
+                log = self.write(
+                    "verbose-build.log",
+                    "nvcc {0} -c src/main.cu -o build/main.o\n".format(flag) +
+                    "nvcc {0} build/main.o -o build/lenet_cuda\n".format(flag) +
+                    "event=build status=pass target=all\n",
+                )
+
+                result = self.run_checker("build", log)
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("compute_90", result.stdout.lower())
+
     def test_dry_run_scan_is_explicit_and_does_not_require_completion_marker(self):
         log = self.write("verbose-build.log", self.valid_build_log(False))
         result = self.run_checker("dry-run", log)
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertIn("commands-not-executed", result.stdout)
+
+    def test_dry_run_scan_never_reports_successful_build(self):
+        log = self.write("verbose-build.log", self.valid_build_log())
+
+        result = self.run_checker("dry-run", log)
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("evidence=commands-not-executed", result.stdout)
+        self.assertNotIn("successful-build", result.stdout)
 
     def test_build_scan_rejects_empty_truncated_stale_and_nonbuild_logs(self):
         cases = (

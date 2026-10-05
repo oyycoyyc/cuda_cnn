@@ -1347,18 +1347,20 @@ def analyze_build_log(args):
             links.append(command)
     if not compile_found:
         raise AnalysisError("build log contains no compiler compile command")
-    if not links:
-        raise AnalysisError("build log contains no lenet_cuda linker command")
-    if not any(all(flag in command["tokens"] for flag in REQUIRED_GENCODE)
-               for command in links):
+    if len(links) != 1:
+        raise AnalysisError(
+            "build log must contain exactly one lenet_cuda linker command; "
+            "found {0}".format(len(links))
+        )
+    link = links[0]
+    if not all(flag in link["tokens"] for flag in REQUIRED_GENCODE):
         raise AnalysisError(
             "lenet_cuda linker command is missing required compute_90 architecture flags"
         )
-    for command in links:
-        if command["input_metadata"]["response_file"]:
-            raise AnalysisError(
-                "unsupported response-file input affects lenet_cuda build log"
-            )
+    if link["input_metadata"]["response_file"]:
+        raise AnalysisError(
+            "unsupported response-file input affects lenet_cuda build log"
+        )
 
 
 def parse_arguments():
