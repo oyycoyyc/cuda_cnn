@@ -321,7 +321,7 @@ def command_prefix_indexes(tokens):
     return prefix_indexes
 
 
-# Parses positional archive producers and their excluded operand indexes.
+# Parses positional archive output paths and their excluded operand indexes.
 def positional_archive_output(tokens):
     if not tokens:
         return None

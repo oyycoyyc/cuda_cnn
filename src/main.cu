@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     std::cerr << "error: " << error.what() << '\n' << Usage();
     return kRuntimeError;
   }
-  // Unknown enumerator: defensive fallback for an unhandled command.
+  // Defensive default for an unknown command enumerator.
   std::cerr << "error: invalid parsed command\n" << Usage();
   return kRuntimeError;
 }

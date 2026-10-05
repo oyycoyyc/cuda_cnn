@@ -181,7 +181,8 @@ TEST_CASE(rejects_zero_count_and_non_28_dimensions) {
   ExpectLoadError("dataset-bad-columns", bytes, "columns must equal 28");
 }
 
-// A huge sample count whose 32-bit size math would wrap is rejected.
+// An implausibly large sample count rejected by checked size and exact-size
+// validation.
 TEST_CASE(rejects_count_whose_32_bit_size_calculation_wraps) {
   std::vector<std::uint8_t> bytes = ThreeRowFixture();
   bytes.resize(kHeaderSize + 1);

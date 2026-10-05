@@ -22,7 +22,8 @@ class CommaDecimalPoint : public std::numpunct<char> {
 
 }  // namespace
 
-// Epoch record: exact key order, labels, and six-decimal precision.
+// Epoch record: exact key order, labels, six-decimal loss/accuracy, and
+// three-decimal elapsed milliseconds.
 TEST_CASE(epoch_summary_has_exact_stable_output) {
   std::ostringstream output;
   PrintEpochSummary(output, 1, 0.123456F, 0.9876F, 1234.567);

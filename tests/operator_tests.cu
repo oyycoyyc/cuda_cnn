@@ -1189,7 +1189,7 @@ TEST_CASE(convolution_launchers_reject_invalid_dimensions_and_pointers) {
                         "overflow");
 }
 
-// Source-policy scans over production kernels and storage implementation.
+// Source-policy scan over the production convolution kernel.
 TEST_CASE(convolution_gradient_source_policy_forbids_atomic_operations) {
   std::ifstream input("src/kernels/convolution.cu", std::ios::binary);
   EXPECT_TRUE(input.is_open());
@@ -1971,6 +1971,7 @@ TEST_CASE(lenet_train_step_state_machine_invalidates_and_consumes_saved_work) {
   model.AdamWStep(3, 0.001F, config);
 }
 
+// Source-policy scan over the storage implementation in src/lenet.cu.
 TEST_CASE(lenet_storage_source_has_no_direct_device_allocation_or_free) {
   std::ifstream input("src/lenet.cu", std::ios::binary);
   EXPECT_TRUE(input.is_open());

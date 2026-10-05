@@ -41,9 +41,9 @@ std::size_t CheckedMultiply(std::size_t left, std::size_t right) {
   return left * right;
 }
 
-// Computes the exact arena size for a batch capacity: the four canonical
-// parameter, gradient, and moment arrays, per-sample activations and gradients,
-// winner records, and one scan result.
+// Computes the exact arena size for a batch capacity: one canonical parameter
+// array, one gradient array, two optimizer moment arrays, per-sample activations
+// and gradients, winner records, and one scan result.
 std::size_t RequiredBytes(int maximum_batch_size) {
   if (maximum_batch_size <= 0) {
     throw std::invalid_argument("maximum_batch_size must be positive");
