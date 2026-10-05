@@ -1785,3 +1785,168 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 
 No broad suite, CUDA, H20, subagent, reviewer, or later-task work was performed.
 Python 3.6 runtime execution remains unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.6: Aggregate Verification And Task 13 Closure
+
+### Scope
+
+Fresh aggregate local verification of the complete Task 13 range from the
+`feature/rebuild` worktree at `E:\cuda_lenet_mnist\.worktrees\rebuild`, with the
+controller-owned uncommitted `progress.md` entries preserved. This is the first
+Task 13 check that executes the entire `tests.test_check_prohibited` module; it
+exposed two pre-existing tests whose expectations had been superseded by later,
+independently reviewed hardening. No production behavior was changed to make
+checks pass.
+
+### Exact Effective Environment And Commands
+
+- Host shell: PowerShell 7 on Windows; `PATH` prepended with
+  `C:\personal_apps\msys64\usr\bin;C:\personal_apps\msys64\ucrt64\bin`.
+- `MAKE=C:\personal_apps\msys64\usr\bin\make.exe` (GNU Make 4.4.1).
+- `BASH=C:\personal_apps\msys64\usr\bin\bash.exe` (GNU bash 5.2.37 MSYS2).
+- `CXX=g++` resolved via PATH to `C:\personal_apps\msys64\ucrt64\bin\g++.exe`
+  (MSYS2 GCC 14.2.0).
+- `PYTHON=C:/personal_apps/anaconda3/python.exe` (Python 3.12.7).
+- Aggregate: `make host-tests makefile-tests python-tests compliance
+  PYTHON=C:/personal_apps/anaconda3/python.exe CXX=g++ BASH=<msys2 bash>`.
+
+### Aggregate Result
+
+```text
+event=test_suite name=checkpoint_tests status=pass
+event=test_suite name=cli_tests status=pass
+event=test_suite name=cpu_reference_tests status=pass
+event=test_suite name=dataset_tests status=pass
+event=test_suite name=parameters_tests status=pass
+event=test_suite name=random_tests status=pass
+event=test_suite name=reporting_tests status=pass
+event=test_suite name=smoke_tests status=pass
+event=test_suite name=training_data_tests status=pass
+event=makefile_test name=distinct_suite_binaries status=pass
+python-tests: Ran 15 tests ... OK
+compliance: Ran 195 tests ... OK (skipped=4)
+comment check passed: inventory=147 checklist_items=147
+compliance scan passed: mode=source scope=make-compiled-inputs
+make exit status 0
+```
+
+The four skips are the intended Windows-privilege symlink/junction cases
+(two `WinError 1314` symlink creations and two POSIX-only symlink regressions);
+their deterministic modeled companions ran.
+
+### Additional Binding Commands
+
+```text
+python -m unittest -v tests.test_check_prohibited
+Ran 156 tests ... OK (skipped=4)
+
+bash -n scripts/check_prohibited.sh
+exit 0
+
+python -m py_compile scripts/analyze_build_graph.py scripts/check_comments.py
+exit 0
+
+make -B -n V=1 all        -> exit 0, both exact gencode flags present (16 each)
+make -B -n V=1 cuda-tests -> exit 0, both exact gencode flags present (16 each)
+
+git diff --check          -> exit 0 (LF-to-CRLF notices only)
+
+ast.parse(..., feature_version=(3, 6)) over the seven Python files changed by
+cd1222c..9981385 (analyzer, comment checker, and all five affected test
+modules) -> Python 3.6 grammar check passed for 7 files
+```
+
+Both `make -n` outputs are command-generation evidence only; **no CUDA command
+was executed**. The `all` dry-run shows the single `lenet_cuda` link command
+with `-gencode=arch=compute_90,code=sm_90` and
+`-gencode=arch=compute_90,code=compute_90`, and the completion marker only as
+the printed `echo "event=build status=pass target=all"` command. The `cuda-tests`
+dry-run shows `python3.6 scripts/prepare_mnist.py --output-dir data` before the
+`build/workflow_tests.exe --mnist-train data/train.bin` case.
+
+### Test-First Defect Reconciliation
+
+Fresh aggregate verification reported two failures in `tests.test_check_prohibited`:
+
+```text
+FAIL: test_known_archive_tool_path_supports_positional_output
+AssertionError: 0 != 1 : build graph analysis failed: unsupported stateful
+archive provenance affects lenet_cuda: build/libmodel.a
+
+FAIL: test_opaque_c_operand_cannot_hide_pre_source_positional_input
+AssertionError: 'tests-owned' not found in
+'build graph analysis failed: option has no value: -mt'
+Ran 2 tests ... FAILED (failures=2)
+```
+
+Both failures are stale test expectations introduced before later reviewed
+hardening; the production analyzer behavior is authoritative and was not changed:
+
+- Commit `f49b4b6` (Subtask 13.3e, reviewed) made recognized `ar`/`llvm-ar`/
+  `gcc-ar` `q`/`r` archive commands fail closed as stateful updates when
+  reachable from `lenet_cuda`, because the command cannot prove an existing
+  archive lacks unlisted stale members. The archive test's original
+  `assertEqual(0, ...)` acceptance premise is superseded; the path-qualified
+  `tools/llvm-ar` positional output is still recognized (proven by the stateful
+  diagnostic naming `build/libmodel.a`).
+- Commit `189088b` (Subtask 13.3f fix round 1, reviewed) made required separated
+  option values fail closed when the following token is itself an option. The
+  original `-MT -c` composition is therefore invalid grammar; the same test now
+  supplies the recognized separated `-MT` option a valid non-option operand
+  (`-MT target_name`) while keeping the pre-source positional input and `-c`, so
+  it still proves the positional `oracle_blob` input reaches its tests-owned
+  producer.
+
+Minimum test-only fixes (no production file changed):
+
+- `test_known_archive_tool_path_supports_positional_output` renamed to
+  `test_known_archive_tool_path_positional_output_is_stateful`; same recipe now
+  asserts nonzero status, `stateful archive`, and `build/libmodel.a`.
+- `test_opaque_c_operand_cannot_hide_pre_source_positional_input`: recipe
+  changed from `-MT -c` to `-MT target_name -c`; assertions unchanged
+  (`tests-owned`, `oracle_blob`).
+
+GREEN after the minimum fix:
+
+```text
+Ran 2 tests ... OK
+```
+
+### Subtask Commit SHAs And Review Closure
+
+- Hardening baseline: original Task 13 closed at `fc99052` (Fix Round 2).
+- Subtask 13.1 recipe-analyzer foundation: `72e66e1`; fix round 1 `21cd0f0`.
+- Subtask 13.2 active-header closure: `add4c41`; fix rounds `4cfef72`,
+  `780ae67`, `21595d2`.
+- Subtask 13.3 production provenance: `9070f5e`; refinement through `83c870e`
+  (`40a0d54`, `3c2fab9`, `ecb1dd7`, `f0fbfd3`, `38f4dae`, `6bc9f01`, `b607136`,
+  `4ae1419`, `cf22b83`, `1917840`, `5078e88`, `f49b4b6`, `26e914a`, `b822c3e`,
+  `a8be18d`, `189088b`, `651d25a`, `83c870e`). Integrated review
+  `21595d2..83c870e` PASS/APPROVED with no Critical or Important findings;
+  independent 13.3f re-review `651d25a..83c870e` PASS/APPROVED.
+- Restart handoff: `1f14cc4`.
+- Subtask 13.4 build-evidence semantics: `e3987d0`; review
+  `task-13.4-review-e3987d0.md` PASS/APPROVED.
+- Subtask 13.5 scanner/documentation alignment: `e02a87d`; fix round 1
+  `9981385`; scoped re-review `task-13.5-rereview-9981385.md` PASS/APPROVED
+  (both open findings addressed, no new Critical or Important breakage).
+
+Deferred Minor findings recorded in the ledger (`--defsym` subset, separated
+`-L` operand, command-like prose, standalone H20 verbose block, historical
+`build/verbose-build.log` plan text, duplicate whole-tree scan, reconstructed
+RED transcript line) remain honestly open; none were silently claimed fixed.
+
+### Local-Environment Qualifications And Target-Only Remainder
+
+- Python 3.6 is not installed locally; only Python 3.6 grammar parity was
+  checked (host interpreter 3.12.7). Runtime/package execution on the
+  hash-locked Python 3.6 environment remains target-only.
+- Ubuntu 18.04 / Bash 4.4 / GNU Make 4.1 end-to-end execution of
+  `check_prohibited.sh source|build|dry-run` remains target-only.
+- No CUDA compilation, CUDA numerical/workflow execution, Compute Sanitizer,
+  `cuobjdump`, dynamic dependency inspection, default training, H20 timing, or
+  >=99% accuracy result was run or claimed from this host. All of these remain
+  H20-only Task 14 evidence.
+- The semantic comment checklist is intentionally left unchecked;
+  `--require-reviewed` must not be run until the Task 14 human review. Task 14
+  remains open.

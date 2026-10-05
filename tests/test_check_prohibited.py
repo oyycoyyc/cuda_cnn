@@ -331,7 +331,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("source-bearing recipe has no supported output", result.stdout)
 
-    def test_known_archive_tool_path_supports_positional_output(self):
+    def test_known_archive_tool_path_positional_output_is_stateful(self):
         result = self.run_analyzer(
             "clang++ -c src/model.cu -o build/model.o\n"
             "tools/llvm-ar rcs build/libmodel.a build/model.o\n"
@@ -340,7 +340,9 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "test-source=tests/smoke_tests.cpp\n",
         )
 
-        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("stateful archive", result.stdout.lower())
+        self.assertIn("build/libmodel.a", result.stdout)
 
     def test_test_source_recipe_rejects_response_file_before_manifest_mismatch(self):
         self.write("tests/other_tests.cpp", "int Other() { return 0; }\n")
@@ -1067,7 +1069,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
         result = self.run_analyzer(
             "unknown-compiler -c tests/cpu_reference.cpp -o oracle_blob\n"
-            "unknown-linker oracle_blob -MT -c src/model.cu "
+            "unknown-linker oracle_blob -MT target_name -c src/model.cu "
             "-o build/lenet_cuda\n",
             "test-source=tests/cpu_reference.cpp\n",
         )
