@@ -7,6 +7,7 @@ import re
 import sys
 
 
+# Compiled patterns and keyword sets for the signature inventory.
 CHECKLIST_ENTRY = re.compile(r"^\s*- \[([ xX])\] `([^`]+)`\s*$")
 TYPE_DECLARATION = re.compile(
     r"(?:^|\s)(class|struct|enum(?:\s+class)?)\s+([A-Za-z_]\w*)\b"
@@ -39,6 +40,7 @@ def normalized_path(path):
     return path.replace(os.sep, "/")
 
 
+# Blanks C++ comments and string or character literals while keeping line structure.
 def sanitized_cpp(text):
     output = []
     index = 0
@@ -100,6 +102,7 @@ def sanitized_cpp(text):
     return "".join(cleaned_lines)
 
 
+# Checks whether a declaration has an adjacent comment or block comment above it.
 def has_adjacent_documentation(lines, index):
     index -= 1
     if index < 0 or not lines[index].strip():
@@ -115,6 +118,7 @@ def has_adjacent_documentation(lines, index):
     return False
 
 
+# Canonicalizes parameter lists and suffixes into stable signature IDs.
 def canonical_parameters(parameters):
     value = re.sub(r"\s+", " ", parameters.strip())
     value = re.sub(r"\s*([,*&<>\[\]=])\s*", r"\1", value)
@@ -188,6 +192,7 @@ def declaration_line(text, segment_offset, segment):
     return text.count("\n", 0, offset)
 
 
+# Scans a header for namespaces, types, aliases, and function declarations.
 def scan_header(path, relative):
     with open(path, "r") as input_file:
         original = input_file.read()
@@ -256,6 +261,7 @@ def scan_header(path, relative):
             return {"kind": "other", "name": "", "visible": False}
         return None
 
+    # Track parenthesis depth, access specifiers, and brace scope while scanning.
     index = 0
     while index < len(text):
         char = text[index]
@@ -315,6 +321,7 @@ def scan_header(path, relative):
     return found, missing_comments
 
 
+# Finds global CUDA kernels and checks them for adjacent documentation.
 def scan_kernels(path, relative):
     with open(path, "r") as input_file:
         original = input_file.read()
@@ -340,6 +347,7 @@ def scan_kernels(path, relative):
     return found, missing_comments
 
 
+# Walks include and source trees to collect declarations and kernels.
 def discover(root):
     found = set()
     missing_comments = set()
@@ -371,6 +379,7 @@ def discover(root):
     return found, missing_comments
 
 
+# Parses the checklist into identifiers mapped to their review state.
 def read_checklist(path):
     entries = {}
     with open(path, "r") as input_file:
@@ -389,6 +398,7 @@ def read_checklist(path):
     return entries
 
 
+# Counts matching source definitions for a manual checklist identifier.
 def manual_definition_count(root, identifier):
     match = MANUAL_ID.match(identifier)
     if not match:
@@ -411,6 +421,7 @@ def manual_definition_count(root, identifier):
     return len(pattern.findall(sanitized_cpp(text)))
 
 
+# Reconciles discovered IDs, checklist entries, and required reviews.
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Check public declarations and CUDA kernels for documentation"

@@ -1,35 +1,43 @@
+# Overrideable toolchain selections and the default build goal.
 CXX ?= g++
 NVCC ?= nvcc
 PYTHON ?= python3.6
 BASH ?= bash
 .DEFAULT_GOAL := all
 
+# Default CUDA architecture and the matching compute capability.
 CUDA_ARCH ?= sm_90
 CUDA_COMPUTE := compute_$(patsubst sm_%,%,$(CUDA_ARCH))
+# Host and CUDA compile flags plus project include directories.
 CXXFLAGS := -std=c++14 -O2 -Wall -Wextra -Wpedantic
 NVCCFLAGS := -std=c++14 -O2 -lineinfo \
   -gencode=arch=$(CUDA_COMPUTE),code=$(CUDA_ARCH) \
   -gencode=arch=$(CUDA_COMPUTE),code=$(CUDA_COMPUTE)
 CPPFLAGS := -Iinclude -Isrc -Itests
 
+# Build and per-language object output directories.
 BUILD_DIR := build
 HOST_OBJECT_DIR := $(BUILD_DIR)/obj/host
 CUDA_OBJECT_DIR := $(BUILD_DIR)/obj/cuda
 
+# Executable suffix on Windows platforms.
 ifeq ($(OS),Windows_NT)
 EXEEXT := .exe
 endif
 
+# Discover host, CUDA, and combined compliance test sources.
 HOST_TEST_SOURCES := $(wildcard tests/*_tests.cpp)
 CUDA_TEST_SOURCES := $(wildcard tests/*_tests.cu)
 COMPLIANCE_TEST_SOURCES := $(HOST_TEST_SOURCES) $(CUDA_TEST_SOURCES) \
   tests/cpu_reference.cpp
+# Partition test basenames shared by both host and CUDA suites.
 HOST_TEST_NAMES := $(basename $(notdir $(HOST_TEST_SOURCES)))
 CUDA_TEST_NAMES := $(basename $(notdir $(CUDA_TEST_SOURCES)))
 COLLIDING_TEST_NAMES := $(filter $(HOST_TEST_NAMES),$(CUDA_TEST_NAMES))
 HOST_UNIQUE_NAMES := $(filter-out $(COLLIDING_TEST_NAMES),$(HOST_TEST_NAMES))
 CUDA_UNIQUE_NAMES := $(filter-out $(COLLIDING_TEST_NAMES),$(CUDA_TEST_NAMES))
 
+# Object and artifact paths for tests, kernels, and shared host units.
 HOST_TEST_OBJECTS := $(addprefix $(HOST_OBJECT_DIR)/,$(addsuffix .o,$(HOST_TEST_NAMES)))
 CUDA_TEST_OBJECTS := $(addprefix $(CUDA_OBJECT_DIR)/,$(addsuffix .o,$(CUDA_TEST_NAMES)))
 CUDA_KERNEL_SOURCES := src/kernels/input.cu src/kernels/activation.cu \
@@ -48,6 +56,7 @@ CPU_REFERENCE_OBJECT := $(HOST_OBJECT_DIR)/cpu_reference.o
 CLI_OBJECT := $(HOST_OBJECT_DIR)/cli.o
 TRAINING_DATA_OBJECT := $(HOST_OBJECT_DIR)/training_data.o
 REPORTING_OBJECT := $(HOST_OBJECT_DIR)/reporting.o
+# Test program paths, Python modules, and compliance module lists.
 HOST_TEST_PROGRAMS := $(strip \
   $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))) \
   $(addprefix $(BUILD_DIR)/host/,$(addsuffix $(EXEEXT),$(COLLIDING_TEST_NAMES))))
@@ -60,6 +69,7 @@ PYTHON_TEST_MODULES := tests.test_prepare_mnist tests.test_data_interop
 COMPLIANCE_TEST_MODULES := tests.test_check_prohibited \
   tests.test_check_comments tests.test_documentation \
   tests.output_format_tests tests.compliance_tests
+# Generated dependency files included at the end of the build.
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
@@ -69,59 +79,74 @@ DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
   $(CUDA_KERNEL_OBJECTS:.o=.d) $(LENET_OBJECT:.o=.d) \
   $(TRAIN_OBJECT:.o=.d) $(MAIN_OBJECT:.o=.d)
 
+# Verbosity switch that prints or silences recipe commands.
 ifeq ($(V),1)
 Q :=
 else
 Q := @
 endif
 
+# Phony targets and retained intermediate test objects.
 .PHONY: all host-tests cuda-tests python-tests prepare-data compliance test \
   makefile-tests check acceptance compliance-test-sources clean
 .SECONDARY: $(HOST_TEST_OBJECTS) $(CUDA_TEST_OBJECTS)
 
+# Default goal: build the application and all test programs.
 all: $(BUILD_DIR)/lenet_cuda$(EXEEXT) $(HOST_TEST_PROGRAMS) \
   $(CUDA_TEST_PROGRAMS)
 	@echo "event=build status=pass target=all"
 
+# Manifest target that lists the compliance test sources.
 compliance-test-sources:
 	@for source in $(COMPLIANCE_TEST_SOURCES); do \
 	  printf 'test-source=%s\n' "$$source"; \
 	done
 
+# Build and run every host test program.
 host-tests: $(HOST_TEST_PROGRAMS)
 	$(Q)set -e; for test in $(HOST_TEST_PROGRAMS); do "$$test"; done
 
+# Prepare the pinned MNIST dataset through the Python helper.
 prepare-data:
 	$(Q)$(PYTHON) scripts/prepare_mnist.py --output-dir data
 
+# Build and run CUDA tests after preparing the dataset.
 cuda-tests: $(CUDA_TEST_PROGRAMS) prepare-data
 	$(Q)set -e; for test in $(CUDA_TEST_PROGRAMS_WITHOUT_WORKFLOW); do "$$test"; done
 	$(Q)$(WORKFLOW_TEST_PROGRAM) --mnist-train data/train.bin
 
+# Run the Python data and interoperability test modules.
 python-tests:
 	$(Q)$(PYTHON) -m unittest -v $(PYTHON_TEST_MODULES)
 
+# Run the compliance modules and both policy scanners.
 compliance:
 	$(Q)$(PYTHON) -m unittest -v $(COMPLIANCE_TEST_MODULES)
 	$(Q)$(PYTHON) scripts/check_comments.py --root . \
 	  --checklist docs/comment-review-checklist.md
 	$(Q)$(BASH) scripts/check_prohibited.sh source .
 
+# Aggregate target covering all test and compliance suites.
 test: host-tests cuda-tests python-tests compliance
 
+# Run the Makefile behavior tests.
 makefile-tests:
 	$(Q)sh tests/makefile_tests.sh
 
+# Full check target combining tests and Makefile tests.
 check: test makefile-tests
 
+# Acceptance target pinned to the full check suite.
 acceptance: check
 
+# Host unique test link rules.
 ifneq ($(strip $(HOST_UNIQUE_NAMES)),)
 $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(HOST_UNIQUE_NAMES))): \
     $(BUILD_DIR)/%$(EXEEXT): $(HOST_OBJECT_DIR)/%.o | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
 endif
 
+# Explicit prerequisites for tests that link shared host objects.
 $(BUILD_DIR)/dataset_tests$(EXEEXT): $(DATASET_OBJECT)
 $(BUILD_DIR)/random_tests$(EXEEXT): $(RANDOM_OBJECT)
 $(BUILD_DIR)/parameters_tests$(EXEEXT): $(PARAMETERS_OBJECT) $(RANDOM_OBJECT)
@@ -138,15 +163,18 @@ $(BUILD_DIR)/workflow_tests$(EXEEXT): $(CPU_REFERENCE_OBJECT) $(DATASET_OBJECT) 
     $(TRAINING_DATA_OBJECT) $(REPORTING_OBJECT) $(TRAIN_OBJECT) $(LENET_OBJECT) \
     $(CUDA_KERNEL_OBJECTS) | $(BUILD_DIR)/lenet_cuda$(EXEEXT)
 
+# Application link rule for the CUDA training binary.
 $(BUILD_DIR)/lenet_cuda$(EXEEXT): $(MAIN_OBJECT) $(CLI_OBJECT) $(DATASET_OBJECT) \
     $(RANDOM_OBJECT) $(PARAMETERS_OBJECT) $(CHECKPOINT_OBJECT) \
     $(TRAINING_DATA_OBJECT) $(REPORTING_OBJECT) $(TRAIN_OBJECT) $(LENET_OBJECT) \
     $(CUDA_KERNEL_OBJECTS) | $(BUILD_DIR)
 	$(Q)$(NVCC) $(NVCCFLAGS) $^ -o $@
 
+# Dataset probe utility link rule.
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
 
+# Extensionless aliases for tests and the application on suffixed platforms.
 ifneq ($(EXEEXT),)
 $(BUILD_DIR)/dataset_tests: $(BUILD_DIR)/dataset_tests$(EXEEXT)
 $(BUILD_DIR)/dataset_probe: $(BUILD_DIR)/dataset_probe$(EXEEXT)
@@ -162,18 +190,21 @@ $(BUILD_DIR)/workflow_tests: $(BUILD_DIR)/workflow_tests$(EXEEXT)
 $(BUILD_DIR)/lenet_cuda: $(BUILD_DIR)/lenet_cuda$(EXEEXT)
 endif
 
+# CUDA unique test link rules.
 ifneq ($(strip $(CUDA_UNIQUE_NAMES)),)
 $(addprefix $(BUILD_DIR)/,$(addsuffix $(EXEEXT),$(CUDA_UNIQUE_NAMES))): \
     $(BUILD_DIR)/%$(EXEEXT): $(CUDA_OBJECT_DIR)/%.o | $(BUILD_DIR)
 	$(Q)$(NVCC) $(NVCCFLAGS) $^ -o $@
 endif
 
+# Link rules for basename-colliding host and CUDA test programs.
 $(BUILD_DIR)/host/%$(EXEEXT): $(HOST_OBJECT_DIR)/%.o | $(BUILD_DIR)/host
 	$(Q)$(CXX) $(CXXFLAGS) $< -o $@
 
 $(BUILD_DIR)/cuda/%$(EXEEXT): $(CUDA_OBJECT_DIR)/%.o | $(BUILD_DIR)/cuda
 	$(Q)$(NVCC) $(NVCCFLAGS) $^ -o $@
 
+# Compile rules for host test sources and shared host translation units.
 $(HOST_OBJECT_DIR)/%.o: tests/%.cpp | $(HOST_OBJECT_DIR)
 	$(Q)$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
@@ -216,11 +247,14 @@ $(TRAIN_OBJECT): src/train.cu | $(CUDA_OBJECT_DIR)
 $(MAIN_OBJECT): src/main.cu | $(CUDA_OBJECT_DIR)
 	$(Q)$(NVCC) $(CPPFLAGS) $(NVCCFLAGS) -MMD -MP -c $< -o $@
 
+# Create output directories on demand.
 $(BUILD_DIR) $(BUILD_DIR)/host $(BUILD_DIR)/cuda \
     $(HOST_OBJECT_DIR) $(CUDA_OBJECT_DIR) $(CUDA_OBJECT_DIR)/kernels:
 	$(Q)mkdir -p $@
 
+# Remove the build directory.
 clean:
 	$(Q)rm -rf $(BUILD_DIR)
 
+# Optional inclusion of generated dependency files; keep last.
 -include $(DEPENDENCY_FILES)

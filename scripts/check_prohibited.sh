@@ -3,20 +3,24 @@
 set -u
 set -o pipefail
 
+# Prints the command synopsis and exits with the usage status.
 usage() {
   echo "usage: $0 source ROOT | build VERBOSE_BUILD_LOG | dry-run VERBOSE_BUILD_LOG" >&2
   exit 2
 }
 
+# Prints a message to stderr and exits with a failure status.
 fail() {
   echo "$1" >&2
   exit 1
 }
 
+# Fails when a required external command is unavailable.
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "required command is unavailable: $1"
 }
 
+# Selects the Python interpreter used for build-graph analysis.
 find_policy_python() {
   local candidate
   if [[ -n ${PYTHON:-} ]]; then
@@ -33,6 +37,7 @@ find_policy_python() {
   return 1
 }
 
+# Runs a grep scan and distinguishes no-match from scan failure.
 scan_pattern() {
   local label=$1
   local pattern=$2
@@ -55,6 +60,7 @@ scan_pattern() {
   return 0
 }
 
+# Walks upward from a build log to the directory containing the Makefile.
 find_project_root() {
   local directory=$1
   while [[ $directory != "/" && ! -f "$directory/Makefile" ]]; do
@@ -64,12 +70,14 @@ find_project_root() {
   printf '%s\n' "$directory"
 }
 
+# Pattern families for prohibited dependencies, linkers, fallbacks, and randomness.
 PROHIBITED_FAMILIES='cudnn|cublas|nvinfer|nvonnxparser|nvparsers|createinfer(runtime|builder|refitter)|createparser|curand|cusolver|cusparse|cufft|cutensor|cutlass|cudss|nccl|nvshmem|npp([a-z0-9_]*)|torch|tensorflow|caffe|onnxruntime|openvino|opencv|thrust|cub([^a-z0-9_]|$)|cuda_fp16|(^|[/<"[:space:]])mma\.h'
 PROHIBITED_LINKS='(^|[[:space:],=/\\])(-l(:lib)?|lib)?(cudnn|cublas|nvinfer|nvonnxparser|nvparsers|curand|cusolver|cusparse|cufft|cutensor|cutlass|cudss|nccl|nvshmem|npp[a-z0-9_]*|torch|tensorflow|caffe|onnxruntime|openvino|opencv)([^a-z0-9_]|$)'
 CPU_FALLBACK='cpu[_:]*reference|cpu[a-z0-9_]*(forward|backward|infer|train)|runoncpu'
 NONDETERMINISTIC_RANDOM='#[[:space:]]*include[[:space:]]*[<"][[:space:]]*random[[:space:]]*[>"]|std::(shuffle|random_device|mt19937(_64)?|default_random_engine|[a-z_]*distribution)'
 BUILD_FAILURES='(^|[[:space:]])fatal[[:space:]]+error:|^error:|:[0-9]+(:[0-9]+)?:[[:space:]]+(fatal[[:space:]]+)?error:|(^|[[:space:]])(collect2|ld|nvcc|clang\+\+|g\+\+):[[:space:]]+error:|make(\[[0-9]+\])?:.*[[:space:]]Error[[:space:]]+[1-9][0-9]*([^0-9]|$)|make(\[[0-9]+\])?:[[:space:]]+\*\*\*[[:space:]]+(No rule|missing separator|recipe commences before first target)'
 
+# Validates the argument count and locates the graph analyzer helper.
 [[ $# -eq 2 ]] || usage
 mode=$1
 target=$2
@@ -79,6 +87,7 @@ graph_analyzer="$script_directory/analyze_build_graph.py"
 [[ -f $graph_analyzer ]] || fail "build graph analyzer is unavailable: $graph_analyzer"
 
 case "$mode" in
+  # Source mode scans the make-compiled production inputs.
   source)
     require_command find
     require_command grep
@@ -88,6 +97,7 @@ case "$mode" in
     root=$(cd "$target" 2>/dev/null && pwd) || fail "cannot read source root: $target"
     [[ -f "$root/Makefile" ]] || fail "source root has no Makefile: $root"
 
+    # Temporary files hold discovery output and are removed on exit by the trap.
     temporary=$(mktemp) || fail "cannot create scanner temporary file"
     recipes=$(mktemp) || fail "cannot create recipe temporary file"
     manifest=$(mktemp) || fail "cannot create manifest temporary file"
@@ -106,6 +116,7 @@ case "$mode" in
       files+=("$file")
     done <"$temporary"
 
+    # First pass scans the Makefile and discovery-listed production sources.
     if ! scan_pattern "prohibited dependency/API" "$PROHIBITED_FAMILIES" \
         "${files[@]}"; then
       exit 1
@@ -114,6 +125,7 @@ case "$mode" in
       exit 1
     fi
 
+    # Resolve the compiled input and link graph from a make dry run.
     if ! build_commands=$(make -C "$root" -Bn all 2>&1); then
       fail "make dry-run failed while resolving compiled inputs and production link graph:\n$build_commands"
     fi
@@ -128,6 +140,7 @@ case "$mode" in
     if ! printf '%s\n' "$make_manifest" >"$manifest"; then
       fail "cannot store Make test-source manifest"
     fi
+    # Analyze recipe provenance to enumerate transitive active inputs.
     if ! "$policy_python" "$graph_analyzer" source \
         --root "$root" --recipes "$recipes" --manifest "$manifest" \
         >"$active_inputs" 2>"$analyzer_error"; then
@@ -140,10 +153,12 @@ case "$mode" in
       files+=("$root/$file")
     done <"$active_inputs" || fail "cannot read analyzed active inputs"
 
+    # Rescan the full active input set for prohibited dependencies.
     if ! scan_pattern "prohibited dependency/API" "$PROHIBITED_FAMILIES" "${files[@]}"; then
       exit 1
     fi
 
+    # Production-only fallback and randomness checks exclude test-owned sources.
     production_files=()
     while IFS= read -r -d '' file; do
       production_files+=("$file")
@@ -158,6 +173,7 @@ case "$mode" in
 
     echo "compliance scan passed: mode=source scope=make-compiled-inputs"
     ;;
+  # Build and dry-run modes validate a captured verbose build log.
   build|dry-run)
     require_command find
     require_command grep
@@ -170,6 +186,7 @@ case "$mode" in
     fi
     newer=$(mktemp) || fail "cannot create scanner temporary file"
     trap 'rm -f "$newer"' EXIT
+    # Reject a build log older than any tracked build input.
     if ! find "$project_root/include" "$project_root/src" "$project_root/tests" \
         "$project_root/Makefile" \
         -type f -newer "$target" -print >"$newer"; then
@@ -181,14 +198,17 @@ case "$mode" in
       exit 1
     fi
 
+    # Analyze the log recipes before scanning them for prohibited text.
     if ! "$policy_python" "$graph_analyzer" build-log \
         --root "$project_root" --log "$target"; then
       fail "build-log recipe analysis failed"
     fi
+    # Scan the log for prohibited dependencies and linker inputs.
     if ! scan_pattern "prohibited dependency/linker input" \
         "$PROHIBITED_FAMILIES|$PROHIBITED_LINKS" "$target"; then
       exit 1
     fi
+    # Build mode also requires a failure record and the final success marker.
     if [[ $mode == build ]]; then
       if ! scan_pattern "build failure record" "$BUILD_FAILURES" "$target"; then
         exit 1
@@ -202,6 +222,7 @@ case "$mode" in
       [[ $final_nonempty == 'event=build status=pass target=all' ]] || \
         fail "successful-build completion marker is not the final nonempty line"
     fi
+    # Dry-run and build modes report different evidence markers.
     if [[ $mode == dry-run ]]; then
       echo "compliance scan passed: mode=dry-run evidence=commands-not-executed"
     else

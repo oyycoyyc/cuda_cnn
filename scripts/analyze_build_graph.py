@@ -8,6 +8,7 @@ import shlex
 import sys
 
 
+# Constants classifying source files, artifacts, tools, and linker options.
 SOURCE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".cu")
 ARTIFACT_SUFFIXES = (".o", ".obj", ".a", ".lib", ".so", ".dll")
 INCLUDE_RE = re.compile(
@@ -53,6 +54,7 @@ class AnalysisError(Exception):
     pass
 
 
+# Relativizes a path to the analyzed source root with forward slashes.
 def display_path(root, path):
     return os.path.relpath(path, root).replace(os.sep, "/")
 
@@ -79,6 +81,7 @@ def resolve_path(root, token, require_file=False):
     return lexical, resolved
 
 
+# Resolves a source-file token while rejecting option-like tokens.
 def source_token(root, token, require_file):
     if token.startswith("-") or not token.lower().endswith(SOURCE_SUFFIXES):
         return None
@@ -90,6 +93,7 @@ def source_token(root, token, require_file):
     }
 
 
+# Canonical identity used to compare paths across separator and case variants.
 def canonical_path_identity(path):
     return os.path.normcase(os.path.abspath(os.path.realpath(path)))
 
@@ -99,6 +103,7 @@ def source_is_tests_owned(root, source):
     return is_within(tests_root, canonical_path_identity(source["real"]))
 
 
+# Normalizes a command word to a lowercase executable basename.
 def executable_basename(token):
     basename = token.replace("\\", "/").rsplit("/", 1)[-1].lower()
     if basename.endswith(".exe"):
@@ -106,6 +111,7 @@ def executable_basename(token):
     return basename
 
 
+# Skips environment assignments and wrappers to find the real executable.
 def command_executable_index(tokens):
     index = 0
     while (index < len(tokens) and
@@ -120,6 +126,7 @@ def command_executable_index(tokens):
     return index
 
 
+# Marks options that consume values so they are not mistaken for artifacts.
 def non_artifact_option_indexes(tokens):
     option_indexes = set()
     executable_index = command_executable_index(tokens)
@@ -305,6 +312,7 @@ def non_artifact_option_indexes(tokens):
     return option_indexes
 
 
+# Marks assignments, wrappers, and the executable as command prefixes.
 def command_prefix_indexes(tokens):
     executable_index = command_executable_index(tokens)
     prefix_indexes = set(range(executable_index))
@@ -313,6 +321,7 @@ def command_prefix_indexes(tokens):
     return prefix_indexes
 
 
+# Parses positional archive producers and their excluded operand indexes.
 def positional_archive_output(tokens):
     if not tokens:
         return None
@@ -406,6 +415,7 @@ def positional_archive_output(tokens):
     return archive, index, excluded_indexes
 
 
+# Extracts the single recipe output path, including stateful archive forms.
 def output_token(tokens, opaque_indexes):
     outputs = []
     output_indexes = set()
@@ -447,6 +457,7 @@ def output_token(tokens, opaque_indexes):
     return (outputs[0] if outputs else None), output_indexes, stateful_archive
 
 
+# Collects quote, include, and system directories plus their option indexes.
 def include_directories(root, tokens, ignored_indexes=None):
     quote_dirs = []
     include_dirs = []
@@ -518,6 +529,7 @@ def include_directories(root, tokens, ignored_indexes=None):
     return quote_dirs, include_dirs, system_dirs, option_indexes
 
 
+# Collects forced-include and macro inputs and their option indexes.
 def forced_input_options(tokens, ignored_indexes=None):
     forced_inputs = []
     option_indexes = set()
@@ -556,6 +568,7 @@ def forced_input_options(tokens, ignored_indexes=None):
     return forced_inputs, option_indexes
 
 
+# Expands forwarded host compiler option payloads into active tokens.
 def active_compiler_tokens(tokens):
     active_tokens = []
     index = 0
@@ -590,6 +603,7 @@ def active_compiler_tokens(tokens):
     return active_tokens
 
 
+# Detects response files, linker or library inputs, and external controls.
 def command_input_metadata(tokens):
     response_file = False
     direct_linker = False
@@ -707,6 +721,7 @@ def command_input_metadata(tokens):
     }, opaque_indexes
 
 
+# Finds the end of a bracket subexpression before an unquoted space or close.
 def bracket_subexpression_end(line, start):
     delimiter = line[start + 1]
     single_quoted = False
@@ -733,6 +748,7 @@ def bracket_subexpression_end(line, start):
     return None
 
 
+# Detects whether a bracket starts a shell glob character class.
 def has_glob_bracket(line, start):
     single_quoted = False
     double_quoted = False
@@ -769,6 +785,7 @@ def has_glob_bracket(line, start):
     return fallback_close
 
 
+# Truncates a recipe line at an unquoted comment marker.
 def shell_command_portion(line):
     single_quoted = False
     double_quoted = False
@@ -808,6 +825,7 @@ def shell_command_portion(line):
     return line
 
 
+# Detects shell expansions and control characters that obscure provenance.
 def has_unsupported_shell(line):
     single_quoted = False
     double_quoted = False
@@ -847,6 +865,7 @@ def has_unsupported_shell(line):
     return False
 
 
+# Splits a recipe line into shell-like tokens without comment handling.
 def split_recipe(line):
     lexer = shlex.shlex(
         line, posix=True, punctuation_chars=SHELL_CONTROL_CHARS
@@ -856,6 +875,7 @@ def split_recipe(line):
     return list(lexer)
 
 
+# Parses recipe lines into structured commands and provenance metadata.
 def parse_recipes(root, recipe_path, require_sources=True):
     commands = []
     with io.open(recipe_path, "r", encoding="utf-8") as recipe_file:
@@ -971,6 +991,7 @@ def parse_recipes(root, recipe_path, require_sources=True):
     return commands
 
 
+# Reads and validates the expected test-source manifest.
 def read_manifest(root, manifest_path):
     expected = {}
     with io.open(manifest_path, "r", encoding="utf-8") as manifest_file:
@@ -1005,6 +1026,7 @@ def read_manifest(root, manifest_path):
     return expected
 
 
+# Reconciles discovered test sources with the manifest and builds contexts.
 def reconcile_test_sources(root, commands, expected):
     actual = {}
     test_commands = []
@@ -1045,6 +1067,7 @@ def reconcile_test_sources(root, commands, expected):
     return compile_contexts
 
 
+# Builds the recursion key for one include search configuration.
 def active_visit_key(path, quote_dirs, include_dirs, system_dirs, production):
     lexical_path = os.path.abspath(os.path.normpath(path))
     return (
@@ -1056,6 +1079,7 @@ def active_visit_key(path, quote_dirs, include_dirs, system_dirs, production):
     )
 
 
+# Recursively resolves includes into the complete set of active inputs.
 def collect_active_inputs(root, compile_contexts):
     active = {}
     visited = set()
@@ -1196,6 +1220,7 @@ def collect_active_inputs(root, compile_contexts):
     return set(active.values())
 
 
+# Builds producer links and walks the reachable production artifact graph.
 def build_artifact_graph(root, commands):
     producers = {}
     for command in commands:
@@ -1311,6 +1336,7 @@ def build_artifact_graph(root, commands):
     return reachable_commands
 
 
+# Source mode analyzes recipe provenance and prints active inputs.
 def analyze_source(args):
     root = os.path.realpath(os.path.abspath(args.root))
     commands = parse_recipes(root, args.recipes)
@@ -1332,6 +1358,7 @@ def analyze_source(args):
         sys.stdout.write(display_path(root, path) + "\n")
 
 
+# Build-log mode validates recorded compiler and linker commands.
 def analyze_build_log(args):
     root = os.path.realpath(os.path.abspath(args.root))
     commands = parse_recipes(root, args.log, require_sources=False)
@@ -1363,6 +1390,7 @@ def analyze_build_log(args):
         )
 
 
+# Defines the source and build-log subcommands.
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Analyze Make recipe provenance")
     subparsers = parser.add_subparsers(dest="mode")
@@ -1382,6 +1410,7 @@ def parse_arguments():
     return arguments
 
 
+# Dispatches the selected analysis mode and maps errors to exit codes.
 def main():
     arguments = parse_arguments()
     try:

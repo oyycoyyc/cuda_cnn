@@ -12,11 +12,13 @@ import requests
 from PIL import Image
 
 
+# Exact binary layout constants: magic, version, and image shape.
 MAGIC = b"MNISTC1\0"
 VERSION = 1
 ROWS = 28
 COLUMNS = 28
 
+# Pinned dataset revision, base URL, and per-split checksum and count metadata.
 REVISION = "77f3279092a1c1579b2250db8eafed0ad422088c"
 BASE_URL = "https://huggingface.co/datasets/ylecun/mnist/resolve/" + REVISION
 SPLITS = (
@@ -29,6 +31,7 @@ SPLITS = (
 )
 
 
+# Hashes a file in fixed-size blocks without buffering the whole download.
 def _sha256_file(path):
     digest = hashlib.sha256()
     with open(path, "rb") as input_file:
@@ -40,6 +43,7 @@ def _sha256_file(path):
     return digest.hexdigest()
 
 
+# Creates a closed temporary file beside the destination for atomic replacement.
 def _temporary_path(destination):
     directory = os.path.dirname(os.path.abspath(destination))
     if not os.path.isdir(directory):
@@ -52,6 +56,7 @@ def _temporary_path(destination):
     return path
 
 
+# Reuses a cached file only after rehashing; downloads and verifies otherwise.
 def download_verified(url, destination, expected_sha256):
     """Download destination atomically, or verify an existing cached file."""
     if os.path.exists(destination):
@@ -85,6 +90,7 @@ def download_verified(url, destination, expected_sha256):
             os.remove(temporary_path)
 
 
+# Extracts raw encoded image bytes from a parquet image column value.
 def _encoded_image_bytes(value, row_index):
     if isinstance(value, dict):
         value = value.get("bytes")
@@ -95,6 +101,7 @@ def _encoded_image_bytes(value, row_index):
     return bytes(value)
 
 
+# Decodes one image and enforces grayscale mode and the expected dimensions.
 def _decode_image(value, row_index):
     encoded = _encoded_image_bytes(value, row_index)
     try:
@@ -114,6 +121,7 @@ def _decode_image(value, row_index):
                          (row_index, error))
 
 
+# Validates a split and writes the exact binary layout through atomic replacement.
 def convert_parquet(parquet_path, output_path, expected_count):
     """Validate a Parquet split and atomically write the MNIST binary format."""
     if expected_count <= 0:
@@ -160,6 +168,7 @@ def prepare_split(url, parquet_path, output_path, expected_sha256,
     convert_parquet(parquet_path, output_path, expected_count)
 
 
+# Parses options and enforces the exclusive CLI conversion modes.
 def _parse_arguments(arguments):
     parser = argparse.ArgumentParser(
         description="Download, verify, and convert the pinned MNIST dataset")
@@ -183,6 +192,7 @@ def _parse_arguments(arguments):
     return options
 
 
+# Dispatches bulk dataset preparation or explicit parquet conversion.
 def main(arguments=None):
     options = _parse_arguments(arguments)
     if options.output_dir is not None:
