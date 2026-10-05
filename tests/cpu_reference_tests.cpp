@@ -5,8 +5,11 @@
 #include <cstdint>
 #include <vector>
 
+// Validates the host oracle against hand-computed fixtures so it can serve as
+// an independent ground truth for the CUDA operator and workflow tests.
 namespace {
 
+// Compares equal-length vectors elementwise within an absolute tolerance.
 void ExpectVectorNear(const std::vector<float>& expected,
                       const std::vector<float>& actual, float tolerance) {
   EXPECT_EQ(expected.size(), actual.size());
@@ -17,6 +20,7 @@ void ExpectVectorNear(const std::vector<float>& expected,
 
 }  // namespace
 
+// Convolution correctness: forward sums and backward gather/scatter gradients.
 TEST_CASE(convolution_forward_matches_hand_calculated_valid_result) {
   const std::vector<float> input{1, 2, 3, 4, 5, 6, 7, 8, 9};
   const std::vector<float> weight{1, 2, 3, 4};
@@ -42,6 +46,7 @@ TEST_CASE(convolution_backward_matches_hand_calculated_gather_gradients) {
   ExpectVectorNear({10}, gradients.bias, 0.0F);
 }
 
+// Activation correctness: forward clamp and the signed-zero derivative rule.
 TEST_CASE(relu_backward_has_zero_derivative_at_both_signed_zeros) {
   const std::vector<float> input{-2.0F, -0.0F, 0.0F, 3.0F};
   const std::vector<float> output_gradient{5.0F, 6.0F, 7.0F, 8.0F};
@@ -55,6 +60,7 @@ TEST_CASE(relu_backward_has_zero_derivative_at_both_signed_zeros) {
   EXPECT_TRUE(!std::signbit(output[1]));
 }
 
+// Pooling correctness: first-row-major tie choice and winner-only scatter.
 TEST_CASE(maxpool_ties_choose_first_row_major_value_and_scatter_back) {
   const std::vector<float> input{5, 5, 1, 2, 1, 0, 2, 2};
   const cpu_reference::MaxPoolResult pooled =
@@ -69,6 +75,7 @@ TEST_CASE(maxpool_ties_choose_first_row_major_value_and_scatter_back) {
   ExpectVectorNear({3, 0, 0, 4, 0, 0, 0, 0}, input_gradient, 0.0F);
 }
 
+// Dense correctness: forward logits and backward input/weight/bias gradients.
 TEST_CASE(linear_forward_and_backward_match_hand_calculated_results) {
   const std::vector<float> input{1, 2, 3, 4};
   const std::vector<float> weight{1, 2, -1, 3};
@@ -86,6 +93,7 @@ TEST_CASE(linear_forward_and_backward_match_hand_calculated_results) {
   ExpectVectorNear({4, 6}, gradients.bias, 0.0F);
 }
 
+// Loss correctness: shift stability, probabilities, gradients, and batch mean.
 TEST_CASE(softmax_cross_entropy_is_stable_and_uses_actual_batch_mean) {
   const std::vector<float> logits{1000, 1000, -1000, -1000, 1000, 999};
   const std::vector<std::uint8_t> labels{0, 2};
@@ -103,6 +111,7 @@ TEST_CASE(softmax_cross_entropy_is_stable_and_uses_actual_batch_mean) {
   EXPECT_TRUE(std::isfinite(result.mean_loss));
 }
 
+// Optimizer correctness: first-step bias correction and pre-update decay.
 TEST_CASE(adamw_first_update_uses_t_one_and_pre_update_parameter_decay) {
   std::vector<double> parameters{1.0};
   const std::vector<double> gradients{0.5};

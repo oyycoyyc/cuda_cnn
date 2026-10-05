@@ -1,3 +1,5 @@
+// Deterministic RNG protocol vectors, bounded-draw rejection, dataset split,
+// epoch ordering, and translation domains.
 #include "random.h"
 #include "test_harness.h"
 
@@ -12,6 +14,7 @@
 
 namespace {
 
+// Parses key=value reproducibility vectors for the RNG protocol.
 std::map<std::string, std::string> LoadVectors() {
   std::ifstream input("tests/repro_vectors.txt");
   if (!input) {
@@ -29,6 +32,7 @@ std::map<std::string, std::string> LoadVectors() {
   return vectors;
 }
 
+// Splits a comma-separated decimal field into unsigned 64-bit values.
 std::vector<std::uint64_t> ParseU64List(const std::string& text) {
   std::vector<std::uint64_t> values;
   std::istringstream input(text);
@@ -39,6 +43,7 @@ std::vector<std::uint64_t> ParseU64List(const std::string& text) {
   return values;
 }
 
+// Splits a comma-separated decimal field into signed 32-bit values.
 std::vector<std::int32_t> ParseI32List(const std::string& text) {
   std::vector<std::int32_t> values;
   std::istringstream input(text);
@@ -49,6 +54,7 @@ std::vector<std::int32_t> ParseI32List(const std::string& text) {
   return values;
 }
 
+// Requires the actual sequence to begin with the pinned expected prefix.
 void ExpectPrefix(const std::vector<std::uint32_t>& actual,
                   const std::string& expected_text) {
   const std::vector<std::uint64_t> expected = ParseU64List(expected_text);
@@ -58,6 +64,7 @@ void ExpectPrefix(const std::vector<std::uint32_t>& actual,
   }
 }
 
+// Requires actual to be a reordering of expected with identical elements.
 void ExpectPermutation(const std::vector<std::uint32_t>& expected,
                        std::vector<std::uint32_t> actual) {
   std::vector<std::uint32_t> sorted_expected = expected;
@@ -68,6 +75,7 @@ void ExpectPermutation(const std::vector<std::uint32_t>& expected,
 
 }  // namespace
 
+// Raw generator output matches independently pinned protocol vectors.
 TEST_CASE(splitmix64_matches_independent_raw_vectors) {
   const std::map<std::string, std::string> vectors = LoadVectors();
   const std::vector<std::uint64_t> expected = ParseU64List(vectors.at("raw"));
@@ -77,6 +85,7 @@ TEST_CASE(splitmix64_matches_independent_raw_vectors) {
   }
 }
 
+// Bounded draw handles bound one and follows the pinned rejection path.
 TEST_CASE(uniform_bounded_handles_one_and_rejection) {
   SplitMix64 bound_one(77);
   for (int index = 0; index < 20; ++index) {
@@ -94,6 +103,7 @@ TEST_CASE(uniform_bounded_handles_one_and_rejection) {
   EXPECT_EQ(rejection[4], bounded.UniformBounded(rejection[1]));
 }
 
+// Split matches pinned prefixes and partitions every canonical index once.
 TEST_CASE(split_matches_fixed_prefixes_and_is_complete) {
   const std::map<std::string, std::string> vectors = LoadVectors();
   const DatasetSplit split = MakeTrainValidationSplit(60000, 5000, 1337);
@@ -112,6 +122,7 @@ TEST_CASE(split_matches_fixed_prefixes_and_is_complete) {
   }
 }
 
+// Epoch ordering matches its prefix, stays a permutation, and varies by epoch.
 TEST_CASE(epoch_shuffle_matches_prefix_and_preserves_training_set) {
   const std::map<std::string, std::string> vectors = LoadVectors();
   const DatasetSplit split = MakeTrainValidationSplit(60000, 5000, 1337);
@@ -125,6 +136,7 @@ TEST_CASE(epoch_shuffle_matches_prefix_and_preserves_training_set) {
   EXPECT_TRUE(epoch_one != epoch_two);
 }
 
+// In-place variant reuses caller capacity and rejects a null output pointer.
 TEST_CASE(epoch_shuffle_in_place_reuses_caller_capacity) {
   std::vector<std::uint32_t> canonical(257);
   for (std::uint32_t index = 0; index < canonical.size(); ++index) {
@@ -144,6 +156,7 @@ TEST_CASE(epoch_shuffle_in_place_reuses_caller_capacity) {
       ShuffledTrainingIndices(canonical, 1337, 1, nullptr), "output");
 }
 
+// Split and epoch APIs reject impossible counts and zero-based epochs.
 TEST_CASE(host_random_apis_reject_invalid_arguments) {
   EXPECT_THROW_CONTAINS(MakeTrainValidationSplit(4, 5, 1),
                         "validation_count");
@@ -151,6 +164,7 @@ TEST_CASE(host_random_apis_reject_invalid_arguments) {
   EXPECT_THROW_CONTAINS(ShuffledTrainingIndices(indices, 1, 0), "epoch");
 }
 
+// Translation derives from the original index in the fixed [-2,2] domains.
 TEST_CASE(translation_uses_original_index_and_fixed_domains) {
   const std::map<std::string, std::string> vectors = LoadVectors();
   for (const std::uint32_t index : {0U, 1U, 12345U, 59999U}) {

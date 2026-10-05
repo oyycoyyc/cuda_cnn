@@ -11,18 +11,22 @@
 
 namespace test_harness {
 
+// Test entry points take no arguments and report failure by throwing.
 using TestFunction = void (*)();
 
+// Pairs a stable case name with the entry point registered for it.
 struct TestCase {
   const char* name;
   TestFunction function;
 };
 
+// Function-local static registry avoids cross-translation-unit init order.
 inline std::vector<TestCase>& Tests() {
   static std::vector<TestCase> tests;
   return tests;
 }
 
+// Appends a case to the registry during static initialization.
 class TestRegistration {
  public:
   TestRegistration(const char* name, TestFunction function) {
@@ -30,12 +34,14 @@ class TestRegistration {
   }
 };
 
+// Carries formatted assertion diagnostics from a case to the runner.
 class AssertionFailure : public std::runtime_error {
  public:
   explicit AssertionFailure(const std::string& message)
       : std::runtime_error(message) {}
 };
 
+// Formats failures as file:line: message, then throws AssertionFailure.
 [[noreturn]] inline void Fail(const char* file, int line,
                               const std::string& message) {
   std::ostringstream output;
@@ -43,6 +49,7 @@ class AssertionFailure : public std::runtime_error {
   throw AssertionFailure(output.str());
 }
 
+// Reduces an executable path to a bare, extension-free suite name.
 inline std::string SuiteName(const char* executable) {
   std::string name(executable == nullptr ? "tests" : executable);
   const std::string::size_type separator = name.find_last_of("/\\");
@@ -55,6 +62,7 @@ inline std::string SuiteName(const char* executable) {
   return name;
 }
 
+// Runs selected cases, counts failures, and emits the suite pass/fail record.
 inline int Run(const char* executable, const std::string& filter) {
   int failures = 0;
   for (const TestCase& test : Tests()) {
@@ -83,9 +91,12 @@ inline int Run(const char* executable, const std::string& filter) {
 
 }  // namespace test_harness
 
+// Token-pasting helpers give each generated symbol a unique name.
 #define TEST_HARNESS_JOIN_INNER(left, right) left##right
+// Two-level indirection expands arguments before concatenation.
 #define TEST_HARNESS_JOIN(left, right) TEST_HARNESS_JOIN_INNER(left, right)
 
+// Declares, self-registers, and defines one named static test case.
 #define TEST_CASE(name)                                                    \
   static void TEST_HARNESS_JOIN(TestFunction_, name)();                   \
   static ::test_harness::TestRegistration                                 \
@@ -93,6 +104,7 @@ inline int Run(const char* executable, const std::string& filter) {
           #name, &TEST_HARNESS_JOIN(TestFunction_, name));                \
   static void TEST_HARNESS_JOIN(TestFunction_, name)()
 
+// Evaluates value exactly once and fails when it is false.
 #define EXPECT_TRUE(value)                                                   \
   do {                                                                       \
     if (!(value)) {                                                          \
@@ -100,6 +112,7 @@ inline int Run(const char* executable, const std::string& filter) {
     }                                                                        \
   } while (false)
 
+// Binds each operand exactly once, then checks equality.
 #define EXPECT_EQ(expected, actual)                                    \
   do {                                                                 \
     const auto& test_expected = (expected);                            \
@@ -110,6 +123,7 @@ inline int Run(const char* executable, const std::string& filter) {
     }                                                                  \
   } while (false)
 
+// Evaluates all three operands once, then bounds the absolute difference.
 #define EXPECT_NEAR(expected, actual, tolerance)                         \
   do {                                                                  \
     const auto test_expected = (expected);                              \
@@ -124,6 +138,7 @@ inline int Run(const char* executable, const std::string& filter) {
     }                                                                   \
   } while (false)
 
+// Requires expression to throw a standard exception containing text.
 #define EXPECT_THROW_CONTAINS(expression, text)                            \
   do {                                                                     \
     bool test_threw = false;                                               \
@@ -146,6 +161,7 @@ inline int Run(const char* executable, const std::string& filter) {
     }                                                                      \
   } while (false)
 
+// Parses the optional --filter argument and dispatches the suite.
 int main(int argc, char** argv) {
   std::string filter;
   if (argc == 3 && std::string(argv[1]) == "--filter") {

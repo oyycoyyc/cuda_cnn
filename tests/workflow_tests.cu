@@ -33,6 +33,7 @@
 #include <sys/wait.h>
 #endif
 
+// End-to-end training, evaluation, reload, and CLI workflow scenarios.
 namespace {
 
 const std::size_t kImagePixels = 28 * 28;
@@ -40,18 +41,21 @@ std::string g_mnist_train_path = "data/train.bin";
 ParameterSet g_poison_parameters;
 ParameterSet g_captured_parameters;
 
+// Local assertion helper that reports a scenario-specific message.
 void Require(bool condition, const std::string& message) {
   if (!condition) {
     throw std::runtime_error(message);
   }
 }
 
+// Writes one little-endian 32-bit field into a fixture stream.
 void PutU32(std::ostream& output, std::uint32_t value) {
   for (int byte = 0; byte < 4; ++byte) {
     output.put(static_cast<char>((value >> (byte * 8)) & 0xffU));
   }
 }
 
+// Owns temporary fixture paths and removes them when the scenario unwinds.
 struct FixtureFiles {
   std::vector<std::string> paths;
 
@@ -68,6 +72,7 @@ struct FixtureFiles {
   }
 };
 
+// Writes a MNISTC1 binary dataset fixture with the standard header fields.
 void WriteDataset(const std::string& path,
                   const std::vector<std::uint8_t>& images,
                   const std::vector<std::uint8_t>& labels) {
@@ -89,6 +94,7 @@ void WriteDataset(const std::string& path,
   Require(static_cast<bool>(output), "could not write dataset fixture");
 }
 
+// Deterministic image pattern so datasets are reproducible without random APIs.
 std::vector<std::uint8_t> PatternImages(std::uint32_t count) {
   std::vector<std::uint8_t> images(static_cast<std::size_t>(count) *
                                    kImagePixels);
@@ -101,6 +107,7 @@ std::vector<std::uint8_t> PatternImages(std::uint32_t count) {
   return images;
 }
 
+// Cycles labels through all ten digit classes for coverage.
 std::vector<std::uint8_t> CyclicLabels(std::uint32_t count) {
   std::vector<std::uint8_t> labels(count);
   for (std::uint32_t sample = 0; sample < count; ++sample) {
@@ -109,6 +116,7 @@ std::vector<std::uint8_t> CyclicLabels(std::uint32_t count) {
   return labels;
 }
 
+// Builds a checkpoint whose parameters are all zero for warm-up scenarios.
 Checkpoint ZeroCheckpoint(float accuracy = 0.0F,
                           std::uint32_t epoch = 1) {
   Checkpoint checkpoint{{epoch, accuracy, 0.1307F, 0.3081F},
@@ -119,6 +127,7 @@ Checkpoint ZeroCheckpoint(float accuracy = 0.0F,
   return checkpoint;
 }
 
+// Builds a deterministic nonzero checkpoint for inference comparisons.
 Checkpoint NonzeroCheckpoint() {
   Checkpoint checkpoint{{1, 0.0F, 0.1307F, 0.3081F},
                         CreateLenetParameters()};
@@ -133,6 +142,7 @@ Checkpoint NonzeroCheckpoint() {
   return checkpoint;
 }
 
+// Copies one official sample image and label into a fixture subset.
 void CopyDatasetSample(const MnistDataset& source, std::uint32_t source_index,
                        std::uint32_t destination_index,
                        std::vector<std::uint8_t>* images,
@@ -143,11 +153,13 @@ void CopyDatasetSample(const MnistDataset& source, std::uint32_t source_index,
   (*labels)[destination_index] = source.labels[source_index];
 }
 
+// Returns the smallest index holding the maximum, matching metrics semantics.
 std::uint8_t Argmax(const std::vector<float>& values) {
   return static_cast<std::uint8_t>(
       std::max_element(values.begin(), values.end()) - values.begin());
 }
 
+// Reads a captured command-output file for field parsing.
 std::string ReadText(const std::string& path) {
   std::ifstream input(path, std::ios::binary);
   Require(static_cast<bool>(input), "could not read command output " + path);
@@ -156,6 +168,7 @@ std::string ReadText(const std::string& path) {
   return text.str();
 }
 
+// Runs a shell command and normalizes its exit status across platforms.
 int CommandExitCode(const std::string& command) {
   const int status = std::system(command.c_str());
   Require(status != -1, "could not launch lenet_cuda");
@@ -167,16 +180,19 @@ int CommandExitCode(const std::string& command) {
 #endif
 }
 
+// Reload hook that overwrites live weights to prove disk data is reloaded.
 void PoisonModelBeforeFinalReload(LeNet* model) {
   Require(model != nullptr, "reload poison hook received null model");
   model->ImportParameters(g_poison_parameters);
 }
 
+// Reload hook that snapshots final weights before they are replaced from disk.
 void CaptureModelBeforeFinalReload(LeNet* model) {
   Require(model != nullptr, "reload capture hook received null model");
   model->ExportParameters(&g_captured_parameters);
 }
 
+// Host logits oracle for a single image using the persisted checkpoint weights.
 std::vector<float> CpuLogits(const std::vector<std::uint8_t>& image,
                              const ParameterSet& parameters) {
   std::vector<float> normalized(kImagePixels);
@@ -206,6 +222,7 @@ std::vector<float> CpuLogits(const std::vector<std::uint8_t>& image,
                                       parameters[9].values, 1, 84, 10);
 }
 
+// Parses one whitespace-delimited name=value field from an output record.
 double Field(const std::string& record, const std::string& name) {
   const std::string marker = name + "=";
   const std::string::size_type begin = record.find(marker);
@@ -215,6 +232,7 @@ double Field(const std::string& record, const std::string& name) {
   return std::stod(record.substr(value_begin, end - value_begin));
 }
 
+// Parses a comma-separated numeric field from an output record.
 std::vector<double> CsvField(const std::string& record,
                              const std::string& name) {
   const std::string marker = name + "=";
@@ -231,6 +249,7 @@ std::vector<double> CsvField(const std::string& record,
   return values;
 }
 
+// Requires the callable to throw an exception whose message contains text.
 template <typename Function>
 void RequireThrowsContaining(Function function, const std::string& text) {
   try {
@@ -243,6 +262,7 @@ void RequireThrowsContaining(Function function, const std::string& text) {
   throw std::runtime_error("expected exception containing " + text);
 }
 
+// Builds train options with a fixed seed and nonstandard-count bypass.
 TrainOptions TrainFixtureOptions(const std::string& train,
                                  const std::string& test,
                                  const std::string& output,
@@ -260,6 +280,7 @@ TrainOptions TrainFixtureOptions(const std::string& train,
   return options;
 }
 
+// Builds evaluate options with a fixed device and nonstandard-count bypass.
 EvaluateOptions EvaluateFixtureOptions(const std::string& data,
                                        const std::string& weights,
                                        float minimum_accuracy) {
@@ -272,6 +293,7 @@ EvaluateOptions EvaluateFixtureOptions(const std::string& data,
   return options;
 }
 
+// Scenario: piecewise-constant learning-rate schedule and one-based epochs.
 void CaseSchedule() {
   Require(LearningRateForEpoch(1) == 1.0e-3F, "epoch 1 learning rate");
   Require(LearningRateForEpoch(12) == 1.0e-3F, "epoch 12 learning rate");
@@ -282,6 +304,7 @@ void CaseSchedule() {
   RequireThrowsContaining([] { LearningRateForEpoch(0); }, "one-based");
 }
 
+// Scenario: input validation for missing, malformed, and out-of-range inputs.
 void CaseValidation() {
   FixtureFiles files;
   std::ostringstream output;
@@ -339,6 +362,7 @@ void CaseValidation() {
       [&] { RunInfer(unavailable, output, error); }, "device");
 }
 
+// Scenario: non-power-of-two batch 17 with finite loss and checkpoint.
 void CaseBatch17() {
   FixtureFiles files;
   const std::string train = files.Path("batch17_train.bin");
@@ -367,6 +391,7 @@ void CaseBatch17() {
   }
 }
 
+// Scenario: single manual update matches global optimizer step one.
 void CaseGlobalStepStartsAtOne() {
   FixtureFiles files;
   const std::vector<std::uint8_t> images = PatternImages(2);
@@ -435,6 +460,7 @@ void CaseGlobalStepStartsAtOne() {
   CUDA_CHECK(cudaStreamDestroy(stream));
 }
 
+// Scenario: strict improvement keeps the earlier checkpoint on equal accuracy.
 void CaseStrictCheckpointTie() {
   FixtureFiles files;
   const std::uint32_t count = 52;
@@ -472,6 +498,7 @@ void CaseStrictCheckpointTie() {
           "final test did not use the persisted best checkpoint");
 }
 
+// Scenario: final test reloads the disk checkpoint, ignoring poisoned memory.
 void CaseReloadBeforeFinalTest() {
   FixtureFiles files;
   const std::uint32_t count = 12;
@@ -521,6 +548,7 @@ void CaseReloadBeforeFinalTest() {
           "final test used poisoned memory instead of the disk checkpoint");
 }
 
+// Scenario: 32-sample overfit drives loss down and training accuracy above 95%.
 void CaseOverfit32() {
   FixtureFiles files;
   const std::uint32_t count = 40;
@@ -594,6 +622,7 @@ void CaseOverfit32() {
           "overfit training accuracy was below 95 percent");
 }
 
+// Scenario: one-epoch checkpoint reload and partial evaluation batch.
 void CaseOneEpochCheckpoint() {
   FixtureFiles files;
   const std::string train = files.Path("one_epoch_train.bin");
@@ -621,6 +650,7 @@ void CaseOneEpochCheckpoint() {
           "partial evaluation batch lost samples");
 }
 
+// Scenario: evaluation timing, threshold equality, and acceptance failure.
 void CaseEvaluate() {
   FixtureFiles files;
   const std::string one_data = files.Path("evaluate_one.bin");
@@ -682,6 +712,7 @@ void CaseEvaluate() {
           "failed threshold summary is missing");
 }
 
+// Scenario: inference logits/probabilities match the host oracle and sum to one.
 void CaseInfer() {
   FixtureFiles files;
   const std::string data = files.Path("infer_data.bin");
@@ -739,6 +770,7 @@ void CaseInfer() {
           "inference label was not copied");
 }
 
+// Scenario: the built CLI executable returns documented exit codes and output.
 void CaseCliExecutable() {
   FixtureFiles files;
   const std::string parse_output = files.Path("cli_parse.txt");
@@ -781,11 +813,13 @@ void CaseCliExecutable() {
           "CLI did not dispatch evaluation or report failure");
 }
 
+// Case-selection infrastructure: names each scenario for --case dispatch.
 struct NamedCase {
   const char* name;
   void (*function)();
 };
 
+// Registry of all named workflow scenarios in execution order.
 const NamedCase kCases[] = {
     {"schedule", &CaseSchedule},
     {"validation", &CaseValidation},
@@ -802,6 +836,7 @@ const NamedCase kCases[] = {
 
 }  // namespace
 
+// Parses --case/--mnist-train, runs selected scenarios, and reports status.
 int main(int argc, char** argv) {
   std::string selected;
   for (int argument = 1; argument < argc; ++argument) {

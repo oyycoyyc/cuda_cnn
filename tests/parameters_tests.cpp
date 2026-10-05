@@ -1,3 +1,5 @@
+// Canonical LeNet parameter schema, reproducibility vectors, finite
+// initialization, and no-mutation validation failures.
 #include "parameters.h"
 #include "test_harness.h"
 
@@ -15,6 +17,7 @@
 
 namespace {
 
+// Parses key=value reproducibility vectors used to pin initialization output.
 std::map<std::string, std::string> LoadVectors() {
   std::ifstream input("tests/repro_vectors.txt");
   if (!input) {
@@ -32,6 +35,7 @@ std::map<std::string, std::string> LoadVectors() {
   return vectors;
 }
 
+// Splits a comma-separated decimal field into doubles.
 std::vector<double> ParseDoubleList(const std::string& text) {
   std::vector<double> values;
   std::istringstream input(text);
@@ -42,6 +46,7 @@ std::vector<double> ParseDoubleList(const std::string& text) {
   return values;
 }
 
+// Independent copy of the canonical per-tensor schema for comparison.
 struct ExpectedSpec {
   const char* name;
   std::uint32_t rank;
@@ -66,6 +71,7 @@ const std::array<ExpectedSpec, 10> kExpected{{
 
 }  // namespace
 
+// Specs and storage match the canonical schema and total element count.
 TEST_CASE(parameter_specs_and_storage_match_canonical_schema) {
   const std::array<ParameterSpec, 10>& specs = LenetParameterSpecs();
   const ParameterSet parameters = CreateLenetParameters();
@@ -89,6 +95,7 @@ TEST_CASE(parameter_specs_and_storage_match_canonical_schema) {
   ValidateLenetParameters(parameters);
 }
 
+// Validation rejects each schema mismatch class without mutating input.
 TEST_CASE(validation_rejects_every_schema_mismatch_class) {
   ParameterSet parameters = CreateLenetParameters();
   ParameterSet changed = parameters;
@@ -115,6 +122,7 @@ TEST_CASE(validation_rejects_every_schema_mismatch_class) {
   EXPECT_THROW_CONTAINS(ValidateLenetParameters(changed), "value count");
 }
 
+// Seeded initialization matches pinned vectors and yields positive-zero biases.
 TEST_CASE(initialization_matches_vectors_and_produces_positive_zero_biases) {
   const std::map<std::string, std::string> vectors = LoadVectors();
   ParameterSet parameters = CreateLenetParameters();
@@ -140,6 +148,7 @@ TEST_CASE(initialization_matches_vectors_and_produces_positive_zero_biases) {
   }
 }
 
+// Same seed produces bit-identical output within one binary.
 TEST_CASE(initialization_is_bit_identical_within_one_binary) {
   ParameterSet first = CreateLenetParameters();
   ParameterSet second = CreateLenetParameters();
@@ -150,6 +159,7 @@ TEST_CASE(initialization_is_bit_identical_within_one_binary) {
   }
 }
 
+// Initialization validates the destination pointer and schema before any write.
 TEST_CASE(initialization_validates_pointer_and_schema_before_use) {
   EXPECT_THROW_CONTAINS(InitializeLenetParameters(1, nullptr), "parameters");
   ParameterSet missing = CreateLenetParameters();

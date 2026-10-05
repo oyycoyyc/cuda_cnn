@@ -1,3 +1,5 @@
+// Parser-only CLI tests: defaults, numeric bounds, required/duplicate/
+// cross-command rejection, unchanged options on failure, and stable usage text.
 #include "cli.h"
 #include "test_harness.h"
 
@@ -9,12 +11,14 @@
 
 namespace {
 
+// Adapts a brace list of arguments into the ParseCli pointer interface.
 bool Parse(std::initializer_list<const char*> arguments, CliOptions* options,
            std::string* error) {
   const std::vector<const char*> argv(arguments);
   return ParseCli(static_cast<int>(argv.size()), argv.data(), options, error);
 }
 
+// Requires a parse failure whose message contains the expected option text.
 void ExpectParseError(std::initializer_list<const char*> arguments,
                       const std::string& expected_text) {
   CliOptions options{};
@@ -26,6 +30,7 @@ void ExpectParseError(std::initializer_list<const char*> arguments,
 
 }  // namespace
 
+// Train: required paths are captured and unspecified options default.
 TEST_CASE(train_parses_required_paths_and_defaults) {
   CliOptions options{};
   std::string error("old error");
@@ -44,6 +49,7 @@ TEST_CASE(train_parses_required_paths_and_defaults) {
   EXPECT_TRUE(!options.train.allow_nonstandard_count);
 }
 
+// Train: numeric options accept their documented inclusive endpoints.
 TEST_CASE(train_accepts_inclusive_numeric_bounds_and_flag) {
   CliOptions options{};
   std::string error;
@@ -99,6 +105,7 @@ TEST_CASE(infer_requires_and_parses_uint64_index) {
   EXPECT_EQ(0, options.infer.device);
 }
 
+// Missing required options fail before any filesystem access, even for absent paths.
 TEST_CASE(required_options_are_enforced_without_filesystem_access) {
   ExpectParseError({"lenet_cuda", "train", "--test", "b", "--output", "c"},
                    "--train");
@@ -122,6 +129,7 @@ TEST_CASE(required_options_are_enforced_without_filesystem_access) {
                     &options, &error));
 }
 
+// Syntax rejection: unknown commands, duplicates, and options from other commands.
 TEST_CASE(rejects_missing_unknown_duplicate_and_cross_command_syntax) {
   ExpectParseError({"lenet_cuda"}, "command");
   ExpectParseError({"lenet_cuda", "serve"}, "serve");
@@ -146,6 +154,7 @@ TEST_CASE(rejects_missing_unknown_duplicate_and_cross_command_syntax) {
                    "--allow-nonstandard-count is not valid for infer");
 }
 
+// Integer options reject zero, overflow, signs, and trailing garbage.
 TEST_CASE(rejects_invalid_unsigned_and_integer_values) {
   for (const char* value : {"0", "1001", "-1", "1x", "4294967296"}) {
     ExpectParseError({"lenet_cuda", "train", "--train", "a", "--test", "b",
@@ -174,6 +183,7 @@ TEST_CASE(rejects_invalid_unsigned_and_integer_values) {
   }
 }
 
+// Accuracy rejects out-of-range, non-finite, and malformed decimals.
 TEST_CASE(rejects_out_of_range_nonfinite_and_trailing_accuracy) {
   for (const char* value : {"-0.1", "1.1", "nan", "NaN", "inf", "-inf",
                             "0.5x", "", " 0.5"}) {
@@ -183,6 +193,7 @@ TEST_CASE(rejects_out_of_range_nonfinite_and_trailing_accuracy) {
   }
 }
 
+// Failed parses preserve caller options and report null pointers by parameter name.
 TEST_CASE(parse_failure_leaves_options_unchanged_and_reports_bad_pointers) {
   CliOptions options{};
   options.command = Command::kInfer;
@@ -201,6 +212,7 @@ TEST_CASE(parse_failure_leaves_options_unchanged_and_reports_bad_pointers) {
   EXPECT_TRUE(error.find("argv") != std::string::npos);
 }
 
+// Usage text is byte-stable and documents every supported command.
 TEST_CASE(usage_is_stable_and_lists_each_command) {
   EXPECT_EQ(
       std::string(

@@ -1,3 +1,5 @@
+// Verifies checkpoint serialization layout, loader rejections, bitwise float
+// round-tripping, and destination preservation on failed saves.
 #include "checkpoint.h"
 #include "test_harness.h"
 
@@ -16,6 +18,7 @@
 
 namespace {
 
+// Expected on-disk sizes and per-tensor metadata/payload offsets.
 const std::size_t kHeaderSize = 40;
 const std::size_t kTensorMetadataSize = 60;
 const std::size_t kCheckpointSize = 178344;
@@ -43,6 +46,7 @@ const std::array<std::uint64_t, 10> kElementCounts{{
     150, 6, 2400, 16, 30720, 120, 10080, 84, 840, 10,
 }};
 
+// Reads a whole file as raw bytes for exact layout inspection.
 std::vector<unsigned char> ReadBytes(const std::string& path) {
   std::ifstream input(path, std::ios::binary);
   if (!input) {
@@ -62,6 +66,7 @@ void WriteBytes(const std::string& path,
   }
 }
 
+// Decodes a little-endian 32-bit field at a byte offset.
 std::uint32_t ReadU32(const std::vector<unsigned char>& bytes,
                       std::size_t offset) {
   return static_cast<std::uint32_t>(bytes[offset]) |
@@ -79,6 +84,7 @@ std::uint64_t ReadU64(const std::vector<unsigned char>& bytes,
   return value;
 }
 
+// Overwrites a 32-bit field to synthesize malformed loader fixtures.
 void PutU32(std::vector<unsigned char>* bytes, std::size_t offset,
             std::uint32_t value) {
   for (std::size_t index = 0; index < 4; ++index) {
@@ -87,12 +93,14 @@ void PutU32(std::vector<unsigned char>* bytes, std::size_t offset,
   }
 }
 
+// Reinterprets a float as raw bits so round-trips can be compared exactly.
 std::uint32_t FloatBits(float value) {
   std::uint32_t bits = 0;
   std::memcpy(&bits, &value, sizeof(bits));
   return bits;
 }
 
+// Canonical valid fixture including a signed zero and a denormal parameter.
 Checkpoint ValidCheckpoint() {
   Checkpoint checkpoint{{7, 0.75F, 0.1307F, 0.3081F},
                         CreateLenetParameters()};
@@ -110,10 +118,12 @@ Checkpoint ValidCheckpoint() {
   return checkpoint;
 }
 
+// Requires identical IEEE-754 bit patterns, not merely numeric equality.
 void ExpectFloatBitsEqual(float expected, float actual) {
   EXPECT_EQ(FloatBits(expected), FloatBits(actual));
 }
 
+// Compares metadata and every parameter value bitwise across a round-trip.
 void ExpectCheckpointsBitEqual(const Checkpoint& expected,
                                const Checkpoint& actual) {
   EXPECT_EQ(expected.metadata.best_epoch, actual.metadata.best_epoch);
@@ -139,6 +149,7 @@ void ExpectCheckpointsBitEqual(const Checkpoint& expected,
   }
 }
 
+// Writes a malformed payload and requires the loader to name path and invariant.
 void ExpectLoadRejected(const std::vector<unsigned char>& bytes,
                         const std::string& case_name,
                         const std::string& invariant) {
@@ -156,6 +167,7 @@ void ExpectLoadRejected(const std::vector<unsigned char>& bytes,
   }
 }
 
+// Requires a failed save to throw and leave the destination bytes untouched.
 void ExpectFailedSavePreservesDestination(const Checkpoint& checkpoint,
                                           const std::string& case_name) {
   const std::string path = "build/checkpoint_preserve_" + case_name + ".bin";
@@ -175,6 +187,7 @@ void ExpectFailedSavePreservesDestination(const Checkpoint& checkpoint,
 
 }  // namespace
 
+// Round-trip and exact byte-layout checks over the canonical fixture.
 TEST_CASE(checkpoint_round_trip_is_bit_identical_and_layout_is_exact) {
   const std::string first_path = "build/checkpoint_round_trip_a.bin";
   const std::string second_path = "build/checkpoint_round_trip_b.bin";
@@ -228,6 +241,7 @@ TEST_CASE(checkpoint_round_trip_is_bit_identical_and_layout_is_exact) {
   std::remove(second_path.c_str());
 }
 
+// Loader rejects each mutated fixed header field with the right diagnostic.
 TEST_CASE(checkpoint_loader_rejects_every_header_invariant) {
   const std::string valid_path = "build/checkpoint_valid_header.bin";
   SaveCheckpoint(valid_path, ValidCheckpoint());
@@ -269,6 +283,7 @@ TEST_CASE(checkpoint_loader_rejects_every_header_invariant) {
   ExpectLoadRejected(changed, "reserved", "reserved");
 }
 
+// Loader rejects unknown, duplicate, out-of-order names and bad shapes.
 TEST_CASE(checkpoint_loader_rejects_names_order_duplicates_and_shapes) {
   const std::string valid_path = "build/checkpoint_valid_schema.bin";
   SaveCheckpoint(valid_path, ValidCheckpoint());
@@ -307,6 +322,7 @@ TEST_CASE(checkpoint_loader_rejects_names_order_duplicates_and_shapes) {
   ExpectLoadRejected(changed, "element_count", "element count");
 }
 
+// Loader rejects truncated sections, trailing bytes, and non-finite values.
 TEST_CASE(checkpoint_loader_rejects_truncation_trailing_and_nonfinite_values) {
   const std::string valid_path = "build/checkpoint_valid_payload.bin";
   SaveCheckpoint(valid_path, ValidCheckpoint());
@@ -330,6 +346,7 @@ TEST_CASE(checkpoint_loader_rejects_truncation_trailing_and_nonfinite_values) {
   ExpectLoadRejected(changed, "nan_parameter", "finite");
 }
 
+// Save validates metadata, schema, and finiteness before touching the file.
 TEST_CASE(checkpoint_save_validates_everything_before_replacing_destination) {
   Checkpoint invalid = ValidCheckpoint();
   invalid.metadata.best_epoch = 0;

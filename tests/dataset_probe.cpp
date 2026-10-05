@@ -1,3 +1,5 @@
+// Standalone diagnostic that loads a dataset and prints shape, pixel checksum,
+// and labels so interop tests can compare it against other readers.
 #include "dataset.h"
 
 #include <cstdint>
@@ -5,6 +7,8 @@
 #include <iostream>
 #include <string>
 
+// Prints usage for a bad argument count (exit 2), load errors (exit 1), or the
+// dataset summary (exit 0).
 int main(int argc, char** argv) {
   if (argc != 2) {
     std::cerr << "usage: " << argv[0] << " dataset.bin\n";

@@ -27,6 +27,7 @@
 
 namespace {
 
+// Compile-time contract: live-allocation accounting must remain atomic.
 static_assert(
     std::is_same<decltype(device_buffer_detail::LiveAllocationCount()),
                  std::atomic<std::size_t>&>::value,
@@ -39,6 +40,7 @@ static_assert(
 // to verify host-side launch-error attribution before any thread can exist.
 __global__ void NoOpKernel() {}
 
+// Host/device copy helpers shared by the operator oracles below.
 template <typename T>
 DeviceBuffer<T> CopyToDevice(const std::vector<T>& source) {
   DeviceBuffer<T> destination(source.size());
@@ -75,6 +77,7 @@ std::vector<T> CopyFromDevicePointerOnStream(const T* source,
   return destination;
 }
 
+// RAII non-blocking stream so async paths are exercised without default-stream sync.
 class NonblockingTestStream {
  public:
   NonblockingTestStream() : stream_(nullptr) {
@@ -96,10 +99,12 @@ class NonblockingTestStream {
   cudaStream_t stream_;
 };
 
+// Applies the fixed MNIST mean/std normalization used by the input oracle.
 float NormalizedPixel(std::uint8_t pixel) {
   return (static_cast<float>(pixel) / 255.0F - 0.1307F) / 0.3081F;
 }
 
+// Compares vectors with a scale-relative tolerance for float oracle output.
 void ExpectNearVectors(const std::vector<float>& expected,
                        const std::vector<float>& actual) {
   EXPECT_EQ(expected.size(), actual.size());
@@ -109,6 +114,7 @@ void ExpectNearVectors(const std::vector<float>& expected,
   }
 }
 
+// Translation oracle: rebuilds the shifted/zero-padded output on the host.
 void CheckInputTranslation(int batch_size) {
   constexpr int kImageSide = 28;
   constexpr int kImagePixels = kImageSide * kImageSide;
@@ -170,6 +176,7 @@ void CheckInputTranslation(int batch_size) {
   EXPECT_NEAR(-0.42421293F, actual[first_padding_index], 1.5e-4F);
 }
 
+// Deterministic bounded pattern generator keyed by a small integer offset.
 std::vector<float> Pattern(std::size_t count, int offset) {
   std::vector<float> values(count);
   for (std::size_t index = 0; index < count; ++index) {
@@ -182,6 +189,7 @@ std::vector<float> Pattern(std::size_t count, int offset) {
   return values;
 }
 
+// Compares dense forward and backward launchers against the host oracle.
 void CheckLinearAgainstCpu(int batch_size, int input_features,
                            int output_features) {
   const std::vector<float> input = Pattern(
@@ -228,6 +236,7 @@ void CheckLinearAgainstCpu(int batch_size, int input_features,
   ExpectNearVectors(expected_gradients.bias, actual_bias_gradient);
 }
 
+// Compares convolution forward/backward launchers against the host oracle.
 void CheckConvolutionAgainstCpu(int batch_size, int input_channels,
                                 int input_height, int input_width,
                                 int output_channels, int kernel_height,
@@ -289,6 +298,7 @@ void CheckConvolutionAgainstCpu(int batch_size, int input_channels,
   ExpectNearVectors(expected_gradients.bias, actual_bias_gradient);
 }
 
+// Scalar objective L=sum(output*gradient) whose derivative is the supplied gradient.
 double DotObjective(const std::vector<float>& output,
                     const std::vector<float>& output_gradient) {
   double objective = 0.0;
@@ -298,6 +308,7 @@ double DotObjective(const std::vector<float>& output,
   return objective;
 }
 
+// Reproduces the scalar objective on device for dense finite differences.
 double LinearDeviceObjective(const std::vector<float>& input,
                              const std::vector<float>& weight,
                              const std::vector<float>& bias,
@@ -315,6 +326,7 @@ double LinearDeviceObjective(const std::vector<float>& input,
   return DotObjective(output, output_gradient);
 }
 
+// Central-difference check of production dense weight gradients at sample indices.
 void CheckProductionLinearFiniteDifferences(int input_features,
                                             int output_features, int offset) {
   constexpr int kBatchSize = 2;
@@ -360,6 +372,7 @@ void CheckProductionLinearFiniteDifferences(int input_features,
   }
 }
 
+// Reproduces the scalar objective on device for convolution finite differences.
 double ConvolutionDeviceObjective(
     const std::vector<float>& input, const std::vector<float>& weight,
     const std::vector<float>& bias,
@@ -378,6 +391,7 @@ double ConvolutionDeviceObjective(
   return DotObjective(output, output_gradient);
 }
 
+// Central-difference check of production convolution weight gradients.
 void CheckProductionConvolutionFiniteDifferences(
     int input_channels, int input_height, int input_width,
     int output_channels, int offset) {
@@ -433,12 +447,14 @@ void CheckProductionConvolutionFiniteDifferences(
   }
 }
 
+// Independent FP64 softmax/loss reference, kept separate from the host oracle.
 struct SoftmaxReferenceResult {
   std::vector<float> probabilities;
   std::vector<float> losses;
   std::vector<float> gradients;
 };
 
+// Accumulates the reference in double precision to validate device stability.
 SoftmaxReferenceResult SoftmaxReference(
     const std::vector<float>& logits, const std::vector<std::uint8_t>& labels,
     int batch_size, int class_count) {
@@ -474,6 +490,7 @@ SoftmaxReferenceResult SoftmaxReference(
   return result;
 }
 
+// Checks loss/probability/gradient output across representative batch sizes.
 void CheckSoftmaxBatch(int batch_size) {
   constexpr int kClassCount = 4;
   std::vector<float> logits(static_cast<std::size_t>(batch_size) * kClassCount);
@@ -532,12 +549,14 @@ void CheckSoftmaxBatch(int batch_size) {
   EXPECT_NEAR(expected_mean, mean, 2.0e-4F);
 }
 
+// Independent FP64 optimizer state kept separate from the host oracle.
 struct AdamReferenceState {
   std::vector<double> parameters;
   std::vector<double> first_moments;
   std::vector<double> second_moments;
 };
 
+// Applies one decoupled-decay update in double precision for comparison.
 void AdamWReferenceStep(AdamReferenceState* state,
                         const std::vector<float>& gradients,
                         double learning_rate, double beta1, double beta2,
@@ -566,6 +585,7 @@ void AdamWReferenceStep(AdamReferenceState* state,
   }
 }
 
+// Compares the device optimizer to the independent FP64 recurrence.
 void CheckAdamWSteps(int step_count, float weight_decay) {
   constexpr float kLearningRate = 0.1F;
   constexpr float kBeta1 = 0.9F;
@@ -608,6 +628,7 @@ void CheckAdamWSteps(int step_count, float weight_decay) {
   }
 }
 
+// Expects the scan to report exactly the smallest non-finite element index.
 void CheckFirstBadIndex(const std::vector<float>& values, int expected_index) {
   DeviceBuffer<float> device_values = CopyToDevice(values);
   DeviceBuffer<int> device_result(1);
@@ -617,6 +638,7 @@ void CheckFirstBadIndex(const std::vector<float>& values, int expected_index) {
   EXPECT_EQ(expected_index, result[0]);
 }
 
+// Full-network oracle: records every forward activation for stagewise comparison.
 struct CpuLenetPass {
   std::vector<float> conv1_pre;
   std::vector<float> relu1;
@@ -631,6 +653,7 @@ struct CpuLenetPass {
   std::vector<float> logits;
 };
 
+// Replays the LeNet forward pass through the independent host primitives.
 CpuLenetPass CpuLenetForward(const std::vector<float>& input,
                              const ParameterSet& parameters,
                              int batch_size) {
@@ -666,6 +689,7 @@ struct CpuLenetGradients {
   std::vector<float> input;
 };
 
+// Replays the network backward pass through the independent host primitives.
 CpuLenetGradients CpuLenetBackward(const std::vector<float>& input,
                                    const ParameterSet& parameters,
                                    const CpuLenetPass& pass,
@@ -713,6 +737,7 @@ CpuLenetGradients CpuLenetBackward(const std::vector<float>& input,
   return result;
 }
 
+// Deterministic small-magnitude parameter pattern for network tests.
 ParameterSet SmallPatternParameters() {
   ParameterSet parameters = CreateLenetParameters();
   for (std::size_t tensor = 0; tensor < parameters.size(); ++tensor) {
@@ -727,6 +752,7 @@ ParameterSet SmallPatternParameters() {
   return parameters;
 }
 
+// Device scalar objective used by the full-network finite-difference check.
 double DeviceLenetObjective(LeNet* model, const float* device_input,
                             int batch_size,
                             const std::vector<float>& logits_gradient) {
@@ -736,10 +762,12 @@ double DeviceLenetObjective(LeNet* model, const float* device_input,
   return DotObjective(host_logits, logits_gradient);
 }
 
+// Arena layout constants derived from the canonical parameter schema.
 constexpr std::size_t kLenetParameterCopyBytes = 44426 * sizeof(float);
 constexpr std::size_t kLenetFourParameterCopiesBytes =
     4 * kLenetParameterCopyBytes;
 
+// Recovers the single arena base from a logits pointer for layout inspection.
 const std::uint8_t* LenetArenaBase(const float* logits,
                                    int maximum_batch_size) {
   constexpr std::size_t kActivationFloatsBeforeLogits = 10488;
@@ -756,6 +784,7 @@ const float* ArenaFloatPointer(const std::uint8_t* base,
   return reinterpret_cast<const float*>(base + byte_offset);
 }
 
+// Source-policy helper: blanks comments and literals before identifier scans.
 std::string SourceWithoutCommentsOrLiterals(const std::string& source) {
   enum class State { kCode, kLineComment, kBlockComment, kString, kCharacter };
   State state = State::kCode;
@@ -820,6 +849,7 @@ bool ContainsIdentifier(const std::string& source,
 
 }  // namespace
 
+// CUDA error-checking macros: expression, file, line, code, and text.
 TEST_CASE(cuda_check_reports_expression_file_line_code_and_text) {
   const int expected_line = __LINE__ + 2;
   try {
@@ -841,6 +871,7 @@ TEST_CASE(cuda_check_detects_invalid_kernel_launch_without_synchronizing) {
   EXPECT_THROW_CONTAINS(CUDA_KERNEL_CHECK(), "cudaGetLastError()");
 }
 
+// Device-buffer ownership, lifetime, and allocation-accounting contracts.
 TEST_CASE(device_buffer_is_move_only) {
   EXPECT_TRUE(!std::is_copy_constructible<DeviceBuffer<float>>::value);
   EXPECT_TRUE(!std::is_copy_assignable<DeviceBuffer<float>>::value);
@@ -912,6 +943,7 @@ TEST_CASE(device_buffer_round_trips_257_elements) {
   EXPECT_EQ(source, result);
 }
 
+// Input normalization and deterministic translation behavior.
 TEST_CASE(input_evaluation_normalizes_without_translation) {
   constexpr int kImagePixels = 28 * 28;
   std::vector<std::uint8_t> images(kImagePixels, 17);
@@ -952,6 +984,7 @@ TEST_CASE(input_rejects_impossible_launch_dimensions) {
                         "one_based_epoch");
 }
 
+// Activation forward/backward and in-place aliasing contracts.
 TEST_CASE(relu_forward_backward_matches_cpu_and_backward_aliases_gradient) {
   constexpr std::size_t kCount = 257;
   std::vector<float> input(kCount);
@@ -1007,6 +1040,7 @@ TEST_CASE(relu_launchers_reject_impossible_element_counts) {
       "count");
 }
 
+// Pooling tie-breaking, winner offsets, and scatter-to-winner gradients.
 TEST_CASE(maxpool_forward_uses_first_tie_and_row_major_offsets) {
   const std::vector<float> input{
       5.0F, 5.0F, 1.0F, 7.0F,
@@ -1066,6 +1100,7 @@ TEST_CASE(maxpool_rejects_impossible_dimensions_before_launch) {
                          "overflow");
 }
 
+// Dense linear forward/backward against the host oracle and finite differences.
 TEST_CASE(linear_forward_backward_matches_cpu_for_small_shape) {
   CheckLinearAgainstCpu(3, 5, 4);
 }
@@ -1107,6 +1142,7 @@ TEST_CASE(linear_launchers_reject_invalid_dimensions_and_pointers) {
       "pointer range");
 }
 
+// Convolution forward/backward against the host oracle and finite differences.
 TEST_CASE(convolution_forward_backward_matches_cpu_for_non_divisible_shape) {
   CheckConvolutionAgainstCpu(2, 2, 7, 8, 3, 5, 5);
 }
@@ -1153,6 +1189,7 @@ TEST_CASE(convolution_launchers_reject_invalid_dimensions_and_pointers) {
                         "overflow");
 }
 
+// Source-policy scans over production kernels and storage implementation.
 TEST_CASE(convolution_gradient_source_policy_forbids_atomic_operations) {
   std::ifstream input("src/kernels/convolution.cu", std::ios::binary);
   EXPECT_TRUE(input.is_open());
@@ -1163,6 +1200,7 @@ TEST_CASE(convolution_gradient_source_policy_forbids_atomic_operations) {
   EXPECT_TRUE(!ContainsIdentifier(code, "atomicAdd"));
 }
 
+// Softmax, cross-entropy loss, and gradient scaling across batch boundaries.
 TEST_CASE(softmax_cross_entropy_is_stable_and_scaled_for_boundary_batches) {
   CheckSoftmaxBatch(1);
   CheckSoftmaxBatch(17);
@@ -1299,6 +1337,7 @@ TEST_CASE(softmax_launchers_reject_invalid_shapes_pointers_and_overlap) {
       "pointer range");
 }
 
+// Metrics argmax tie-breaking and exact correct-count reduction.
 TEST_CASE(metrics_argmax_uses_smallest_tie_and_reduces_exact_count) {
   constexpr int kBatchSize = 129;
   constexpr int kClassCount = 4;
@@ -1405,6 +1444,7 @@ TEST_CASE(metrics_launcher_rejects_invalid_shapes_pointers_and_overlap) {
                         "overlap");
 }
 
+// Decoupled-weight-decay optimizer against the independent FP64 reference.
 TEST_CASE(adamw_matches_fp64_reference_for_first_and_tenth_steps) {
   CheckAdamWSteps(1, 0.4F);
   CheckAdamWSteps(10, 0.4F);
@@ -1492,6 +1532,7 @@ TEST_CASE(adamw_rejects_invalid_and_nonfinite_hyperparameters) {
                         "weight_decay");
 }
 
+// First-non-finite scan reporting across empty, finite, and mixed inputs.
 TEST_CASE(finite_scan_reports_all_finite_sentinel_for_zero_and_257_values) {
   DeviceBuffer<int> device_result(1);
   LaunchFindFirstNonFinite(nullptr, 0, device_result.get(), nullptr);
@@ -1543,6 +1584,7 @@ TEST_CASE(finite_scan_rejects_invalid_count_pointers_and_overlap) {
       "INT_MAX");
 }
 
+// LeNet single-arena storage, forward stages, backward, and train-step contracts.
 TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
   constexpr int kMaximumBatch = 17;
   constexpr std::size_t kExpectedBytes = 1891708;

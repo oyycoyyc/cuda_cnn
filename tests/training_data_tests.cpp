@@ -1,3 +1,5 @@
+// Workflow split ordering for official/nonstandard counts, partial batch
+// packing, image/label correspondence, capacity reuse, and argument validation.
 #include "random.h"
 #include "test_harness.h"
 #include "training_data.h"
@@ -10,8 +12,10 @@
 
 namespace {
 
+// One 28x28 image extent shared by the synthetic dataset fixture.
 const std::size_t kImageSize = 28 * 28;
 
+// Builds a deterministic synthetic dataset with distinct labels and pixels.
 MnistDataset MakeDataset(std::uint32_t sample_count) {
   MnistDataset dataset{};
   dataset.sample_count = sample_count;
@@ -31,6 +35,7 @@ MnistDataset MakeDataset(std::uint32_t sample_count) {
 
 }  // namespace
 
+// Official 60000-count split matches the 55000/5000 canonical ordering.
 TEST_CASE(workflow_split_uses_official_task4_ordering) {
   const DatasetSplit actual = MakeWorkflowSplit(60000, 1337, false);
   const DatasetSplit canonical = MakeTrainValidationSplit(60000, 5000, 1337);
@@ -40,6 +45,7 @@ TEST_CASE(workflow_split_uses_official_task4_ordering) {
   EXPECT_EQ(canonical.validation_indices, actual.validation_indices);
 }
 
+// Nonstandard counts require the bypass flag and drive deterministic sizing.
 TEST_CASE(workflow_split_gates_and_sizes_nonstandard_counts) {
   EXPECT_THROW_CONTAINS(MakeWorkflowSplit(1280, 9, false),
                         "sample_count must equal 60000");
@@ -58,6 +64,7 @@ TEST_CASE(workflow_split_gates_and_sizes_nonstandard_counts) {
   EXPECT_EQ(std::size_t{1}, two.validation_indices.size());
 }
 
+// Partial batches keep 128/128/1 sizing, index/label/pixel correspondence, and reuse capacity.
 TEST_CASE(pack_batch_makes_128_128_1_without_correspondence_drift) {
   const MnistDataset dataset = MakeDataset(257);
   std::vector<std::uint32_t> order(257);
@@ -97,6 +104,7 @@ TEST_CASE(pack_batch_makes_128_128_1_without_correspondence_drift) {
   EXPECT_TRUE(batch.images.capacity() >= retained_image_capacity);
 }
 
+// Packing rejects null batch, zero capacity, bad offset/order, and short storage.
 TEST_CASE(pack_batch_rejects_invalid_arguments_before_copying) {
   MnistDataset dataset = MakeDataset(3);
   const std::vector<std::uint32_t> order{2, 0, 1};

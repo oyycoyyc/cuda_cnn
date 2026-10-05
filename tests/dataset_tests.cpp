@@ -1,3 +1,5 @@
+// MNISTC1 dataset fixtures, little-endian binary IO, malformed/truncated/trailing
+// input rejection, label range checks, and official-count enforcement.
 #include "binary_io.h"
 #include "dataset.h"
 #include "test_harness.h"
@@ -13,9 +15,11 @@
 
 namespace {
 
+// Fixed header size and one 28x28 image extent for the fixture builder.
 const std::size_t kHeaderSize = 24;
 const std::size_t kImageSize = 28 * 28;
 
+// Removes a fixture path when the enclosing test scope exits.
 class ScopedFile {
  public:
   explicit ScopedFile(const std::string& path) : path_(path) {}
@@ -25,6 +29,7 @@ class ScopedFile {
   std::string path_;
 };
 
+// Appends one little-endian 32-bit header field.
 void AppendU32(std::vector<std::uint8_t>* bytes, std::uint32_t value) {
   bytes->push_back(static_cast<std::uint8_t>(value));
   bytes->push_back(static_cast<std::uint8_t>(value >> 8));
@@ -32,6 +37,7 @@ void AppendU32(std::vector<std::uint8_t>* bytes, std::uint32_t value) {
   bytes->push_back(static_cast<std::uint8_t>(value >> 24));
 }
 
+// Overwrites one little-endian header field to synthesize malformed inputs.
 void SetU32(std::vector<std::uint8_t>* bytes, std::size_t offset,
             std::uint32_t value) {
   for (std::size_t byte = 0; byte < 4; ++byte) {
@@ -40,6 +46,7 @@ void SetU32(std::vector<std::uint8_t>* bytes, std::size_t offset,
   }
 }
 
+// Builds a valid three-sample MNISTC1 image with distinct label values.
 std::vector<std::uint8_t> ThreeRowFixture() {
   const char magic[8] = {'M', 'N', 'I', 'S', 'T', 'C', '1', '\0'};
   std::vector<std::uint8_t> bytes(magic, magic + 8);
@@ -58,6 +65,7 @@ std::vector<std::uint8_t> ThreeRowFixture() {
   return bytes;
 }
 
+// Writes fixture bytes and fails the test if the file cannot be created.
 void WriteFile(const std::string& path,
                const std::vector<std::uint8_t>& bytes) {
   std::ofstream output(path.c_str(), std::ios::binary | std::ios::trunc);
@@ -68,6 +76,7 @@ void WriteFile(const std::string& path,
   }
 }
 
+// Requires the callable to throw with both the path and the invariant named.
 template <typename Function>
 void ExpectError(Function function, const std::string& path,
                  const std::string& invariant) {
@@ -83,6 +92,7 @@ void ExpectError(Function function, const std::string& path,
   EXPECT_TRUE(threw);
 }
 
+// Writes a named malformed fixture and requires the loader to reject it.
 void ExpectLoadError(const std::string& name,
                      const std::vector<std::uint8_t>& bytes,
                      const std::string& invariant) {
@@ -94,6 +104,7 @@ void ExpectLoadError(const std::string& name,
 
 }  // namespace
 
+// Happy path: counts, dimensions, pixels, labels, and image pointer arithmetic.
 TEST_CASE(loads_exact_three_row_fixture) {
   const std::string path = "build/dataset-valid.bin";
   ScopedFile cleanup(path);
@@ -112,6 +123,7 @@ TEST_CASE(loads_exact_three_row_fixture) {
   EXPECT_TRUE(dataset.Image(1) == dataset.images.data() + 784);
 }
 
+// Little-endian scalar writers produce the exact expected byte sequence.
 TEST_CASE(binary_io_round_trips_little_endian_scalars) {
   const std::string path = "memory fixture";
   std::stringstream stream(std::ios::in | std::ios::out | std::ios::binary);
@@ -143,6 +155,7 @@ TEST_CASE(binary_io_errors_name_path_and_invariant) {
       path, "u32 requires four bytes");
 }
 
+// Header validation: magic and format version must match exactly.
 TEST_CASE(rejects_bad_magic_and_version) {
   std::vector<std::uint8_t> bytes = ThreeRowFixture();
   bytes[0] = 'X';
@@ -168,6 +181,7 @@ TEST_CASE(rejects_zero_count_and_non_28_dimensions) {
   ExpectLoadError("dataset-bad-columns", bytes, "columns must equal 28");
 }
 
+// A huge sample count whose 32-bit size math would wrap is rejected.
 TEST_CASE(rejects_count_whose_32_bit_size_calculation_wraps) {
   std::vector<std::uint8_t> bytes = ThreeRowFixture();
   bytes.resize(kHeaderSize + 1);
@@ -176,6 +190,7 @@ TEST_CASE(rejects_count_whose_32_bit_size_calculation_wraps) {
                   "file size must match header count");
 }
 
+// Truncated header, image, or label sections fail the exact-size check.
 TEST_CASE(rejects_truncated_header_images_and_labels) {
   const std::vector<std::uint8_t> complete = ThreeRowFixture();
   ExpectLoadError("dataset-short-header",
@@ -193,6 +208,7 @@ TEST_CASE(rejects_truncated_header_images_and_labels) {
                   "file size must match header count");
 }
 
+// Trailing bytes after the declared payload are rejected.
 TEST_CASE(rejects_trailing_bytes) {
   std::vector<std::uint8_t> bytes = ThreeRowFixture();
   bytes.push_back(0);
@@ -200,6 +216,7 @@ TEST_CASE(rejects_trailing_bytes) {
                   "file size must match header count");
 }
 
+// Labels must be decimal digits; values 10 and 255 are rejected.
 TEST_CASE(rejects_labels_outside_decimal_digit_range) {
   for (const std::uint8_t label : {std::uint8_t{10}, std::uint8_t{255}}) {
     std::vector<std::uint8_t> bytes = ThreeRowFixture();
@@ -225,6 +242,7 @@ TEST_CASE(rejects_out_of_range_image_access) {
                         "image index must be below sample_count");
 }
 
+// RequireDatasetCount enforces 60000 unless the bypass flag is set.
 TEST_CASE(enforces_official_count_unless_explicitly_bypassed) {
   MnistDataset dataset{};
   dataset.sample_count = 3;

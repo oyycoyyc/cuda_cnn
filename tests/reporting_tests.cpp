@@ -1,3 +1,5 @@
+// Exact record formatting, fixed precision, locale isolation, caller-state
+// restoration, and validation-before-output for every reporting summary.
 #include "reporting.h"
 #include "test_harness.h"
 
@@ -12,6 +14,7 @@
 
 namespace {
 
+// Locale fixture whose decimal point differs, to prove output is locale-neutral.
 class CommaDecimalPoint : public std::numpunct<char> {
  protected:
   char do_decimal_point() const override { return ','; }
@@ -19,6 +22,7 @@ class CommaDecimalPoint : public std::numpunct<char> {
 
 }  // namespace
 
+// Epoch record: exact key order, labels, and six-decimal precision.
 TEST_CASE(epoch_summary_has_exact_stable_output) {
   std::ostringstream output;
   PrintEpochSummary(output, 1, 0.123456F, 0.9876F, 1234.567);
@@ -36,6 +40,7 @@ TEST_CASE(device_summary_has_exact_stable_output) {
             output.str());
 }
 
+// Final-test record: exact key order, labels, and precision.
 TEST_CASE(final_test_summary_has_exact_stable_output) {
   std::ostringstream output;
   PrintFinalTestSummary(output, 10000, 0.9912F, 17, 0.992F);
@@ -45,6 +50,7 @@ TEST_CASE(final_test_summary_has_exact_stable_output) {
             output.str());
 }
 
+// Inference record: exact nine-decimal logits and probabilities formatting.
 TEST_CASE(inference_summary_has_exact_stable_output) {
   const std::array<float, 10> logits{{
       -1.0F, 0.0F, 1.0F, 2.0F, 3.0F,
@@ -66,6 +72,7 @@ TEST_CASE(inference_summary_has_exact_stable_output) {
       output.str());
 }
 
+// Evaluation record: pass and fail status lines with exact formatting.
 TEST_CASE(evaluation_summary_has_exact_pass_and_fail_output) {
   std::ostringstream output;
   PrintEvaluationSummary(output, 10000, 0.9912F, 0.321F, 398753.875F,
@@ -86,6 +93,7 @@ TEST_CASE(evaluation_summary_has_exact_pass_and_fail_output) {
       output.str());
 }
 
+// Reporting ignores stream locale/format flags and restores caller state.
 TEST_CASE(reporting_ignores_and_restores_stream_locale_and_formatting) {
   std::ostringstream output;
   const std::locale comma_locale(std::locale::classic(),
@@ -120,6 +128,7 @@ TEST_CASE(reporting_ignores_and_restores_stream_locale_and_formatting) {
   EXPECT_TRUE(output.getloc() == original_locale);
 }
 
+// Epoch record validates epoch, loss, accuracy, and elapsed time before output.
 TEST_CASE(epoch_summary_rejects_invalid_contract_values) {
   std::ostringstream output;
   EXPECT_THROW_CONTAINS(PrintEpochSummary(output, 0, 0.1F, 0.9F, 1.0),
@@ -138,6 +147,7 @@ TEST_CASE(epoch_summary_rejects_invalid_contract_values) {
   EXPECT_TRUE(output.str().empty());
 }
 
+// Evaluation record validates every numeric argument before emitting output.
 TEST_CASE(evaluation_summary_rejects_invalid_contract_values) {
   std::ostringstream output;
   EXPECT_THROW_CONTAINS(

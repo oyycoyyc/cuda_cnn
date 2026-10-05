@@ -11,6 +11,7 @@
 namespace cpu_reference {
 namespace {
 
+// Multiplies positive extents while rejecting non-positive or overflowing shapes.
 std::size_t CheckedProduct(std::initializer_list<int> dimensions,
                            const char* operation) {
   std::size_t product = 1;
@@ -29,12 +30,14 @@ std::size_t CheckedProduct(std::initializer_list<int> dimensions,
   return product;
 }
 
+// Enforces an exact element count for a named oracle buffer.
 void RequireSize(std::size_t actual, std::size_t expected, const char* name) {
   if (actual != expected) {
     throw std::invalid_argument(std::string(name) + " size mismatch");
   }
 }
 
+// Checks positive dimensions, kernel fit, and exact input/weight sizes.
 void ValidateConvolution(const std::vector<float>& input,
                          const std::vector<float>& weight, int batch_size,
                          int input_channels, int input_height, int input_width,
@@ -59,6 +62,7 @@ void ValidateConvolution(const std::vector<float>& input,
               "convolution weight");
 }
 
+// Flattens an NCHW coordinate into a row-major element index.
 std::size_t InputIndex(int n, int channel, int row, int column,
                        int channels, int height, int width) {
   return ((static_cast<std::size_t>(n) * channels + channel) * height + row) *
@@ -66,6 +70,7 @@ std::size_t InputIndex(int n, int channel, int row, int column,
          column;
 }
 
+// Flattens an OIHW weight coordinate into a row-major element index.
 std::size_t WeightIndex(int output_channel, int input_channel, int kernel_row,
                         int kernel_column, int input_channels,
                         int kernel_height, int kernel_width) {
@@ -77,6 +82,7 @@ std::size_t WeightIndex(int output_channel, int input_channel, int kernel_row,
          kernel_column;
 }
 
+// Flattens the derived NCHW output coordinate into a row-major index.
 std::size_t OutputIndex(int n, int channel, int row, int column, int channels,
                         int height, int width) {
   return ((static_cast<std::size_t>(n) * channels + channel) * height + row) *
@@ -84,6 +90,7 @@ std::size_t OutputIndex(int n, int channel, int row, int column, int channels,
          column;
 }
 
+// Checks positive batch/feature extents and exact input/weight sizes.
 void ValidateLinear(const std::vector<float>& input,
                     const std::vector<float>& weight, int batch_size,
                     int input_features, int output_features) {
@@ -97,6 +104,7 @@ void ValidateLinear(const std::vector<float>& input,
 
 }  // namespace
 
+// Independent direct convolution: slides the OIHW kernel over NCHW input.
 std::vector<float> ConvolutionForward(
     const std::vector<float>& input, const std::vector<float>& weight,
     const std::vector<float>& bias, int batch_size, int input_channels,
@@ -146,6 +154,7 @@ std::vector<float> ConvolutionForward(
   return output;
 }
 
+// Gathers input gradients and accumulates weight/bias gradients directly.
 ConvolutionGradients ConvolutionBackward(
     const std::vector<float>& input, const std::vector<float>& weight,
     const std::vector<float>& output_gradient, int batch_size,
@@ -248,6 +257,7 @@ ConvolutionGradients ConvolutionBackward(
   return gradients;
 }
 
+// Elementwise max(0,x) activation oracle.
 std::vector<float> ReluForward(const std::vector<float>& input) {
   std::vector<float> output(input.size());
   for (std::size_t index = 0; index < input.size(); ++index) {
@@ -256,6 +266,7 @@ std::vector<float> ReluForward(const std::vector<float>& input) {
   return output;
 }
 
+// Masks the incoming gradient to zero where the forward input was not positive.
 std::vector<float> ReluBackward(
     const std::vector<float>& forward_input,
     const std::vector<float>& output_gradient) {
@@ -269,6 +280,7 @@ std::vector<float> ReluBackward(
   return input_gradient;
 }
 
+// Non-overlapping 2x2 max pooling that records the first row-major winner.
 MaxPoolResult MaxPoolForward(const std::vector<float>& input, int batch_size,
                              int channels, int input_height, int input_width) {
   RequireSize(input.size(),
@@ -318,6 +330,7 @@ MaxPoolResult MaxPoolForward(const std::vector<float>& input, int batch_size,
   return result;
 }
 
+// Scatters output gradients onto recorded winners, zeroing all other inputs.
 std::vector<float> MaxPoolBackward(
     const std::vector<float>& output_gradient,
     const std::vector<std::uint8_t>& winner_offsets, int batch_size,
@@ -359,6 +372,7 @@ std::vector<float> MaxPoolBackward(
   return input_gradient;
 }
 
+// Dense oracle: multiplies each row of [batch][in] by [out][in] weight.
 std::vector<float> LinearForward(const std::vector<float>& input,
                                  const std::vector<float>& weight,
                                  const std::vector<float>& bias,
@@ -388,6 +402,7 @@ std::vector<float> LinearForward(const std::vector<float>& input,
   return output;
 }
 
+// Dense gradient oracle: input, weight, and bias gradients from [batch][out].
 LinearGradients LinearBackward(const std::vector<float>& input,
                                const std::vector<float>& weight,
                                const std::vector<float>& output_gradient,
@@ -445,6 +460,7 @@ LinearGradients LinearBackward(const std::vector<float>& input,
   return gradients;
 }
 
+// Max-subtracted softmax, per-sample loss, and scaled logits gradient oracle.
 SoftmaxCrossEntropyResult SoftmaxCrossEntropy(
     const std::vector<float>& logits, const std::vector<std::uint8_t>& labels,
     int batch_size, int class_count) {
@@ -493,6 +509,7 @@ SoftmaxCrossEntropyResult SoftmaxCrossEntropy(
   return result;
 }
 
+// FP64 decoupled weight decay using each pre-update parameter and global_step.
 void AdamWStep(std::vector<double>* parameters,
                const std::vector<double>& gradients,
                std::vector<double>* first_moments,
