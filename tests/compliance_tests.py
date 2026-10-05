@@ -29,6 +29,18 @@ class ProjectComplianceTest(unittest.TestCase):
         )
         self.assertEqual(0, result.returncode, result.stdout)
 
+    def test_source_scan_reports_make_compiled_input_scope(self):
+        bash = os.environ.get("BASH", "bash")
+        environment = os.environ.copy()
+        if os.path.dirname(bash):
+            environment["PATH"] = os.path.dirname(bash) + os.pathsep + environment["PATH"]
+        result = self.run_command(
+            [bash, "scripts/check_prohibited.sh", "source", "."],
+            env=environment,
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("mode=source scope=make-compiled-inputs", result.stdout)
+
     def test_make_dry_run_emits_exact_h20_code_and_ptx_targets(self):
         make = os.environ.get("MAKE", "make")
         result = self.run_command([make, "-B", "-n", "build/lenet_cuda"])

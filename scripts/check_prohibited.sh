@@ -127,10 +127,12 @@ case "$mode" in
     if ! printf '%s\n' "$make_manifest" >"$manifest"; then
       fail "cannot store Make test-source manifest"
     fi
-    if ! "$policy_python" "$graph_analyzer" source \
-        --root "$root" --recipes "$recipes" --manifest "$manifest" \
-        >"$active_inputs"; then
-      fail "Make recipe provenance analysis failed"
+    if ! analyzer_output=$("$policy_python" "$graph_analyzer" source \
+        --root "$root" --recipes "$recipes" --manifest "$manifest" 2>&1); then
+      fail "Make recipe provenance analysis failed:\n$analyzer_output"
+    fi
+    if ! printf '%s' "$analyzer_output" >"$active_inputs"; then
+      fail "cannot store analyzed active inputs"
     fi
     while IFS= read -r file || [[ -n $file ]]; do
       file=${file%$'\r'}

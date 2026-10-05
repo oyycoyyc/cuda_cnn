@@ -101,15 +101,16 @@ To inspect commands without executing them, capture a dry-run and label it as
 such. This proves only what Make would invoke; the commands were not executed:
 
 ```bash
-mkdir -p build
-make -Bn V=1 > build/dry-run.log
-bash scripts/check_prohibited.sh dry-run build/dry-run.log
+mkdir -p acceptance
+make -Bn V=1 > acceptance/dry-run.log
+bash scripts/check_prohibited.sh dry-run acceptance/dry-run.log
 ```
 
 Successful-build evidence must come from an actual verbose build that ends in
 `event=build status=pass target=all`, followed by
-`bash scripts/check_prohibited.sh build build/verbose-build.log`. The build-log
-scan is intentionally separate from the source-only `make compliance` gate.
+`bash scripts/check_prohibited.sh build acceptance/verbose-build.log`. The
+build-log scan is intentionally separate from the source-only `make compliance`
+gate. Retain actual logs outside `build/` so a later cleanup cannot delete them.
 
 The exact default architecture flags are:
 

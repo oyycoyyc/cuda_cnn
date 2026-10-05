@@ -140,9 +140,9 @@ class DocumentationTest(unittest.TestCase):
             "gcc --version",
             "nvidia-smi",
             "make V=1",
-            "build/verbose-build.log",
+            "acceptance/verbose-build.log",
             "scripts/check_prohibited.sh source .",
-            "scripts/check_prohibited.sh build build/verbose-build.log",
+            "scripts/check_prohibited.sh build acceptance/verbose-build.log",
             "scripts/check_comments.py --root . --checklist docs/comment-review-checklist.md",
             "compute-sanitizer --tool memcheck",
             "cuobjdump --list-elf",
@@ -170,7 +170,7 @@ class DocumentationTest(unittest.TestCase):
         self.assertIn("dry-run", readme)
         self.assertIn("commands were not executed", readme)
         self.assertIn(
-            "scripts/check_prohibited.sh build build/verbose-build.log", guide
+            "scripts/check_prohibited.sh build acceptance/verbose-build.log", guide
         )
         self.assertIn("event=build status=pass target=all", guide)
 
@@ -182,6 +182,43 @@ class DocumentationTest(unittest.TestCase):
         self.assertIn("cudaFree", readme)
         self.assertIn("cudaStreamDestroy", readme)
         self.assertIn("cudaEventDestroy", readme)
+
+    def test_h20_guide_keeps_actual_logs_outside_build_directory(self):
+        readme = read_document("README.md")
+        guide = read_document("docs/h20-acceptance.md")
+        self.assertIn("tee acceptance/verbose-build.log", guide)
+        self.assertIn(
+            "scripts/check_prohibited.sh build acceptance/verbose-build.log", guide
+        )
+        self.assertIn(
+            "scripts/check_prohibited.sh build acceptance/verbose-build.log", readme
+        )
+        self.assertIn("make -Bn V=1 > acceptance/dry-run.log", readme)
+        self.assertNotIn("build/verbose-build.log", guide)
+        self.assertNotIn("build/verbose-build.log", readme)
+        self.assertNotIn("build/dry-run.log", readme)
+
+    def test_h20_guide_cleans_and_sets_pipefail_before_verbose_logging(self):
+        guide = read_document("docs/h20-acceptance.md")
+        self.assertIn("set -o pipefail", guide)
+        pipefail = guide.index("set -o pipefail")
+        clean = guide.index("make clean")
+        tee = guide.index("tee acceptance/verbose-build.log")
+        self.assertLess(pipefail, tee)
+        self.assertLess(clean, tee)
+
+    def test_documentation_scopes_scanner_and_avoids_unsupported_claims(self):
+        readme = read_document("README.md")
+        guide = read_document("docs/h20-acceptance.md")
+        self.assertIn("decode arbitrary preprocessor or shell obfuscation", readme)
+        self.assertIn("shell-obfuscated", readme)
+        self.assertIn("Response files or shell-obfuscated", guide)
+        self.assertIn("unsupported and fail closed", guide)
+        self.assertIn("makes no local CUDA-success", readme)
+        self.assertIn(
+            "not evidence that CUDA succeeded on the local Windows development machine",
+            guide,
+        )
 
     def test_documents_contain_no_placeholder_markers(self):
         for relative_path in (

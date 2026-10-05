@@ -51,12 +51,16 @@ bytes for `data/test.bin`.
 
 ## Clean Verbose Build And Static Gates
 
+Run `make clean` before the logged build, and retain the verbose build log
+outside `build/` so cleanup cannot delete it:
+
 ```bash
+set -o pipefail
 make clean
 mkdir -p build
-make V=1 CUDA_ARCH=sm_90 2>&1 | tee build/verbose-build.log
+make V=1 CUDA_ARCH=sm_90 2>&1 | tee acceptance/verbose-build.log
 bash scripts/check_prohibited.sh source .
-bash scripts/check_prohibited.sh build build/verbose-build.log
+bash scripts/check_prohibited.sh build acceptance/verbose-build.log
 python3.6 scripts/check_comments.py --root . --checklist docs/comment-review-checklist.md
 make host-tests
 ```

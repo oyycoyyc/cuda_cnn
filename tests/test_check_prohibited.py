@@ -3197,6 +3197,36 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("make dry-run failed", result.stdout.lower())
 
+    def test_source_scan_propagates_analyzer_failure_diagnostic(self):
+        tools = os.path.join(self.temporary, "tools_python")
+        os.makedirs(tools)
+        fake_python = os.path.join(tools, "python")
+        self.write(
+            os.path.relpath(fake_python, self.temporary),
+            "#!/bin/sh\n"
+            "echo 'forced analyzer diagnostic'\n"
+            "exit 7\n",
+        )
+        os.chmod(fake_python, 0o755)
+
+        result = self.run_checker(
+            "source",
+            self.temporary,
+            extra_environment={"PYTHON": fake_python.replace("\\", "/")},
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("Make recipe provenance analysis failed", result.stdout)
+        self.assertIn("forced analyzer diagnostic", result.stdout)
+
+    def test_source_scan_rejects_non_directory_root(self):
+        file_path = self.write("not_a_directory", "content\n")
+
+        result = self.run_checker("source", file_path)
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("not a directory", result.stdout.lower())
+
     def test_invalid_mode_and_missing_target_fail(self):
         invalid = self.run_checker("unknown", self.temporary)
         self.assertNotEqual(0, invalid.returncode)
