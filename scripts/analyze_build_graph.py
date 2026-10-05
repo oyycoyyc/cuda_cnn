@@ -41,7 +41,8 @@ ENVIRONMENT_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 POSITIVE_INTEGER_RE = re.compile(r"^[1-9][0-9]*$")
 LINKER_NAME_RE = re.compile(r"^[A-Za-z_.$][A-Za-z0-9_.$@+-]*$")
 LINKER_EMULATION_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_+.-]*$")
-LINKER_EXPRESSION_RE = re.compile(r"^[A-Za-z0-9_.$()+*/%<>&|~^?:+-]+$")
+LINKER_EXPRESSION_INTEGER_RE = re.compile(r"(?:0[xX][0-9A-Fa-f]+|[0-9]+)")
+LINKER_EXPRESSION_SYMBOL_RE = re.compile(r"[A-Za-z_.$][A-Za-z0-9_.$@]*")
 REQUIRED_GENCODE = (
     "-gencode=arch=compute_90,code=sm_90",
     "-gencode=arch=compute_90,code=compute_90",
@@ -150,13 +151,54 @@ def non_artifact_option_indexes(tokens):
         if path_like(value) or LINKER_NAME_RE.match(value) is None:
             invalid_value(option, value)
 
+    def valid_linker_expression(expression):
+        position = 0
+        parentheses = 0
+        expects_operand = True
+        while position < len(expression):
+            character = expression[position]
+            if character.isspace():
+                position += 1
+                continue
+            if expects_operand:
+                if character in "+-~":
+                    position += 1
+                    continue
+                if character == "(":
+                    parentheses += 1
+                    position += 1
+                    continue
+                match = LINKER_EXPRESSION_INTEGER_RE.match(expression, position)
+                if match is None:
+                    match = LINKER_EXPRESSION_SYMBOL_RE.match(expression, position)
+                if match is None:
+                    return False
+                position = match.end()
+                expects_operand = False
+                continue
+            if character == ")":
+                if parentheses == 0:
+                    return False
+                parentheses -= 1
+                position += 1
+                continue
+            if expression.startswith(("<<", ">>"), position):
+                position += 2
+                expects_operand = True
+                continue
+            if character in "+-*/%&|^":
+                position += 1
+                expects_operand = True
+                continue
+            return False
+        return not expects_operand and parentheses == 0
+
     def validate_defsym(option, value):
         if "=" not in value:
             invalid_value(option, value)
         symbol, expression = value.split("=", 1)
-        if (not symbol or not expression or path_like(value) or
-                LINKER_NAME_RE.match(symbol) is None or
-                LINKER_EXPRESSION_RE.match(expression) is None):
+        if (LINKER_NAME_RE.match(symbol) is None or
+                not valid_linker_expression(expression)):
             invalid_value(option, value)
 
     def nvcc_option(token):
@@ -177,6 +219,10 @@ def non_artifact_option_indexes(tokens):
 
     while index < len(tokens):
         token = tokens[index]
+        if direct_linker_command and token == "-t":
+            option_indexes.add(index)
+            index += 1
+            continue
         if nvcc_option(token) and not nvcc_command:
             raise AnalysisError(
                 "unsupported scoped option for {0}: {1}".format(executable, token)

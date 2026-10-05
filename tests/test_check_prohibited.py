@@ -2119,6 +2119,83 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertIn("missing.o", result.stdout)
                 self.assertIn("no analyzed producer", result.stdout.lower())
 
+    def test_direct_linker_trace_keeps_following_artifact_reachable(self):
+        self.write("tests/cpu_reference.cpp", "float Oracle() { return 0.0F; }\n")
+        for command in ("ld", "ld.lld", "gold"):
+            with self.subTest(command=command):
+                result = self.run_analyzer(
+                    "clang++ -c tests/cpu_reference.cpp -o build/main.o\n"
+                    "{0} -t build/main.o -o build/lenet_cuda\n".format(command),
+                    "test-source=tests/cpu_reference.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("tests-owned", result.stdout.lower())
+                self.assertIn("main.o", result.stdout)
+
+    def test_valid_defsym_expressions_are_accepted(self):
+        expressions = (
+            "ratio=8/2",
+            "image_base=0x1000",
+            "next=base + 4",
+            "mask=(~flags & 0xff) | (1 << 8)",
+            "delta=-value + +4",
+            "span=(end - start) * 2 % 3",
+            "offset=-(base + 8) >> 1",
+            "bits=value ^ other",
+        )
+        for expression in expressions:
+            for form in ("--defsym '{0}'", "--defsym='{0}'"):
+                option = form.format(expression)
+                with self.subTest(option=option):
+                    result = self.run_analyzer(
+                        "ld {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                        "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                        "test-source=tests/smoke_tests.cpp\n",
+                    )
+
+                    self.assertEqual(0, result.returncode, result.stdout)
+
+    def test_valid_defsym_does_not_hide_following_artifact(self):
+        result = self.run_analyzer(
+            "ld --defsym 'ratio=8 / 2' build/missing.o "
+            "-o build/lenet_cuda\n"
+            "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+            "test-source=tests/smoke_tests.cpp\n",
+        )
+
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("missing.o", result.stdout)
+        self.assertIn("no analyzed producer", result.stdout.lower())
+
+    def test_invalid_defsym_expression_order_fails_closed(self):
+        expressions = (
+            "symbol=",
+            "symbol=   ",
+            "symbol=+++",
+            "symbol=1!2",
+            "symbol=(1+2",
+            "symbol=1+2)",
+            "symbol=1 2",
+            "symbol=1+*2",
+            "symbol=()",
+            "symbol=1(2)",
+            "symbol=/2",
+            "symbol=2/",
+            "symbol=0x",
+        )
+        for expression in expressions:
+            option = "--defsym '{0}'".format(expression)
+            with self.subTest(option=option):
+                result = self.run_analyzer(
+                    "ld {0} src/model.cu -o build/lenet_cuda\n".format(option) +
+                    "clang++ -c tests/smoke_tests.cpp -o build/smoke.o\n",
+                    "test-source=tests/smoke_tests.cpp\n",
+                )
+
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("option", result.stdout.lower())
+
     def test_malformed_scoped_option_values_fail_closed(self):
         cases = (
             ("clang++", "-x"),
@@ -2170,6 +2247,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
     def test_known_scoped_options_reject_on_wrong_executable(self):
         cases = (
+            ("clang++", "-t"),
             ("clang++", "--threads 2"),
             ("clang++", "--threads=2"),
             ("clang++", "-t=2"),

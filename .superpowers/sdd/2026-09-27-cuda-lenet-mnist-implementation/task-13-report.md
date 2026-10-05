@@ -1725,3 +1725,63 @@ exit 0 (Windows LF-to-CRLF conversion notices only)
 No build-log suite, documentation tests, broad suite, CUDA, H20, subagent,
 reviewer, or later-task work was performed. Python 3.6 runtime execution remains
 unavailable locally and is not claimed.
+
+## Compliance Hardening Subtask 13.3f Fix Round 2
+
+### Review Findings Addressed
+
+- Exact `-t` is now classified by effective executable before scoped-option
+  rejection. Recognized direct linkers treat it as a no-value trace option and
+  leave the following artifact visible, NVCC retains its positive-integer
+  thread operand, and unrelated tools continue to reject it as unsupported.
+- `--defsym SYMBOL=EXPRESSION` now uses a Python 3.6-compatible scanner and
+  operand/operator state validation instead of path heuristics and a character
+  whitelist. It accepts decimal and hexadecimal integers, symbols, whitespace,
+  balanced parentheses, unary `+`/`-`/`~`, and common arithmetic and bitwise
+  operators, including division, while rejecting empty operands, disallowed
+  characters, malformed hexadecimal values, unbalanced parentheses, and
+  impossible basic token order. No expression evaluation is performed.
+- Separated and equals `--defsym` forms have matching positive coverage, and a
+  following missing artifact remains visible to provenance analysis.
+
+### TDD Evidence
+
+The linker trace and expression grammar tests were added before changing the
+analyzer. The initial run exposed both review findings:
+
+```text
+python -m unittest -v <4 focused final-review tests>
+Ran 4 tests in 2.385s
+FAILED (failures=25)
+```
+
+After the minimal executable-specific branch and expression scanner were added,
+the same tests passed:
+
+```text
+python -m unittest -v <4 focused final-review tests>
+Ran 4 tests in 2.418s
+OK
+```
+
+### Focused Verification
+
+```text
+set BASH=C:\personal_apps\msys64\usr\bin\bash.exe
+python -m unittest -v <20 focused Subtask 13.3f tests>
+Ran 20 tests in 9.409s
+OK
+
+python -m py_compile scripts/analyze_build_graph.py \
+  tests/test_check_prohibited.py
+exit 0
+
+ast.parse(..., feature_version=(3, 6))
+Python 3.6 grammar check passed for 2 files
+
+git diff --check
+exit 0 (Windows LF-to-CRLF conversion notices only)
+```
+
+No broad suite, CUDA, H20, subagent, reviewer, or later-task work was performed.
+Python 3.6 runtime execution remains unavailable locally and is not claimed.
