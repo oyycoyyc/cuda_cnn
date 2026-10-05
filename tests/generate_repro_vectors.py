@@ -7,6 +7,7 @@ import argparse
 import math
 
 
+# Finalizer mask plus per-purpose domain tags keep independent streams apart.
 MASK64 = (1 << 64) - 1
 SPLIT_DOMAIN = 0x53504C49545F5631
 SHUFFLE_DOMAIN = 0x53485546464C4531
@@ -15,18 +16,21 @@ TRANSLATION_Y_DOMAIN = 0x5452414E535F5931
 INITIALIZATION_DOMAIN = 0x494E49545F563031
 
 
+# SplitMix64 finalizer: xor-shift-multiply rounds reduced modulo 2**64.
 def mix64(value):
     value = ((value ^ (value >> 30)) * 0xBF58476D1CE4E5B9) & MASK64
     value = ((value ^ (value >> 27)) * 0x94D049BB133111EB) & MASK64
     return (value ^ (value >> 31)) & MASK64
 
 
+# Combines seed, domain, and operands into a derived per-purpose stream seed.
 def derive(seed, domain, a, b):
     value = mix64((seed ^ domain) & MASK64)
     value = mix64((value ^ a) & MASK64)
     return mix64((value ^ b) & MASK64)
 
 
+# Counter-based 64-bit stream that advances before finalizing each draw.
 class SplitMix64(object):
     def __init__(self, seed):
         self.state = seed & MASK64
@@ -35,6 +39,7 @@ class SplitMix64(object):
         self.state = (self.state + 0x9E3779B97F4A7C15) & MASK64
         return mix64(self.state)
 
+    # Rejection-samples a uniform value in [0, bound) without modulo bias.
     def bounded(self, bound):
         if bound <= 0 or bound > MASK64:
             raise ValueError("bound must be in [1, 2^64 - 1]")
@@ -45,6 +50,7 @@ class SplitMix64(object):
                 return value % bound
 
 
+# Fisher-Yates permutation driven by the seeded stream.
 def shuffled(values, seed):
     result = list(values)
     random = SplitMix64(seed)
@@ -54,6 +60,7 @@ def shuffled(values, seed):
     return result
 
 
+# Splits a seeded permutation into training and validation index lists.
 def split_indices(sample_count, validation_count, seed):
     stream = derive(seed, SPLIT_DOMAIN, sample_count, validation_count)
     permutation = shuffled(range(sample_count), stream)
@@ -61,11 +68,13 @@ def split_indices(sample_count, validation_count, seed):
     return permutation[:training_count], permutation[training_count:]
 
 
+# Reshuffles the canonical order deterministically for one one-based epoch.
 def epoch_indices(canonical, seed, one_based_epoch):
     stream = derive(seed, SHUFFLE_DOMAIN, one_based_epoch, len(canonical))
     return shuffled(canonical, stream)
 
 
+# Derives independent x/y shifts in [-2, 2] per sample and epoch.
 def translation(seed, one_based_epoch, original_index):
     x_seed = derive(seed, TRANSLATION_X_DOMAIN, one_based_epoch,
                     original_index)
@@ -81,6 +90,7 @@ def open_uniform(raw):
     return ((raw >> 12) + 0.5) * (2.0 ** -52)
 
 
+# Draws Gaussian weights via Box-Muller scaled by sqrt(2 / fan_in).
 def initialized_prefix(seed, ordinal, fan_in, count):
     stream = derive(seed, INITIALIZATION_DOMAIN, ordinal, fan_in)
     random = SplitMix64(stream)
@@ -115,10 +125,12 @@ def self_check():
     assert first[0] == second[0]
 
 
+# Formats one vector as the comma-separated golden text field.
 def csv(values):
     return ",".join(str(value) for value in values)
 
 
+# Renders the complete deterministic vector text for the pinned seed.
 def render_vectors():
     seed = 1337
     raw_random = SplitMix64(seed)
@@ -166,6 +178,7 @@ def render_vectors():
     return "\n".join(lines) + "\n"
 
 
+# Self-checks the protocol, then writes the reproducible golden vectors.
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)

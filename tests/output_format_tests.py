@@ -12,6 +12,7 @@ class OutputFormatDocumentationTest(unittest.TestCase):
         with open(os.path.join(ROOT, "README.md"), "r") as input_file:
             self.readme = input_file.read()
 
+    # Builds and runs the production reporting suite on the host.
     def test_host_reporting_suite_validates_production_formatters(self):
         make = os.environ.get("MAKE", "make")
         build = subprocess.run(
@@ -37,10 +38,12 @@ class OutputFormatDocumentationTest(unittest.TestCase):
             "event=test_suite name=reporting_tests status=pass", result.stdout
         )
 
+    # Requires a sample record in README to match its documented regex.
     def assert_documented_record(self, record, pattern):
         self.assertIn(record, self.readme)
         self.assertIsNotNone(re.fullmatch(pattern, record))
 
+    # Record grammars: device, epoch, final test, evaluation, and inference.
     def test_device_record_grammar_is_documented(self):
         self.assert_documented_record(
             "event=device index=0 name=NVIDIA H20 compute_capability=9.0",
@@ -73,6 +76,7 @@ class OutputFormatDocumentationTest(unittest.TestCase):
             r"min_accuracy=\d+\.\d{6} status=(?:pass|fail)",
         )
 
+    # Inference records must carry exactly ten logits and probabilities.
     def test_inference_record_has_exactly_ten_logits_and_probabilities(self):
         values = ",".join(["0.000000000"] * 10)
         record = (
@@ -87,6 +91,7 @@ class OutputFormatDocumentationTest(unittest.TestCase):
         )
         self.assert_documented_record(record, pattern)
 
+    # Locks the documented process exit-code contract.
     def test_exit_code_contract_is_documented(self):
         for text in (
             "`0`: success",

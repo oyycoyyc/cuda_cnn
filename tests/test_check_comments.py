@@ -11,6 +11,7 @@ CHECKER = os.path.join(ROOT, "scripts", "check_comments.py")
 
 
 class CommentCheckerTest(unittest.TestCase):
+    # Owns a throwaway project tree with include, src, and docs directories.
     def setUp(self):
         self.temporary = tempfile.mkdtemp(prefix="lenet-comments-")
         os.makedirs(os.path.join(self.temporary, "include"))
@@ -20,6 +21,7 @@ class CommentCheckerTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temporary)
 
+    # Writes a fixture file into the owned temporary project tree.
     def write(self, relative_path, content):
         path = os.path.join(self.temporary, relative_path)
         parent = os.path.dirname(path)
@@ -29,6 +31,7 @@ class CommentCheckerTest(unittest.TestCase):
             output.write(content)
         return path
 
+    # Invokes the comment checker against the owned tree and captures output.
     def run_checker(self, checklist="docs/checklist.md", require_reviewed=False):
         command = [
             sys.executable,
@@ -47,6 +50,7 @@ class CommentCheckerTest(unittest.TestCase):
             universal_newlines=True,
         )
 
+    # Builds the documented positive fixture that the stable-ID tests reuse.
     def documented_fixture(self):
         self.write(
             "include/api.h",
@@ -90,11 +94,13 @@ class CommentCheckerTest(unittest.TestCase):
             "- [ ] `kernel:src/kernel.cu:ExampleKernel(const float*input,float*output,int count)`\n",
         )
 
+    # Documented types, methods, launchers, and kernels all pass.
     def test_multiline_types_methods_launchers_and_kernels_pass(self):
         self.documented_fixture()
         result = self.run_checker()
         self.assertEqual(0, result.returncode, result.stdout)
 
+    # Declarations must carry an adjacent comment to be documented.
     def test_each_declaration_kind_requires_an_adjacent_comment(self):
         cases = (
             ("struct MissingType {};\n", "public:include/api.h:MissingType"),
@@ -115,6 +121,7 @@ class CommentCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn(identifier, result.stdout)
 
+    # Kernels and other global definitions must also be adjacent-commented.
     def test_every_global_definition_requires_an_adjacent_comment(self):
         self.write(
             "src/kernel.cu",
@@ -137,6 +144,7 @@ class CommentCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn(identifier, result.stdout)
 
+    # Checklist IDs must match all discovered stable IDs, with no stale entries.
     def test_checklist_must_match_all_discovered_stable_ids(self):
         self.documented_fixture()
         checklist = os.path.join(self.temporary, "docs", "checklist.md")
@@ -152,6 +160,7 @@ class CommentCheckerTest(unittest.TestCase):
         self.assertIn("missing checklist ID", result.stdout)
         self.assertIn("stale checklist ID", result.stdout)
 
+    # Overloads must have distinct signature-based stable IDs.
     def test_overloads_have_distinct_signature_ids(self):
         self.write(
             "include/api.h",
@@ -168,6 +177,7 @@ class CommentCheckerTest(unittest.TestCase):
         result = self.run_checker()
         self.assertEqual(0, result.returncode, result.stdout)
 
+    # Nested public types and methods are inventoried as qualified IDs.
     def test_nested_public_type_and_method_are_inventoried(self):
         self.write(
             "include/api.h",
@@ -190,6 +200,7 @@ class CommentCheckerTest(unittest.TestCase):
         result = self.run_checker()
         self.assertEqual(0, result.returncode, result.stdout)
 
+    # Repeated type declarations get distinct role-qualified IDs.
     def test_repeated_type_declarations_have_distinct_role_ids(self):
         self.write(
             "include/api.h",
@@ -206,6 +217,7 @@ class CommentCheckerTest(unittest.TestCase):
         result = self.run_checker()
         self.assertEqual(0, result.returncode, result.stdout)
 
+    # Manual entries must resolve to exactly one source definition.
     def test_manual_entries_must_resolve_to_exactly_one_source_definition(self):
         self.write(
             "src/parser.cpp",
@@ -238,6 +250,7 @@ class CommentCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, duplicate.returncode, duplicate.stdout)
         self.assertIn("exactly one", duplicate.stdout)
 
+    # The review gate only passes when every entry is checked off.
     def test_manual_review_gate_requires_checked_entries(self):
         self.documented_fixture()
         unchecked = self.run_checker(require_reviewed=True)
@@ -251,6 +264,7 @@ class CommentCheckerTest(unittest.TestCase):
         reviewed = self.run_checker(require_reviewed=True)
         self.assertEqual(0, reviewed.returncode, reviewed.stdout)
 
+    # The real project inventory must stay in sync with its checklist.
     def test_project_inventory_and_checklist_are_in_sync(self):
         result = subprocess.run(
             [

@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - Python 3.6 includes unittest.mock
     import mock
 
 
+# Encodes an in-memory grayscale PNG for Parquet image payloads.
 def encoded_image(mode="L", size=(28, 28), value=0):
     image = Image.new(mode, size, value)
     output = io.BytesIO()
@@ -27,6 +28,7 @@ def encoded_image(mode="L", size=(28, 28), value=0):
 
 
 class PrepareMnistTest(unittest.TestCase):
+    # Each test owns an isolated temporary directory for inputs and outputs.
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.directory = self.temporary_directory.name
@@ -34,12 +36,15 @@ class PrepareMnistTest(unittest.TestCase):
     def tearDown(self):
         self.temporary_directory.cleanup()
 
+    # Resolves a Parquet fixture path inside the temporary directory.
     def parquet_path(self, name="input.parquet"):
         return os.path.join(self.directory, name)
 
+    # Resolves a binary output path inside the temporary directory.
     def output_path(self, name="output.bin"):
         return os.path.join(self.directory, name)
 
+    # Writes a Parquet fixture, optionally with an explicit image column type.
     def write_table(self, images, labels, image_type=None, name="input.parquet"):
         if image_type is None:
             table = pa.table({"image": images, "label": labels})
@@ -52,6 +57,7 @@ class PrepareMnistTest(unittest.TestCase):
         pq.write_table(table, path)
         return path
 
+    # Asserts conversion rejects a fixture and leaves no partial output behind.
     def assert_conversion_fails(self, images, labels, image_type=None):
         parquet_path = self.write_table(images, labels, image_type=image_type)
         output_path = self.output_path()
@@ -59,6 +65,7 @@ class PrepareMnistTest(unittest.TestCase):
             prepare_mnist.convert_parquet(parquet_path, output_path, len(labels))
         self.assertFalse(os.path.exists(output_path))
 
+    # Converts the Hugging Face image struct into the exact MNISTC1 layout.
     def test_converts_hugging_face_image_struct_to_exact_binary_layout(self):
         image0 = bytes(bytearray([0]) * 784)
         image1 = bytes(bytearray([127]) * 784)
@@ -80,6 +87,7 @@ class PrepareMnistTest(unittest.TestCase):
         with open(output_path, "rb") as converted:
             self.assertEqual(expected, converted.read())
 
+    # Accepts a synthetic raw-binary image column.
     def test_converts_synthetic_binary_image_column(self):
         pixels = bytes(bytearray([42]) * 784)
         parquet_path = self.write_table([self._encoded_pixels(pixels)], [4],
@@ -91,6 +99,7 @@ class PrepareMnistTest(unittest.TestCase):
         with open(output_path, "rb") as converted:
             self.assertEqual(pixels, converted.read()[24:24 + 784])
 
+    # Conversion rejection: non-grayscale and wrongly sized images.
     def test_rejects_non_grayscale_and_wrong_sized_images(self):
         cases = [
             (encoded_image(mode="RGB"), "RGB image"),
@@ -136,6 +145,7 @@ class PrepareMnistTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare_mnist.convert_parquet(one_row_path, self.output_path(), 2)
 
+    # A cached-file checksum mismatch stops before the Parquet is opened.
     def test_checksum_mismatch_stops_before_parquet_open(self):
         parquet_path = self.parquet_path()
         with open(parquet_path, "wb") as cached:
@@ -152,6 +162,7 @@ class PrepareMnistTest(unittest.TestCase):
         read_table.assert_not_called()
         self.assertFalse(os.path.exists(output_path))
 
+    # Every cached download use is rehashed, never trusted from the cache.
     def test_cached_download_is_rehashed_on_every_use(self):
         destination = self.parquet_path()
         good_content = b"verified parquet bytes"
@@ -169,6 +180,7 @@ class PrepareMnistTest(unittest.TestCase):
                 prepare_mnist.download_verified(
                     "https://example.invalid/data", destination, expected_hash)
 
+    # A failed download leaves neither destination nor temporary part file.
     def test_failed_download_leaves_no_destination_or_temporary_file(self):
         destination = self.parquet_path()
         response = FakeResponse([b"wrong ", b"content"])
@@ -183,6 +195,7 @@ class PrepareMnistTest(unittest.TestCase):
                               if name.endswith(".part")])
         self.assertTrue(response.closed)
 
+    # Atomic preservation: a failed conversion keeps the previous complete output.
     def test_conversion_failure_preserves_existing_output(self):
         parquet_path = self.write_table(
             [encoded_image(value=1), b"malformed"], [1, 2],
@@ -199,6 +212,7 @@ class PrepareMnistTest(unittest.TestCase):
         self.assertEqual([], [name for name in os.listdir(self.directory)
                               if name.endswith(".part")])
 
+    # Dependency pinning: requirements carry exact target wheel hashes.
     def test_requirements_include_exact_target_wheel_hashes(self):
         expected = {
             "numpy": ("1.19.5", {
@@ -247,6 +261,7 @@ class PrepareMnistTest(unittest.TestCase):
 
         self.assertEqual(expected, actual)
 
+    # The explicit conversion CLI writes a header plus one 784-byte image.
     def test_explicit_conversion_cli(self):
         parquet_path = self.write_table([encoded_image(value=8)], [8],
                                         image_type=pa.binary())
@@ -268,6 +283,7 @@ class PrepareMnistTest(unittest.TestCase):
         return output.getvalue()
 
 
+# Minimal requests response double used to inject download content.
 class FakeResponse(object):
     def __init__(self, chunks):
         self.chunks = chunks

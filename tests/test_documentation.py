@@ -6,12 +6,14 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+# Reads one repository document relative to the project root.
 def read_document(relative_path):
     with open(os.path.join(ROOT, relative_path), "r") as input_file:
         return input_file.read()
 
 
 class DocumentationTest(unittest.TestCase):
+    # README environment constraints, pinned versions, and the local no-CUDA boundary.
     def test_readme_covers_environment_constraints_and_local_boundary(self):
         readme = read_document("README.md")
         required = (
@@ -37,6 +39,7 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, readme)
 
+    # Data provenance: dataset sources, wheel hashes, and preparation commands.
     def test_readme_pins_dataset_sources_hashes_and_preparation(self):
         readme = read_document("README.md")
         required = (
@@ -54,6 +57,7 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, readme)
 
+    # Architecture: layer shapes, memory layouts, and binary file formats.
     def test_readme_documents_architecture_layouts_and_binary_formats(self):
         readme = read_document("README.md")
         required = (
@@ -77,6 +81,7 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, readme)
 
+    # Commands and hyper-parameter defaults, timing method, and threshold.
     def test_readme_documents_commands_defaults_timing_and_threshold(self):
         readme = read_document("README.md")
         required = (
@@ -104,6 +109,7 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, readme)
 
+    # Error handling and required troubleshooting guidance in the README.
     def test_readme_documents_error_handling_and_required_troubleshooting(self):
         readme = read_document("README.md")
         required = (
@@ -121,6 +127,7 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, readme)
 
+    # H20 guide ordering: data preparation precedes real MNIST workflow cases.
     def test_h20_guide_prepares_data_before_real_mnist_workflow_cases(self):
         guide = read_document("docs/h20-acceptance.md")
         prepare = guide.index("python3.6 scripts/prepare_mnist.py --output-dir data")
@@ -133,6 +140,7 @@ class DocumentationTest(unittest.TestCase):
         self.assertLess(prepare, overfit)
         self.assertLess(prepare, infer)
 
+    # Evidence: the guide lists every required acceptance command and log.
     def test_h20_guide_contains_complete_evidence_and_acceptance_commands(self):
         guide = read_document("docs/h20-acceptance.md")
         required = (
@@ -158,12 +166,14 @@ class DocumentationTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, guide)
 
+    # Cleanup must not delete the active acceptance log it is still writing.
     def test_h20_cleanup_cannot_delete_the_active_acceptance_log(self):
         guide = read_document("docs/h20-acceptance.md")
         log_open = guide.index("exec > >(tee")
         self.assertIn('exec > >(tee "acceptance/', guide[log_open:])
         self.assertNotIn('exec > >(tee "build/', guide[log_open:])
 
+    # Scope: actual versus dry-run build evidence must remain distinguishable.
     def test_documentation_distinguishes_actual_and_dry_run_build_evidence(self):
         readme = read_document("README.md")
         guide = read_document("docs/h20-acceptance.md")
@@ -174,6 +184,7 @@ class DocumentationTest(unittest.TestCase):
         )
         self.assertIn("event=build status=pass target=all", guide)
 
+    # The CUDA error claim excludes best-effort nonthrowing cleanup calls.
     def test_cuda_error_claim_excludes_nonthrowing_cleanup(self):
         readme = read_document("README.md")
         self.assertNotIn("Every CUDA Runtime result is checked", readme)
@@ -183,6 +194,7 @@ class DocumentationTest(unittest.TestCase):
         self.assertIn("cudaStreamDestroy", readme)
         self.assertIn("cudaEventDestroy", readme)
 
+    # Actual acceptance logs stay outside the build directory.
     def test_h20_guide_keeps_actual_logs_outside_build_directory(self):
         readme = read_document("README.md")
         guide = read_document("docs/h20-acceptance.md")
@@ -198,6 +210,7 @@ class DocumentationTest(unittest.TestCase):
         self.assertNotIn("build/verbose-build.log", readme)
         self.assertNotIn("build/dry-run.log", readme)
 
+    # Ordering: clean and pipefail are set before verbose logging starts.
     def test_h20_guide_cleans_and_sets_pipefail_before_verbose_logging(self):
         guide = read_document("docs/h20-acceptance.md")
         self.assertIn("set -o pipefail", guide)
@@ -207,6 +220,7 @@ class DocumentationTest(unittest.TestCase):
         self.assertLess(pipefail, tee)
         self.assertLess(clean, tee)
 
+    # Scanner scope claims remain limited and local CUDA success is disclaimed.
     def test_documentation_scopes_scanner_and_avoids_unsupported_claims(self):
         readme = read_document("README.md")
         guide = read_document("docs/h20-acceptance.md")
@@ -220,6 +234,7 @@ class DocumentationTest(unittest.TestCase):
             guide,
         )
 
+    # No placeholder TODO/TBD/FIXME markers may remain in the documents.
     def test_documents_contain_no_placeholder_markers(self):
         for relative_path in (
             "README.md",

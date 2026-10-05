@@ -7,6 +7,8 @@ import tempfile
 import unittest
 
 
+# Builds a little-endian MNISTC1 buffer with zero, constant, and range-pixel
+# rows so the C++ loader must honor headers, payload, and labels.
 def three_row_fixture():
     image0 = bytes(bytearray([0]) * 784)
     image1 = bytes(bytearray([127]) * 784)
@@ -15,7 +17,9 @@ def three_row_fixture():
             image0 + image1 + image2 + bytes(bytearray([0, 5, 9])))
 
 
+# Verifies the Python writer and the compiled C++ probe agree byte for byte.
 class DataInteropTest(unittest.TestCase):
+    # Runs the built probe on the temporary fixture and checks its exact report.
     def test_cpp_loader_agrees_with_python_little_endian_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture_path = os.path.join(directory, "three-row.bin")

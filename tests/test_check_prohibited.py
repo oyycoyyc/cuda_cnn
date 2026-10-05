@@ -16,6 +16,7 @@ ANALYZER = os.path.join(ROOT, "scripts", "analyze_build_graph.py")
 
 
 class ProhibitedCheckerTest(unittest.TestCase):
+    # Owns a throwaway project tree seeded with a minimal Makefile and sources.
     def setUp(self):
         self.temporary = tempfile.mkdtemp(prefix="lenet-prohibited-")
         for directory in ("include", "src", "tests", "scripts", "docs"):
@@ -45,6 +46,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temporary)
 
+    # Writes a fixture file into the owned tree, creating parent directories.
     def write(self, relative_path, content):
         path = os.path.join(self.temporary, relative_path)
         parent = os.path.dirname(path)
@@ -54,6 +56,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             output.write(content)
         return path
 
+    # Runs the shell checker for a mode and target, with optional environment.
     def run_checker(self, mode, target, extra_environment=None):
         bash = os.environ.get("BASH", "bash")
         environment = os.environ.copy()
@@ -70,6 +73,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             universal_newlines=True,
         )
 
+    # Runs the provenance analyzer over written recipe and manifest logs.
     def run_analyzer(self, recipes, manifest):
         recipe_path = self.write("recipes.log", recipes)
         manifest_path = self.write("manifest.log", manifest)
@@ -90,6 +94,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
             universal_newlines=True,
         )
 
+    # Injects a fixture, asserts rejection, then restores the owned tree.
     def assert_rejected(self, relative_path, content, mode="source"):
         path = os.path.join(self.temporary, relative_path)
         original = None
@@ -109,6 +114,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
             else:
                 self.write(relative_path, original)
 
+    # Source basics: clean trees pass while prohibited headers, namespaces,
+    # APIs, library families, CPU fallbacks, and random APIs are rejected.
     def test_clean_source_tree_passes_and_nonproduction_text_is_ignored(self):
         self.write("include/model.h", "void LaunchModel();\n")
         decoy = "cudnn cublas nvinfer1 thrust:: cub:: curand -lcudnn\n"
@@ -282,6 +289,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, active.returncode, active.stdout)
         self.assertIn("active_tests.cu", active.stdout)
 
+    # Include resolution: active test headers are followed transitively and
+    # unresolved quoted includes fail closed.
     def test_active_test_transitive_headers_are_scanned_without_dependency_files(self):
         self.write("tests/smoke_tests.cpp", '#include "test_harness.h"\n')
         self.write("tests/test_harness.h", '#include "cpu_reference.h"\n')
@@ -301,6 +310,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("cannot resolve", result.stdout.lower())
         self.assertIn("missing_project_header.h", result.stdout)
 
+    # Recipe and manifest provenance: test sources must be declared and every
+    # source-bearing recipe must name a supported output.
     def test_source_scan_propagates_source_bearing_recipe_without_output(self):
         self.write(
             "Makefile",
@@ -427,6 +438,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned", result.stdout.lower())
         self.assertIn("oracle.o", result.stdout.lower())
 
+    # Canonicalization mocks model Windows case aliases for analyzer internals.
     def test_windows_case_variant_alias_reconciles_then_taints_production(self):
         if os.name != "nt":
             self.skipTest("Windows canonical case-normalization regression")
@@ -659,6 +671,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
             "src/model.cu\ntests/space dir/active test.cpp\n", result.stdout
         )
 
+    # Include directories and symlinks: precedence, duplicate headers, and
+    # canonical recursion determine which header is active.
     def test_attached_include_flags_resolve_active_header(self):
         self.write("tests/smoke_tests.cpp", '#include "selected.h"\n')
         self.write("tests/include/selected.h", "void Clean();\n")
@@ -1617,6 +1631,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertIn("tests-owned compiler input", str(caught.exception).lower())
         self.assertIn("production_alias.h", str(caught.exception))
 
+    # Options, archives, and linker semantics: scoped options, archive
+    # mutations, and response or control files are parsed and traced.
     def test_distinct_o_option_families_are_not_attached_outputs(self):
         result = self.run_analyzer(
             "unknown-linker -opt-info=build/report.o -openmp -objc-arc "
@@ -2410,6 +2426,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout)
                 self.assertIn("response", result.stdout.lower())
 
+    # Shell and glob lexing: expansions, brackets, quoting, and trailing
+    # comments decide whether an input is literal or ambiguous.
     def test_shell_expansions_are_rejected_in_relevant_commands(self):
         expansions = (
             "$OBJECTS",
@@ -2632,6 +2650,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("shell", result.stdout.lower())
 
+    # Artifact identity: normalized, case, and modeled realpath aliases share
+    # one graph identity; missing or duplicate producers fail closed.
     def test_reachable_artifact_without_producer_is_rejected(self):
         result = self.run_analyzer(
             "unknown-linker build/missing.o -o build/lenet_cuda\n"
@@ -2677,6 +2697,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout)
 
+    # Modeled realpath aliases exercise canonical identity without real links.
     def test_modeled_case_aliases_reconcile_nonexistent_artifacts(self):
         recipe_path = self.write(
             "recipes.log",
@@ -2953,6 +2974,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("response", result.stdout.lower())
 
+    # Canonical build log: two gencode flags on both compile and link records.
     def valid_build_log(self, completion=True):
         log = (
             "nvcc -std=c++14 -gencode=arch=compute_90,code=sm_90 "
@@ -2967,6 +2989,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
             log += "event=build status=pass target=all\n"
         return log
 
+    # Build-log structure: marker placement, failure records, gencode flags,
+    # a single lenet_cuda link, dry-run evidence, and staleness.
     def test_actual_build_scan_accepts_complete_runtime_only_log(self):
         log = self.write(
             "verbose-build.log",
@@ -3161,6 +3185,8 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, stale_test.returncode, stale_test.stdout)
         self.assertIn("stale", stale_test.stdout.lower())
 
+    # Fail-closed harness behavior: tool, Make, analyzer, and target failures
+    # propagate instead of reporting success.
     def test_scanner_fails_closed_when_find_or_grep_fails(self):
         for command in ("find", "grep"):
             with self.subTest(command=command):
