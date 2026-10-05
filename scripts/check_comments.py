@@ -2,9 +2,11 @@
 from __future__ import print_function
 
 import argparse
+import io
 import os
 import re
 import sys
+import tokenize
 
 
 # Compiled patterns and keyword sets for the signature inventory.
@@ -34,6 +36,16 @@ IGNORED_FUNCTION_NAMES = set(
     )
 )
 MANUAL_ID = re.compile(r"^manual:([^:]+):([A-Za-z_]\w*)$")
+PYTHON_STRING_TOKENS = tuple(
+    token_type
+    for token_type in (
+        tokenize.STRING,
+        getattr(tokenize, "FSTRING_START", None),
+        getattr(tokenize, "FSTRING_MIDDLE", None),
+        getattr(tokenize, "FSTRING_END", None),
+    )
+    if token_type is not None
+)
 
 
 def normalized_path(path):
@@ -100,6 +112,18 @@ def sanitized_cpp(text):
         else:
             continuation = False
     return "".join(cleaned_lines)
+
+
+# Blanks Python comments and strings without interpreting their contents as code.
+def sanitized_python(text):
+    tokens = []
+    for token in tokenize.generate_tokens(io.StringIO(text).readline):
+        if token.type == tokenize.COMMENT or token.type in PYTHON_STRING_TOKENS:
+            token = tokenize.TokenInfo(
+                token.type, "", token.start, token.end, token.line
+            )
+        tokens.append(token)
+    return tokenize.untokenize(tokens)
 
 
 # Checks whether a declaration has an adjacent comment or block comment above it.
@@ -411,6 +435,7 @@ def manual_definition_count(root, identifier):
         text = input_file.read()
     if path.endswith(".py"):
         pattern = re.compile(r"^\s*def\s+{0}\s*\(".format(re.escape(symbol)), re.M)
+        sanitized = sanitized_python(text)
     else:
         pattern = re.compile(
             r"\b{0}\s*\([^;{{}}]*\)\s*(?:const\s*)?(?:noexcept\s*)?\{{".format(
@@ -418,7 +443,8 @@ def manual_definition_count(root, identifier):
             ),
             re.S,
         )
-    return len(pattern.findall(sanitized_cpp(text)))
+        sanitized = sanitized_cpp(text)
+    return len(pattern.findall(sanitized))
 
 
 # Reconciles discovered IDs, checklist entries, and required reviews.

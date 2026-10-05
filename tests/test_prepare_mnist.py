@@ -131,8 +131,16 @@ class PrepareMnistTest(unittest.TestCase):
     def test_rejects_labels_outside_decimal_digit_range(self):
         for label in (-1, 10):
             with self.subTest(label=label):
-                self.assert_conversion_fails([encoded_image()], [label],
-                                             image_type=pa.binary())
+                parquet_path = self.write_table(
+                    [encoded_image()], [label], image_type=pa.binary())
+                output_path = self.output_path()
+                with self.assertRaises(ValueError) as raised:
+                    prepare_mnist.convert_parquet(parquet_path, output_path, 1)
+                self.assertEqual(
+                    "label %r is outside [0, 9]" % label,
+                    str(raised.exception),
+                )
+                self.assertFalse(os.path.exists(output_path))
 
     def test_rejects_zero_and_mismatched_expected_counts(self):
         empty_path = self.write_table([], [], image_type=pa.binary(),

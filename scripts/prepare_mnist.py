@@ -149,7 +149,7 @@ def convert_parquet(parquet_path, output_path, expected_count):
                 label = table["label"][row_index].as_py()
                 if (not isinstance(label, int) or isinstance(label, bool) or
                         label < 0 or label > 9):
-                    raise ValueError("label %d is outside [0, 9]" % row_index)
+                    raise ValueError("label %r is outside [0, 9]" % label)
                 output_file.write(_decode_image(image_value, row_index))
                 labels.append(label)
             output_file.write(labels)

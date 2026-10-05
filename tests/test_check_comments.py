@@ -250,6 +250,72 @@ class CommentCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, duplicate.returncode, duplicate.stdout)
         self.assertIn("exactly one", duplicate.stdout)
 
+    # Python comments cannot hide or fabricate a manual definition.
+    def test_manual_python_definition_ignores_comment_text(self):
+        cases = (
+            (
+                "# It's documented prose.\n"
+                "def Fixture():\n"
+                "    pass\n",
+                "apostrophe",
+            ),
+            (
+                "# It's documented prose.\n"
+                "# 'def Fixture( appears only as an example.\n"
+                "def Fixture():\n"
+                "    pass\n",
+                "source-like example",
+            ),
+            (
+                "# A comment ending in a backslash \\\n"
+                "def Fixture():\n"
+                "    pass\n",
+                "trailing backslash",
+            ),
+            (
+                "EXAMPLE = '''It's documented prose.\n"
+                "def Fixture( appears only as an example and isn't code.\n"
+                "'''\n"
+                "def Fixture():\n"
+                "    pass\n",
+                "source-like string",
+            ),
+            (
+                "EXAMPLE = f'''documented prose.\n"
+                "def Fixture( appears only as an example.\n"
+                "'''\n"
+                "def Fixture():\n"
+                "    pass\n",
+                "source-like formatted string",
+            ),
+        )
+        for source, label in cases:
+            with self.subTest(label=label):
+                self.write("scripts/fixture.py", source)
+                self.write(
+                    "docs/checklist.md",
+                    "- [ ] `manual:scripts/fixture.py:Fixture`\n",
+                )
+                result = self.run_checker()
+                self.assertEqual(0, result.returncode, result.stdout)
+
+    # A real duplicate remains invalid after Python comments are removed.
+    def test_manual_python_definition_rejects_real_duplicates(self):
+        self.write(
+            "scripts/fixture.py",
+            "def Fixture():\n"
+            "    pass\n"
+            "def Fixture(value):\n"
+            "    return value\n",
+        )
+        self.write(
+            "docs/checklist.md",
+            "- [ ] `manual:scripts/fixture.py:Fixture`\n",
+        )
+        result = self.run_checker()
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertIn("exactly one", result.stdout)
+
     # The review gate only passes when every entry is checked off.
     def test_manual_review_gate_requires_checked_entries(self):
         self.documented_fixture()

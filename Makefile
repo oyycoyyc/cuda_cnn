@@ -116,7 +116,7 @@ cuda-tests: $(CUDA_TEST_PROGRAMS) prepare-data
 	$(Q)$(WORKFLOW_TEST_PROGRAM) --mnist-train data/train.bin
 
 # Run the Python data and interoperability test modules.
-python-tests:
+python-tests: $(BUILD_DIR)/dataset_probe$(EXEEXT)
 	$(Q)$(PYTHON) -m unittest -v $(PYTHON_TEST_MODULES)
 
 # Run the compliance modules and both policy scanners.

@@ -77,6 +77,16 @@ class ProjectComplianceTest(unittest.TestCase):
         workflow = match.start()
         self.assertLess(preparation, workflow)
 
+    # The Python interoperability test requires the compiled dataset probe.
+    def test_python_tests_dry_run_builds_dataset_probe(self):
+        make = os.environ.get("MAKE", "make")
+        result = self.run_command([make, "-B", "-n", "python-tests"])
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("tests/dataset_probe.cpp", result.stdout)
+        probe = result.stdout.index("tests/dataset_probe.cpp")
+        python_tests = result.stdout.index("-m unittest -v")
+        self.assertLess(probe, python_tests)
+
     # The Makefile must expose the Python, static, and aggregate test gates.
     def test_make_exposes_python_static_and_aggregate_gates(self):
         with open(os.path.join(ROOT, "Makefile"), "r") as input_file:
