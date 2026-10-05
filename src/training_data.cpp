@@ -6,8 +6,11 @@
 #include <limits>
 #include <stdexcept>
 
+// Builds the workflow split: 60000 samples always yield 55000/5000, while
+// other counts require the nonstandard allowance and at least two samples.
 DatasetSplit MakeWorkflowSplit(std::uint32_t sample_count, std::uint64_t seed,
                                bool allow_nonstandard_count) {
+  // Official counts fix validation at 5000; nonstandard counts use one fifth.
   std::uint32_t validation_count = 5000;
   if (sample_count != 60000) {
     if (!allow_nonstandard_count) {
@@ -23,6 +26,8 @@ DatasetSplit MakeWorkflowSplit(std::uint32_t sample_count, std::uint64_t seed,
   return MakeTrainValidationSplit(sample_count, validation_count, seed);
 }
 
+// Packs up to capacity entries starting at offset into reusable batch storage,
+// returning the actual, possibly partial, batch size.
 std::uint32_t PackBatch(const MnistDataset& dataset,
                         const std::vector<std::uint32_t>& order,
                         std::uint32_t offset, std::uint32_t capacity,
@@ -37,6 +42,7 @@ std::uint32_t PackBatch(const MnistDataset& dataset,
     throw std::out_of_range("offset must be below order size");
   }
 
+  // Validate dataset dimensions and storage before any copy.
   const std::size_t rows = dataset.rows;
   const std::size_t columns = dataset.columns;
   if (rows == 0 || columns == 0 ||
@@ -56,6 +62,7 @@ std::uint32_t PackBatch(const MnistDataset& dataset,
         "dataset label storage must match sample_count");
   }
 
+  // The final batch may be partial, so copy only the remaining entries.
   const std::size_t remaining = order.size() - offset;
   const std::size_t actual =
       std::min(remaining, static_cast<std::size_t>(capacity));
@@ -63,6 +70,7 @@ std::uint32_t PackBatch(const MnistDataset& dataset,
     throw std::invalid_argument(
         "packed image byte count must fit size_t");
   }
+  // Check every selected order index before touching destination storage.
   for (std::size_t packed = 0; packed < actual; ++packed) {
     if (order[static_cast<std::size_t>(offset) + packed] >=
         dataset.sample_count) {
@@ -70,6 +78,8 @@ std::uint32_t PackBatch(const MnistDataset& dataset,
     }
   }
 
+  // Reuse the caller's vectors, then copy images, labels, and original indices
+  // together so their correspondence never drifts.
   batch->images.resize(actual * image_size);
   batch->labels.resize(actual);
   batch->original_indices.resize(actual);

@@ -20,6 +20,8 @@
 
 namespace {
 
+// On-disk identity: the LNETC01 magic, format and architecture versions, the
+// canonical tensor count, and the fixed normalization pair.
 const std::array<unsigned char, 8> kMagic{{'L', 'N', 'E', 'T', 'C', '0', '1',
                                            0}};
 const std::uint32_t kFormatVersion = 1;
@@ -28,6 +30,8 @@ const std::uint32_t kTensorCount = 10;
 const float kNormalizationMean = 0.1307F;
 const float kNormalizationStddev = 0.3081F;
 
+// Requires a one-based epoch, finite unit-interval accuracy, and the fixed
+// normalization constants.
 void ValidateMetadata(const std::string& path,
                       const CheckpointMetadata& metadata) {
   if (metadata.best_epoch == 0) {
@@ -47,6 +51,7 @@ void ValidateMetadata(const std::string& path,
   }
 }
 
+// Validates metadata, canonical schema, and value finiteness before any write.
 void ValidateCheckpoint(const std::string& path,
                         const Checkpoint& checkpoint) {
   ValidateMetadata(path, checkpoint.metadata);
@@ -67,6 +72,8 @@ void ValidateCheckpoint(const std::string& path,
   }
 }
 
+// Names a unique temporary beside the destination so replacement stays within
+// one filesystem and never exposes a partial checkpoint.
 std::string TemporaryPath(const std::string& path) {
   static std::atomic<unsigned long> sequence{0};
 #ifdef _WIN32
@@ -79,6 +86,8 @@ std::string TemporaryPath(const std::string& path) {
   return temporary.str();
 }
 
+// Atomically replaces the destination, leaving the prior checkpoint intact on
+// failure.
 bool ReplaceFile(const std::string& temporary, const std::string& path) {
 #ifdef _WIN32
   // MoveFileEx supplies replace-existing behavior on Windows, where
@@ -92,6 +101,8 @@ bool ReplaceFile(const std::string& temporary, const std::string& path) {
 #endif
 }
 
+// Writes the full checkpoint: the 40-byte header, then ten 60-byte metadata
+// records each followed by its contiguous float payload.
 void WriteCheckpointContents(std::ostream& output, const std::string& path,
                              const Checkpoint& checkpoint) {
   // The 40-byte header is written field-by-field in little-endian order:
@@ -117,6 +128,7 @@ void WriteCheckpointContents(std::ostream& output, const std::string& path,
   binary_io::WriteU32LE(output, 0, path,
                         "could not write checkpoint reserved field");
 
+  // Emit tensor records in canonical order, zero-padding each 32-byte name.
   const std::array<ParameterSpec, 10>& specs = LenetParameterSpecs();
   for (std::size_t index = 0; index < specs.size(); ++index) {
     const ParameterSpec& spec = specs[index];
@@ -146,6 +158,8 @@ void WriteCheckpointContents(std::ostream& output, const std::string& path,
   }
 }
 
+// Reads one 32-byte tensor name and checks it against the canonical spec,
+// reporting the tensor index when name or order is invalid.
 void ReadAndValidateName(std::istream& input, const std::string& path,
                          const ParameterSpec& spec, std::size_t index) {
   std::array<unsigned char, 32> actual;
@@ -164,9 +178,13 @@ void ReadAndValidateName(std::istream& input, const std::string& path,
 
 }  // namespace
 
+// Validates before writing, saves through a same-directory temporary, and
+// keeps the destination untouched if any step fails.
 void SaveCheckpoint(const std::string& path, const Checkpoint& checkpoint) {
   ValidateCheckpoint(path, checkpoint);
 
+  // Write to a unique temporary so a partial checkpoint never replaces the
+  // destination, and remove it on any failure.
   const std::string temporary = TemporaryPath(path);
   try {
     std::ofstream output(temporary,
@@ -188,12 +206,15 @@ void SaveCheckpoint(const std::string& path, const Checkpoint& checkpoint) {
     throw;
   }
 
+  // Publish by replacement only after the temporary is flushed and closed.
   if (!ReplaceFile(temporary, path)) {
     std::remove(temporary.c_str());
     binary_io::Fail(path, "could not atomically replace checkpoint");
   }
 }
 
+// Parses and validates the header and every metadata record before allocating
+// or filling any parameter storage.
 Checkpoint LoadCheckpoint(const std::string& path) {
   std::ifstream input(path, std::ios::binary);
   if (!input) {
@@ -241,6 +262,7 @@ Checkpoint LoadCheckpoint(const std::string& path) {
   }
   ValidateMetadata(path, checkpoint.metadata);
 
+  // Allocate canonical storage only after the header validates.
   checkpoint.parameters = CreateLenetParameters();
   const std::array<ParameterSpec, 10>& specs = LenetParameterSpecs();
   for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -285,6 +307,7 @@ Checkpoint LoadCheckpoint(const std::string& path) {
     }
   }
 
+  // Require end-of-stream with no trailing bytes.
   char trailing = 0;
   if (input.get(trailing)) {
     binary_io::Fail(path, "checkpoint has trailing bytes");

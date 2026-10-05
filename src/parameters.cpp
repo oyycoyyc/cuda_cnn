@@ -14,15 +14,20 @@
 
 namespace {
 
+// Domain tag separating parameter initialization streams from the split,
+// shuffle, and translation streams derived from the same caller seed.
 const std::uint64_t kInitializationDomain =
     UINT64_C(0x494E49545F563031);
 const double kPi = 3.141592653589793238462643383279502884;
 const double kInverseTwoTo52 = 1.0 / 4503599627370496.0;
 
+// Maps a 64-bit draw into the open unit interval (0, 1); the half-step offset
+// keeps the logarithm well-defined.
 double OpenUniform(std::uint64_t raw) {
   return (static_cast<double>(raw >> 12) + 0.5) * kInverseTwoTo52;
 }
 
+// Reports which canonical tensor slot violates the expected schema.
 [[noreturn]] void SchemaError(std::size_t index,
                               const std::string& invariant) {
   std::ostringstream message;
@@ -32,6 +37,8 @@ double OpenUniform(std::uint64_t raw) {
 
 }  // namespace
 
+// The sole canonical ten-tensor schema: ordered names, ranks, four-slot
+// shapes, element counts, fan-in values, and bias flags.
 const std::array<ParameterSpec, 10>& LenetParameterSpecs() {
   static const std::array<ParameterSpec, 10> specs{{
       {"conv1.weight", 4, {{6, 1, 5, 5}}, 150, 25, false},
@@ -48,6 +55,7 @@ const std::array<ParameterSpec, 10>& LenetParameterSpecs() {
   return specs;
 }
 
+// Allocates the canonical parameter set in schema order with zeroed storage.
 ParameterSet CreateLenetParameters() {
   const std::array<ParameterSpec, 10>& specs = LenetParameterSpecs();
   ParameterSet parameters;
@@ -63,6 +71,8 @@ ParameterSet CreateLenetParameters() {
   return parameters;
 }
 
+// Requires exactly ten tensors matching the canonical name, rank, shape, and
+// element-count schema in order.
 void ValidateLenetParameters(const ParameterSet& parameters) {
   const std::array<ParameterSpec, 10>& specs = LenetParameterSpecs();
   if (parameters.size() != specs.size()) {
@@ -86,6 +96,8 @@ void ValidateLenetParameters(const ParameterSet& parameters) {
   }
 }
 
+// Fills a validated parameter set from one seed: each weight tensor draws from
+// its own derived stream and each bias is zeroed.
 void InitializeLenetParameters(std::uint64_t seed, ParameterSet* parameters) {
   if (parameters == nullptr) {
     throw std::invalid_argument("parameters must be non-null");
@@ -95,17 +107,23 @@ void InitializeLenetParameters(std::uint64_t seed, ParameterSet* parameters) {
   for (std::size_t ordinal = 0; ordinal < specs.size(); ++ordinal) {
     const ParameterSpec& spec = specs[ordinal];
     std::vector<float>& values = (*parameters)[ordinal].values;
+    // Bias tensors are fixed at zero and consume no random stream.
     if (spec.is_bias) {
       std::fill(values.begin(), values.end(), 0.0F);
       continue;
     }
 
+    // Derive a per-ordinal initialization stream so tensors stay independent
+    // and reproducible from the single caller seed.
     const std::uint64_t stream_seed = lenet_random_internal::Derive(
         seed, kInitializationDomain, static_cast<std::uint64_t>(ordinal),
         spec.fan_in);
     SplitMix64 random(stream_seed);
+    // He scaling sizes weight values by sqrt(2 / fan_in).
     const double standard_deviation =
         std::sqrt(2.0 / static_cast<double>(spec.fan_in));
+    // Transform two open-unit draws into paired normal values, writing the
+    // second only when another element remains.
     std::size_t index = 0;
     while (index < values.size()) {
       const double first = OpenUniform(random.Next());

@@ -9,6 +9,7 @@
 
 namespace {
 
+// Records a parse error in the caller's slot and returns false to propagate.
 bool Fail(std::string* error, const std::string& message) {
   if (error != nullptr) {
     *error = message;
@@ -16,6 +17,7 @@ bool Fail(std::string* error, const std::string& message) {
   return false;
 }
 
+// Lists every option the parser recognizes, regardless of command.
 bool IsKnownOption(const std::string& option) {
   return option == "--train" || option == "--test" ||
          option == "--output" || option == "--epochs" ||
@@ -25,6 +27,7 @@ bool IsKnownOption(const std::string& option) {
          option == "--index" || option == "--allow-nonstandard-count";
 }
 
+// Maps a command to its stable lowercase name for diagnostics.
 const char* CommandName(Command command) {
   switch (command) {
     case Command::kTrain:
@@ -37,6 +40,7 @@ const char* CommandName(Command command) {
   return "unknown";
 }
 
+// Enforces the per-command allowlist; --device is accepted by every command.
 bool IsAllowedOption(Command command, const std::string& option) {
   if (option == "--device") {
     return true;
@@ -58,6 +62,8 @@ bool IsAllowedOption(Command command, const std::string& option) {
   return false;
 }
 
+// Parses a decimal unsigned value up to an inclusive maximum, rejecting empty
+// input, non-digits, overflow, and out-of-range values.
 bool ParseUnsigned(const std::string& text, std::uint64_t maximum,
                    std::uint64_t* value) {
   if (text.empty()) {
@@ -80,6 +86,8 @@ bool ParseUnsigned(const std::string& text, std::uint64_t maximum,
   return true;
 }
 
+// Parses a finite unit-interval accuracy, rejecting leading whitespace and
+// out-of-range values.
 bool ParseAccuracy(const std::string& text, float* value) {
   if (text.empty() || text[0] == ' ' || text[0] == '\t' ||
       text[0] == '\n' || text[0] == '\r' || text[0] == '\f' ||
@@ -97,6 +105,7 @@ bool ParseAccuracy(const std::string& text, float* value) {
   return true;
 }
 
+// Fails unless the given required option was seen during parsing.
 bool RequireOption(const std::set<std::string>& seen,
                    const std::string& option, std::string* error) {
   if (seen.count(option) == 0) {
@@ -107,6 +116,8 @@ bool RequireOption(const std::set<std::string>& seen,
 
 }  // namespace
 
+// Parses argv into caller-owned options with no side effects; the result is
+// committed only after every command-specific requirement is satisfied.
 bool ParseCli(int argc, const char* const* argv, CliOptions* options,
               std::string* error) {
   if (error == nullptr) {
@@ -126,6 +137,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
     return Fail(error, "command argument must not be null");
   }
 
+  // Apply documented defaults so omitted optional options stay well-defined.
   CliOptions parsed{};
   parsed.train.epochs = 20;
   parsed.train.batch_size = 128;
@@ -149,6 +161,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
     return Fail(error, "unknown command " + command);
   }
 
+  // Track seen options to reject duplicates and verify required options.
   std::set<std::string> seen;
   for (int argument = 2; argument < argc; ++argument) {
     if (argv[argument] == nullptr) {
@@ -175,6 +188,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
       continue;
     }
 
+    // Reject a missing value and any token that looks like the next option.
     if (argument + 1 >= argc || argv[argument + 1] == nullptr ||
         std::string(argv[argument + 1]).compare(0, 2, "--") == 0) {
       return Fail(error, option + " requires a value");
@@ -208,6 +222,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
                     "invalid value for --min-accuracy: expected finite [0, 1]");
       }
     } else {
+      // Bound each numeric option by its documented inclusive maximum.
       std::uint64_t maximum = std::numeric_limits<std::uint64_t>::max();
       if (option == "--epochs") {
         maximum = 1000;
@@ -242,6 +257,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
     }
   }
 
+  // Require each command's mandatory options before committing the result.
   if (parsed.command == Command::kTrain) {
     if (!RequireOption(seen, "--train", error) ||
         !RequireOption(seen, "--test", error) ||
@@ -259,6 +275,7 @@ bool ParseCli(int argc, const char* const* argv, CliOptions* options,
     return false;
   }
 
+  // Commit the parsed result only after all validation has succeeded.
   *options = parsed;
   return true;
 }

@@ -9,8 +9,11 @@
 #include <stdexcept>
 #include <string>
 
+// Reporters emit stable newline-terminated key=value records through a private
+// scratch stream so numeric formatting and locale never leak to callers.
 namespace {
 
+// Requires a finite, nonnegative measurement, naming it in the error.
 void RequireNonnegativeFinite(double value, const char* name) {
   if (!std::isfinite(value) || value < 0.0) {
     throw std::invalid_argument(std::string(name) +
@@ -18,6 +21,7 @@ void RequireNonnegativeFinite(double value, const char* name) {
   }
 }
 
+// Requires a finite unit-interval accuracy value, naming it in the error.
 void RequireAccuracy(float value, const char* name) {
   if (!std::isfinite(value) || value < 0.0F || value > 1.0F) {
     throw std::invalid_argument(std::string(name) +
@@ -25,6 +29,7 @@ void RequireAccuracy(float value, const char* name) {
   }
 }
 
+// Writes one formatted record without touching the caller's stream state.
 void WriteRecord(std::ostream& output, const std::ostringstream& formatted) {
   const std::string record = formatted.str();
   output.write(record.data(), static_cast<std::streamsize>(record.size()));
@@ -32,6 +37,8 @@ void WriteRecord(std::ostream& output, const std::ostringstream& formatted) {
 
 }  // namespace
 
+// Emits one device record; index and capability fields must be nonnegative and
+// name must be a nonempty single line.
 void PrintDeviceSummary(std::ostream& output, int index, const std::string& name,
                         int compute_major, int compute_minor) {
   if (index < 0 || compute_major < 0 || compute_minor < 0) {
@@ -43,6 +50,8 @@ void PrintDeviceSummary(std::ostream& output, int index, const std::string& name
   }
 
   std::ostringstream formatted;
+  // Format on a scratch stream with the classic locale so the caller's locale
+  // and formatting flags are preserved.
   formatted.imbue(std::locale::classic());
   formatted << "event=device index=" << index << " name=" << name
             << " compute_capability=" << compute_major << '.' << compute_minor
@@ -50,6 +59,8 @@ void PrintDeviceSummary(std::ostream& output, int index, const std::string& name
   WriteRecord(output, formatted);
 }
 
+// Emits one epoch record with six fractional digits for loss/accuracy and
+// three for elapsed milliseconds.
 void PrintEpochSummary(std::ostream& output, std::uint32_t epoch,
                        float training_loss, float validation_accuracy,
                        double elapsed_ms) {
@@ -69,6 +80,8 @@ void PrintEpochSummary(std::ostream& output, std::uint32_t epoch,
   WriteRecord(output, formatted);
 }
 
+// Emits one evaluation record; accuracy fields use six digits and timing/rate
+// fields three.
 void PrintEvaluationSummary(std::ostream& output, std::uint32_t samples,
                             float accuracy, float mean_forward_ms,
                             float images_per_second, float minimum_accuracy,
@@ -92,6 +105,7 @@ void PrintEvaluationSummary(std::ostream& output, std::uint32_t samples,
   WriteRecord(output, formatted);
 }
 
+// Emits one final-test record with six fractional digits for both accuracies.
 void PrintFinalTestSummary(std::ostream& output, std::uint32_t samples,
                            float accuracy, std::uint32_t best_epoch,
                            float validation_accuracy) {
@@ -110,6 +124,8 @@ void PrintFinalTestSummary(std::ostream& output, std::uint32_t samples,
   WriteRecord(output, formatted);
 }
 
+// Emits one inference record: ten logits then ten probabilities at nine
+// fractional digits, followed by prediction and label classes.
 void PrintInferenceSummary(std::ostream& output, std::uint32_t index,
                            const std::array<float, 10>& logits,
                            const std::array<float, 10>& probabilities,

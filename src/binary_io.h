@@ -10,13 +10,18 @@
 #include <stdexcept>
 #include <string>
 
+// Binary little-endian primitives for dataset and checkpoint streams. Each
+// helper reports failures with the caller's path and invariant text so that
+// malformed input never reads or writes silently.
 namespace binary_io {
 
+// Throws a runtime_error naming the path and the violated invariant.
 [[noreturn]] inline void Fail(const std::string& path,
                               const std::string& invariant) {
   throw std::runtime_error(path + ": " + invariant);
 }
 
+// Rejects sizes beyond streamsize range before narrowing to a stream count.
 inline std::streamsize CheckedStreamSize(std::size_t size,
                                          const std::string& path,
                                          const std::string& invariant) {
@@ -27,6 +32,7 @@ inline std::streamsize CheckedStreamSize(std::size_t size,
   return static_cast<std::streamsize>(size);
 }
 
+// Reads exactly size bytes or fails when the stream ends or errors.
 inline void ReadExact(std::istream& input, void* destination, std::size_t size,
                       const std::string& path,
                       const std::string& invariant) {
@@ -37,6 +43,7 @@ inline void ReadExact(std::istream& input, void* destination, std::size_t size,
   }
 }
 
+// Reconstructs an unsigned 32-bit value from four little-endian bytes.
 inline std::uint32_t ReadU32LE(std::istream& input, const std::string& path,
                                const std::string& invariant) {
   std::uint8_t bytes[4];
@@ -47,6 +54,7 @@ inline std::uint32_t ReadU32LE(std::istream& input, const std::string& path,
          (static_cast<std::uint32_t>(bytes[3]) << 24);
 }
 
+// Reconstructs an unsigned 64-bit value from eight little-endian bytes.
 inline std::uint64_t ReadU64LE(std::istream& input, const std::string& path,
                                const std::string& invariant) {
   std::uint8_t bytes[8];
@@ -58,6 +66,7 @@ inline std::uint64_t ReadU64LE(std::istream& input, const std::string& path,
   return value;
 }
 
+// Transports a float through its 32-bit pattern, little-endian byte order.
 inline float ReadF32LE(std::istream& input, const std::string& path,
                        const std::string& invariant) {
   static_assert(sizeof(float) == sizeof(std::uint32_t),
@@ -68,6 +77,7 @@ inline float ReadF32LE(std::istream& input, const std::string& path,
   return value;
 }
 
+// Writes exactly size bytes or fails when the stream errors.
 inline void WriteExact(std::ostream& output, const void* source,
                        std::size_t size, const std::string& path,
                        const std::string& invariant) {
@@ -78,6 +88,7 @@ inline void WriteExact(std::ostream& output, const void* source,
   }
 }
 
+// Serializes an unsigned 32-bit value as four little-endian bytes.
 inline void WriteU32LE(std::ostream& output, std::uint32_t value,
                        const std::string& path,
                        const std::string& invariant) {
@@ -90,6 +101,7 @@ inline void WriteU32LE(std::ostream& output, std::uint32_t value,
   WriteExact(output, bytes, sizeof(bytes), path, invariant);
 }
 
+// Serializes an unsigned 64-bit value as eight little-endian bytes.
 inline void WriteU64LE(std::ostream& output, std::uint64_t value,
                        const std::string& path,
                        const std::string& invariant) {
@@ -100,6 +112,7 @@ inline void WriteU64LE(std::ostream& output, std::uint64_t value,
   WriteExact(output, bytes, sizeof(bytes), path, invariant);
 }
 
+// Writes a float's 32-bit pattern as four little-endian bytes.
 inline void WriteF32LE(std::ostream& output, float value,
                        const std::string& path,
                        const std::string& invariant) {
