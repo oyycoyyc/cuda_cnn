@@ -3204,7 +3204,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.write(
             os.path.relpath(fake_python, self.temporary),
             "#!/bin/sh\n"
-            "echo 'forced analyzer diagnostic'\n"
+            "echo 'forced analyzer diagnostic' >&2\n"
             "exit 7\n",
         )
         os.chmod(fake_python, 0o755)
@@ -3218,6 +3218,29 @@ class ProhibitedCheckerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertIn("Make recipe provenance analysis failed", result.stdout)
         self.assertIn("forced analyzer diagnostic", result.stdout)
+
+    def test_source_scan_keeps_analyzer_stderr_out_of_active_inputs(self):
+        self.write("include/active.h", "void Active();\n")
+        tools = os.path.join(self.temporary, "tools_python")
+        os.makedirs(tools)
+        fake_python = os.path.join(tools, "python")
+        self.write(
+            os.path.relpath(fake_python, self.temporary),
+            "#!/bin/sh\n"
+            "echo 'include/active.h'\n"
+            "echo 'analyzer warning on stderr' >&2\n"
+            "exit 0\n",
+        )
+        os.chmod(fake_python, 0o755)
+
+        result = self.run_checker(
+            "source",
+            self.temporary,
+            extra_environment={"PYTHON": fake_python.replace("\\", "/")},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("compliance scan passed", result.stdout)
 
     def test_source_scan_rejects_non_directory_root(self):
         file_path = self.write("not_a_directory", "content\n")

@@ -92,7 +92,8 @@ case "$mode" in
     recipes=$(mktemp) || fail "cannot create recipe temporary file"
     manifest=$(mktemp) || fail "cannot create manifest temporary file"
     active_inputs=$(mktemp) || fail "cannot create active-input temporary file"
-    trap 'rm -f "$temporary" "$recipes" "$manifest" "$active_inputs"' EXIT
+    analyzer_error=$(mktemp) || fail "cannot create analyzer diagnostic temporary file"
+    trap 'rm -f "$temporary" "$recipes" "$manifest" "$active_inputs" "$analyzer_error"' EXIT
     if ! find "$root/include" "$root/src" -type f \
         \( -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cc' \
            -o -name '*.cpp' -o -name '*.cu' -o -name '*.cuh' \) \
@@ -127,12 +128,11 @@ case "$mode" in
     if ! printf '%s\n' "$make_manifest" >"$manifest"; then
       fail "cannot store Make test-source manifest"
     fi
-    if ! analyzer_output=$("$policy_python" "$graph_analyzer" source \
-        --root "$root" --recipes "$recipes" --manifest "$manifest" 2>&1); then
-      fail "Make recipe provenance analysis failed:\n$analyzer_output"
-    fi
-    if ! printf '%s' "$analyzer_output" >"$active_inputs"; then
-      fail "cannot store analyzed active inputs"
+    if ! "$policy_python" "$graph_analyzer" source \
+        --root "$root" --recipes "$recipes" --manifest "$manifest" \
+        >"$active_inputs" 2>"$analyzer_error"; then
+      analyzer_diagnostic=$(cat "$analyzer_error")
+      fail "Make recipe provenance analysis failed:\n$analyzer_diagnostic"
     fi
     while IFS= read -r file || [[ -n $file ]]; do
       file=${file%$'\r'}
