@@ -1,3 +1,6 @@
+// Implements training, evaluation, and inference workflows: device selection,
+// batch normalization, finite checks, the optimizer loop, checkpoint handling,
+// and result reporting.
 #include "train.h"
 
 #include "checkpoint.h"
@@ -34,6 +37,7 @@ const std::uint32_t kEvaluationBatchSize = 128;
 const float kNormalizationMean = 0.1307F;
 const float kNormalizationStddev = 0.3081F;
 
+// RAII owner of a non-blocking workflow stream.
 class WorkflowStream {
  public:
   WorkflowStream() : stream_(nullptr) {
@@ -55,6 +59,7 @@ class WorkflowStream {
   cudaStream_t stream_;
 };
 
+// RAII pair of CUDA events used to time forward passes.
 class WorkflowEvents {
  public:
   WorkflowEvents() : start_(nullptr), stop_(nullptr) {
@@ -103,6 +108,7 @@ class WorkflowEvents {
   cudaEvent_t stop_;
 };
 
+// Owns the host and device buffers reused across batches within one workflow.
 struct WorkflowStorage {
   explicit WorkflowStorage(std::uint32_t maximum_batch_size)
       : host_batch(),
@@ -146,6 +152,7 @@ struct WorkflowStorage {
   WorkflowEvents events;
 };
 
+// Accumulated evaluation outcome: correct predictions and optional timing.
 struct EvaluationResult {
   std::uint64_t correct;
   double total_forward_ms;
@@ -153,8 +160,11 @@ struct EvaluationResult {
   std::uint32_t timed_batches;
 };
 
+// Optional test hook invoked after the last epoch and before checkpoint reload.
 workflow_test_hooks::BeforeFinalReloadHook g_before_final_reload_hook = nullptr;
 
+// Returns the parent directory of a path, including root and Windows drive
+// prefixes.
 std::string ParentPath(const std::string& path) {
   const std::string::size_type separator = path.find_last_of("/\\");
   if (separator == std::string::npos) {
@@ -171,6 +181,7 @@ std::string ParentPath(const std::string& path) {
   return path.substr(0, separator);
 }
 
+// Requires the output path to be non-empty and its parent to be a directory.
 void RequireExistingOutputParent(const std::string& path) {
   if (path.empty()) {
     throw std::invalid_argument("output path must not be empty");
@@ -184,6 +195,7 @@ void RequireExistingOutputParent(const std::string& path) {
   }
 }
 
+// Validates the requested device index, selects it, and reports its summary.
 void SelectAndReportDevice(int requested, std::ostream& output) {
   int count = 0;
   const cudaError_t count_result = cudaGetDeviceCount(&count);
@@ -210,6 +222,7 @@ void SelectAndReportDevice(int requested, std::ostream& output) {
                      properties.minor);
 }
 
+// Uploads one packed batch's images, labels, and original indices.
 void CopyBatchToDevice(const HostBatch& batch, WorkflowStorage* storage,
                        cudaStream_t stream) {
   const std::size_t image_bytes =
@@ -226,6 +239,7 @@ void CopyBatchToDevice(const HostBatch& batch, WorkflowStorage* storage,
                              cudaMemcpyHostToDevice, stream));
 }
 
+// Scans device values for non-finite entries, throwing with the first index.
 void RequireFiniteDevice(const float* values, std::size_t count,
                          const std::string& phase, WorkflowStorage* storage,
                          cudaStream_t stream) {
@@ -243,6 +257,8 @@ void RequireFiniteDevice(const float* values, std::size_t count,
   }
 }
 
+// Uploads a batch, normalizes it on device (optionally augmenting), and checks
+// the normalized output is finite.
 void NormalizeBatch(const HostBatch& batch, std::uint64_t seed,
                     std::uint32_t epoch, bool augment,
                     WorkflowStorage* storage, cudaStream_t stream) {
@@ -258,6 +274,7 @@ void NormalizeBatch(const HostBatch& batch, std::uint64_t seed,
                       storage, stream);
 }
 
+// Copies and returns the device-computed correct count for the last batch.
 int CopyCorrectCount(WorkflowStorage* storage, cudaStream_t stream) {
   int correct = 0;
   CUDA_CHECK(cudaMemcpyAsync(&correct, storage->correct_count.get(),
@@ -266,6 +283,8 @@ int CopyCorrectCount(WorkflowStorage* storage, cudaStream_t stream) {
   return correct;
 }
 
+// Iterates batches in the given order, accumulating correct predictions and
+// optionally timing forward passes; the first batch is warmed up but not timed.
 EvaluationResult EvaluateBatches(const MnistDataset& dataset,
                                  const std::vector<std::uint32_t>& order,
                                  std::uint32_t batch_size, bool measure,
@@ -322,6 +341,7 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
   return result;
 }
 
+// Builds the ascending sample order used for deterministic evaluation.
 std::vector<std::uint32_t> CanonicalOrder(std::uint32_t count) {
   std::vector<std::uint32_t> order(count);
   for (std::uint32_t index = 0; index < count; ++index) {
@@ -334,12 +354,14 @@ std::vector<std::uint32_t> CanonicalOrder(std::uint32_t count) {
 
 namespace workflow_test_hooks {
 
+// Test hook: installs the callback run before the best checkpoint reload.
 void SetBeforeFinalReloadHookForTests(BeforeFinalReloadHook hook) noexcept {
   g_before_final_reload_hook = hook;
 }
 
 }  // namespace workflow_test_hooks
 
+// Returns the piecewise-constant learning rate for a one-based epoch.
 float LearningRateForEpoch(std::uint32_t one_based_epoch) {
   if (one_based_epoch == 0) {
     throw std::invalid_argument("learning-rate epoch must be one-based");
@@ -353,6 +375,8 @@ float LearningRateForEpoch(std::uint32_t one_based_epoch) {
   return 1.0e-5F;
 }
 
+// Trains the model, checkpointing strictly better validation accuracy each
+// epoch, then reloads the best checkpoint before reporting final test accuracy.
 int RunTrain(const TrainOptions& options, std::ostream& output,
              std::ostream& error) {
   static_cast<void>(error);
@@ -387,6 +411,7 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
   std::uint64_t global_step = 0;
   float best_accuracy = -1.0F;
 
+  // Train one epoch with a seeded shuffle, then validate in sample order.
   for (std::uint32_t epoch = 1; epoch <= options.epochs; ++epoch) {
     const std::chrono::steady_clock::time_point epoch_start =
         std::chrono::steady_clock::now();
@@ -454,6 +479,7 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
     if (!std::isfinite(validation_accuracy)) {
       throw std::runtime_error("validation accuracy is not finite");
     }
+    // Replace the checkpoint only when validation accuracy strictly improves.
     if (validation_accuracy > best_accuracy) {
       best_checkpoint.metadata.best_epoch = epoch;
       best_checkpoint.metadata.validation_accuracy = validation_accuracy;
@@ -472,6 +498,7 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
   if (g_before_final_reload_hook != nullptr) {
     g_before_final_reload_hook(&model);
   }
+  // Reload the persisted best weights so the final test uses exactly them.
   const Checkpoint best = LoadCheckpoint(options.output_path);
   model.ImportParameters(best.parameters);
   model.RequireFinite("reloaded best checkpoint");
@@ -486,6 +513,8 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
   return kSuccess;
 }
 
+// Evaluates a checkpoint on the test set, timing forward passes, and returns
+// success only when accuracy meets the requested minimum.
 int RunEvaluate(const EvaluateOptions& options, std::ostream& output,
                 std::ostream& error) {
   static_cast<void>(error);
@@ -532,6 +561,8 @@ int RunEvaluate(const EvaluateOptions& options, std::ostream& output,
   return passed ? kSuccess : kAcceptanceFailure;
 }
 
+// Runs inference for one requested sample and prints its logits, probabilities,
+// prediction, and label.
 int RunInfer(const InferOptions& options, std::ostream& output,
              std::ostream& error) {
   static_cast<void>(error);

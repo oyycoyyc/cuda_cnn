@@ -11,9 +11,11 @@
 
 namespace {
 
+// Fixed launch geometry: 256 threads per block and a 65535-block grid cap.
 constexpr unsigned int kThreadsPerBlock = 256;
 constexpr std::size_t kMaximumBlocks = 65535;
 
+// Validated pooling geometry and the derived element counts.
 struct PoolShape {
   int input_height;
   int input_width;
@@ -23,6 +25,7 @@ struct PoolShape {
   std::size_t output_count;
 };
 
+// Multiplies dimensions, failing closed while detecting size_t overflow.
 std::size_t CheckedProduct(std::initializer_list<int> dimensions) {
   std::size_t product = 1;
   for (int dimension : dimensions) {
@@ -35,6 +38,8 @@ std::size_t CheckedProduct(std::initializer_list<int> dimensions) {
   return product;
 }
 
+// Validates positive even spatial sizes of at least two and derives the output
+// shape and counts.
 PoolShape ValidatePoolShape(int batch_size, int channels, int input_height,
                             int input_width) {
   if (batch_size <= 0 || channels <= 0 || input_height < 2 ||
@@ -57,6 +62,7 @@ PoolShape ValidatePoolShape(int batch_size, int channels, int input_height,
                    input_count, output_count};
 }
 
+// Returns a capped grid-stride block count sufficient to cover count elements.
 unsigned int BlockCount(std::size_t count) {
   const std::size_t needed =
       1 + (count - 1) / static_cast<std::size_t>(kThreadsPerBlock);
@@ -154,6 +160,7 @@ __global__ void MaxPoolBackwardKernel(
 
 }  // namespace
 
+// Launches 2x2 stride-two max pooling over the validated output extent.
 void LaunchMaxPoolForward(const float* input, float* output,
                           std::uint8_t* winner_offsets, int batch_size,
                           int channels, int input_height, int input_width,
@@ -168,6 +175,8 @@ void LaunchMaxPoolForward(const float* input, float* output,
   CUDA_KERNEL_CHECK();
 }
 
+// Zeroes the input gradient on the stream, then scatters each output gradient to
+// its recorded winner.
 void LaunchMaxPoolBackward(const float* output_gradient,
                            const std::uint8_t* winner_offsets,
                            float* input_gradient, int batch_size, int channels,

@@ -13,14 +13,17 @@
 
 namespace {
 
+// Fixed launch geometry: 256 threads per block and a 65535-block grid cap.
 constexpr unsigned int kThreadsPerBlock = 256;
 constexpr std::size_t kMaximumBlocks = 65535;
 
+// A device buffer's base pointer and byte length used for overlap checking.
 struct BufferRange {
   const void* pointer;
   std::size_t bytes;
 };
 
+// Rejects float counts whose byte extent would overflow std::size_t.
 void ValidateFloatCount(std::size_t count, const char* operation) {
   if (count > std::numeric_limits<std::size_t>::max() / sizeof(float)) {
     throw std::overflow_error(std::string(operation) +
@@ -28,6 +31,7 @@ void ValidateFloatCount(std::size_t count, const char* operation) {
   }
 }
 
+// Rejects null pointers and overlapping byte ranges across the supplied buffers.
 void ValidateBuffers(std::initializer_list<BufferRange> buffers,
                      const char* operation) {
   for (const BufferRange& buffer : buffers) {
@@ -61,12 +65,15 @@ void ValidateBuffers(std::initializer_list<BufferRange> buffers,
   }
 }
 
+// Returns a capped grid-stride block count sufficient to cover count elements.
 unsigned int BlockCount(std::size_t count) {
   const std::size_t needed =
       1 + (count - 1) / static_cast<std::size_t>(kThreadsPerBlock);
   return static_cast<unsigned int>(std::min(needed, kMaximumBlocks));
 }
 
+// Enforces finite nonnegative learning rate and decay, betas in [0,1), positive
+// epsilon, and inverse bias corrections of at least one.
 void ValidateAdamScalars(float learning_rate, float beta1, float beta2,
                          float epsilon, float inverse_bias_correction1,
                          float inverse_bias_correction2, float weight_decay) {
@@ -163,6 +170,8 @@ __global__ void FindFirstNonFiniteKernel(const float* values, int count,
 
 }  // namespace
 
+// Applies one AdamW step over count disjoint parameter, gradient, and moment
+// buffers on the stream.
 void LaunchAdamW(float* parameters, const float* gradients,
                  float* first_moments, float* second_moments,
                  std::size_t count, float learning_rate, float beta1,
@@ -189,6 +198,8 @@ void LaunchAdamW(float* parameters, const float* gradients,
   CUDA_KERNEL_CHECK();
 }
 
+// Writes the smallest index holding a non-finite value, or count when all values
+// are finite; count is limited to INT_MAX.
 void LaunchFindFirstNonFinite(const float* values, std::size_t count,
                               int* first_bad_index, cudaStream_t stream) {
   if (count > static_cast<std::size_t>(std::numeric_limits<int>::max())) {

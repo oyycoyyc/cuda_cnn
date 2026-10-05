@@ -12,19 +12,23 @@
 
 namespace {
 
+// One block of 256 threads handles one sample row; class_count cannot exceed it.
 constexpr int kThreadsPerBlock = 256;
 
+// Validated softmax geometry and the derived per-row element count.
 struct LossShape {
   int batch_size;
   int class_count;
   std::size_t element_count;
 };
 
+// A device buffer's base pointer and byte length used for overlap checking.
 struct BufferRange {
   const void* pointer;
   std::size_t bytes;
 };
 
+// Validates positive dimensions and enforces the per-block class-count limit.
 LossShape ValidateLossShape(int batch_size, int class_count) {
   if (batch_size <= 0 || class_count <= 0) {
     throw std::invalid_argument("softmax dimensions must be positive");
@@ -46,6 +50,7 @@ LossShape ValidateLossShape(int batch_size, int class_count) {
   return LossShape{batch_size, class_count, element_count};
 }
 
+// Rejects null pointers and overlapping byte ranges across the supplied buffers.
 void ValidateBuffers(std::initializer_list<BufferRange> buffers) {
   for (const BufferRange& buffer : buffers) {
     if (buffer.pointer == nullptr) {
@@ -190,6 +195,8 @@ __global__ void MeanLossKernel(const float* per_sample_losses,
 
 }  // namespace
 
+// Launches one block per sample for stable softmax and cross-entropy, then a
+// single-thread mean reduction, both on the stream.
 void LaunchSoftmaxCrossEntropy(
     const float* logits, const std::uint8_t* labels, float* probabilities,
     float* per_sample_losses, float* mean_loss, float* logits_gradient,
@@ -214,6 +221,8 @@ void LaunchSoftmaxCrossEntropy(
   CUDA_KERNEL_CHECK();
 }
 
+// Launches inference-only stable softmax with one block per sample; labels are
+// not consumed.
 void LaunchSoftmax(const float* logits, float* probabilities, int batch_size,
                    int class_count, cudaStream_t stream) {
   const LossShape shape = ValidateLossShape(batch_size, class_count);

@@ -1,3 +1,5 @@
+// Implements LeNet: one preallocated device arena, the forward and backward
+// launch chains, AdamW updates, and finite checks over canonical parameters.
 #include "lenet.h"
 
 #include "cuda_check.h"
@@ -15,12 +17,15 @@
 
 namespace {
 
+// Fixed budgets: canonical parameter count and per-sample activation, gradient,
+// pooling-winner, and finite-scan tensor limits.
 constexpr std::size_t kParameterCount = 44426;
 constexpr std::size_t kActivationFloatsPerSample = 10498;
 constexpr std::size_t kGradientFloatsPerSample = 6588;
 constexpr std::size_t kWinnerBytesPerSample = 1120;
 constexpr std::size_t kMaximumScannedTensors = 58;
 
+// Adds two byte counts, failing closed instead of wrapping on size_t overflow.
 std::size_t CheckedAdd(std::size_t left, std::size_t right) {
   if (left > std::numeric_limits<std::size_t>::max() - right) {
     throw std::overflow_error("LeNet required device bytes overflow size_t");
@@ -28,6 +33,7 @@ std::size_t CheckedAdd(std::size_t left, std::size_t right) {
   return left + right;
 }
 
+// Multiplies two byte counts, rejecting overflow before it can wrap.
 std::size_t CheckedMultiply(std::size_t left, std::size_t right) {
   if (left != 0 && right > std::numeric_limits<std::size_t>::max() / left) {
     throw std::overflow_error("LeNet required device bytes overflow size_t");
@@ -35,6 +41,9 @@ std::size_t CheckedMultiply(std::size_t left, std::size_t right) {
   return left * right;
 }
 
+// Computes the exact arena size for a batch capacity: the four canonical
+// parameter, gradient, and moment arrays, per-sample activations and gradients,
+// winner records, and one scan result.
 std::size_t RequiredBytes(int maximum_batch_size) {
   if (maximum_batch_size <= 0) {
     throw std::invalid_argument("maximum_batch_size must be positive");
@@ -54,6 +63,8 @@ std::size_t RequiredBytes(int maximum_batch_size) {
                     sizeof(int));
 }
 
+// Enforces AdamW domains: positive step, finite nonnegative learning rate,
+// betas in [0,1), positive epsilon, and nonnegative weight decay.
 void ValidateAdamW(std::uint64_t global_step, float learning_rate,
                    const AdamWConfig& config) {
   if (global_step == 0) {
@@ -77,6 +88,7 @@ void ValidateAdamW(std::uint64_t global_step, float learning_rate,
   }
 }
 
+// One named contiguous device tensor supplied to a finite check.
 struct ScanTensor {
   const char* name;
   const float* values;
@@ -87,6 +99,8 @@ struct ScanTensor {
 
 class LeNet::Impl {
  public:
+  // Reserves and zeroes the single arena, lays out every region, and uploads
+  // seeded initial parameters.
   Impl(int maximum_batch_size, std::uint64_t seed, cudaStream_t stream)
       : maximum_batch_size_(maximum_batch_size),
         stream_(stream),
@@ -114,6 +128,8 @@ class LeNet::Impl {
     CUDA_CHECK(cudaStreamSynchronize(stream_));
   }
 
+  // Runs the full forward chain and returns device logits valid until the next
+  // state-changing call.
   const float* Forward(const float* normalized_images, int batch_size) {
     ValidateBatch(batch_size);
     if (normalized_images == nullptr) {
@@ -121,6 +137,8 @@ class LeNet::Impl {
     }
     InvalidateWork();
 
+    // Forward chain: conv1, ReLU, pool1, conv2, ReLU, pool2, then three
+    // fully connected stages with ReLU, ending in ten logits per sample.
     LaunchConvolutionForward(normalized_images, parameters_[0], parameters_[1],
                              conv1_pre_, batch_size, 1, 28, 28, 6, 5, 5,
                              stream_);
@@ -143,12 +161,15 @@ class LeNet::Impl {
     LaunchReluForward(fc2_pre_, relu4_, Count(batch_size, 84), stream_);
     LaunchLinearForward(relu4_, parameters_[8], parameters_[9], logits_,
                         batch_size, 84, 10, stream_);
+    // Record the consumed input and batch size, then expose logits to Backward.
     forward_input_ = normalized_images;
     state_batch_size_ = batch_size;
     state_ = ExecutionState::kForwardReady;
     return logits_;
   }
 
+  // Reverses the forward chain, accumulating parameter gradients for a matching
+  // unconsumed Forward.
   void Backward(const float* logits_gradient, int batch_size) {
     ValidateBatch(batch_size);
     if (logits_gradient == nullptr) {
@@ -162,6 +183,7 @@ class LeNet::Impl {
     const float* const forward_input = forward_input_;
     InvalidateWork();
 
+    // Reverse chain mirrors Forward, ending with the input gradient.
     LaunchLinearBackward(relu4_, parameters_[8], logits_gradient,
                          grad_relu4_, parameter_gradients_[8],
                          parameter_gradients_[9], batch_size, 84, 10, stream_);
@@ -192,9 +214,12 @@ class LeNet::Impl {
         parameter_gradients_[0], parameter_gradients_[1], batch_size, 1, 28,
         28, 6, 5, 5, stream_);
     state_batch_size_ = batch_size;
+    // Gradients are now consistent with this batch and ready for AdamWStep.
     state_ = ExecutionState::kGradientsReady;
   }
 
+  // Applies one AdamW update to every canonical parameter from current
+  // gradients.
   void AdamWStep(std::uint64_t global_step, float learning_rate,
                  const AdamWConfig& config) {
     ValidateAdamW(global_step, learning_rate, config);
@@ -202,6 +227,8 @@ class LeNet::Impl {
       throw std::invalid_argument(
           "AdamWStep requires current gradients from Backward");
     }
+    // Inverse bias corrections are computed in double precision, then narrowed
+    // to float, so early steps use uncentered moment estimates correctly.
     const double step = static_cast<double>(global_step);
     const float correction1 = static_cast<float>(
         1.0 / (1.0 - std::pow(static_cast<double>(config.beta1), step)));
@@ -210,6 +237,7 @@ class LeNet::Impl {
     InvalidateWork();
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
+      // Apply the update in canonical order, skipping weight decay on bias terms.
       LaunchAdamW(parameters_[index], parameter_gradients_[index],
                   first_moments_[index], second_moments_[index],
                   static_cast<std::size_t>(specs[index].element_count),
@@ -219,12 +247,14 @@ class LeNet::Impl {
     }
   }
 
+  // Copies canonical parameters to a fresh host set in the canonical order.
   ParameterSet ExportParameters() const {
     ParameterSet result = CreateLenetParameters();
     ExportParameters(&result);
     return result;
   }
 
+  // Streams canonical parameters into a caller-owned, shape-validated set.
   void ExportParameters(ParameterSet* destination) const {
     if (destination == nullptr) {
       throw std::invalid_argument("export destination must not be null");
@@ -240,6 +270,7 @@ class LeNet::Impl {
     CUDA_CHECK(cudaStreamSynchronize(stream_));
   }
 
+  // Validates and uploads a complete canonical set, discarding pending state.
   void ImportParameters(const ParameterSet& parameters) {
     ValidateLenetParameters(parameters);
     InvalidateWork();
@@ -247,6 +278,8 @@ class LeNet::Impl {
     CUDA_CHECK(cudaStreamSynchronize(stream_));
   }
 
+  // Scans parameters plus live activations, gradients, and moments, throwing
+  // with the first non-finite tensor name and index.
   void RequireFinite(const std::string& phase) const {
     std::array<ScanTensor, kMaximumScannedTensors> tensors{};
     std::size_t count = 0;
@@ -291,6 +324,7 @@ class LeNet::Impl {
     }
   }
 
+  // Returns the exact arena size in bytes reserved for this batch capacity.
   std::size_t RequiredDeviceBytes() const { return required_bytes_; }
 
  private:
@@ -298,6 +332,7 @@ class LeNet::Impl {
 
   enum class ExecutionState { kIdle, kForwardReady, kGradientsReady };
 
+  // Clears derived execution state so stale buffers are never consumed.
   void InvalidateWork() noexcept {
     state_ = ExecutionState::kIdle;
     state_batch_size_ = 0;
@@ -305,6 +340,7 @@ class LeNet::Impl {
     last_fc1_input_ = nullptr;
   }
 
+  // Builds stable diagnostic names for gradient and moment finite scans.
   void PrepareFiniteDiagnosticNames() {
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -316,6 +352,7 @@ class LeNet::Impl {
     }
   }
 
+  // Reports whether every finite-check diagnostic name has been populated.
   bool FiniteDiagnosticNamesPrepared() const noexcept {
     for (const std::string& name : gradient_names_) {
       if (name.empty()) {
@@ -330,6 +367,7 @@ class LeNet::Impl {
     return true;
   }
 
+  // Appends the live forward activations for the recorded batch to a scan.
   template <typename Append>
   void AppendActivations(const Append& append) const {
     const int batch = state_batch_size_;
@@ -346,6 +384,7 @@ class LeNet::Impl {
     append("logits", logits_, Count(batch, 10));
   }
 
+  // Appends accumulated parameter and activation gradients for scanning.
   template <typename Append>
   void AppendGradients(const Append& append) const {
     const auto& specs = LenetParameterSpecs();
@@ -363,6 +402,7 @@ class LeNet::Impl {
     append("input.gradient", input_gradient_, Count(batch, 784));
   }
 
+  // Rejects non-positive or over-capacity batch sizes before any launch.
   void ValidateBatch(int batch_size) const {
     if (batch_size <= 0) {
       throw std::invalid_argument("batch_size must be positive");
@@ -372,10 +412,12 @@ class LeNet::Impl {
     }
   }
 
+  // Converts a batch size and per-sample extent into a total element count.
   static std::size_t Count(int batch_size, std::size_t per_sample) {
     return static_cast<std::size_t>(batch_size) * per_sample;
   }
 
+  // Uploads every canonical parameter array in order on the model stream.
   void CopyParametersToDevice(const ParameterSet& parameters) {
     const auto& specs = LenetParameterSpecs();
     for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -386,6 +428,7 @@ class LeNet::Impl {
     }
   }
 
+  // Bump-allocates count elements of T from the arena and advances the offset.
   template <typename T>
   T* Take(std::size_t count, std::size_t* offset) {
     T* result = reinterpret_cast<T*>(arena_.get() + *offset);
@@ -393,6 +436,9 @@ class LeNet::Impl {
     return result;
   }
 
+  // Partitions the arena in canonical order: parameters, gradients, first and
+  // second moments, per-batch activations, gradient buffers, winner records,
+  // and one scan result.
   void PlanArena() {
     std::size_t offset = 0;
     const auto& specs = LenetParameterSpecs();
@@ -439,6 +485,8 @@ class LeNet::Impl {
     }
   }
 
+  // Immutable configuration, the owning arena, and canonical parameter arrays
+  // (values, gradients, and first/second moments) in spec order.
   int maximum_batch_size_;
   cudaStream_t stream_;
   std::size_t required_bytes_;
@@ -448,6 +496,7 @@ class LeNet::Impl {
   std::array<float*, 10> first_moments_{};
   std::array<float*, 10> second_moments_{};
 
+  // Forward activation buffers for the full configured batch capacity.
   float* conv1_pre_ = nullptr;
   float* relu1_ = nullptr;
   float* pool1_ = nullptr;
@@ -460,6 +509,7 @@ class LeNet::Impl {
   float* relu4_ = nullptr;
   float* logits_ = nullptr;
 
+  // Backward gradient buffers matching the activation layout.
   float* grad_relu4_ = nullptr;
   float* grad_relu3_ = nullptr;
   float* grad_pool2_ = nullptr;
@@ -467,10 +517,12 @@ class LeNet::Impl {
   float* grad_pool1_ = nullptr;
   float* grad_relu1_ = nullptr;
   float* input_gradient_ = nullptr;
+  // Pooling winner records and the shared finite-scan result slot.
   std::uint8_t* pool1_winners_ = nullptr;
   std::uint8_t* pool2_winners_ = nullptr;
   int* scan_result_ = nullptr;
 
+  // Transient state: which buffers a caller may currently consume.
   ExecutionState state_ = ExecutionState::kIdle;
   int state_batch_size_ = 0;
   const float* forward_input_ = nullptr;
@@ -480,6 +532,7 @@ class LeNet::Impl {
   mutable std::array<std::string, 20> moment_names_{};
 };
 
+// Public facade forwarding to the pimpl; validation and launches live in Impl.
 LeNet::LeNet(int maximum_batch_size, std::uint64_t seed, cudaStream_t stream)
     : impl_(new Impl(maximum_batch_size, seed, stream)) {}
 
@@ -518,11 +571,13 @@ std::size_t LeNet::RequiredDeviceBytes() const {
   return impl_->RequiredDeviceBytes();
 }
 
+// Test access: verifies the fc1 input aliases pool2 after a forward.
 bool LeNetTestAccess::Fc1InputAliasesPool2(const LeNet& model) noexcept {
   return model.impl_->state_ != LeNet::Impl::ExecutionState::kIdle &&
          model.impl_->last_fc1_input_ == model.impl_->pool2_;
 }
 
+// Test access: reports whether finite diagnostic names are populated.
 bool LeNetTestAccess::FiniteDiagnosticNamesPrepared(
     const LeNet& model) noexcept {
   return model.impl_->FiniteDiagnosticNamesPrepared();

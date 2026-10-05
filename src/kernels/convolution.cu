@@ -11,9 +11,11 @@
 
 namespace {
 
+// Fixed launch geometry: 256 threads per block and a 65535-block grid cap.
 constexpr unsigned int kThreadsPerBlock = 256;
 constexpr std::size_t kMaximumBlocks = 65535;
 
+// Validated convolution geometry and the derived element counts.
 struct ConvolutionShape {
   int batch_size;
   int input_channels;
@@ -29,11 +31,14 @@ struct ConvolutionShape {
   std::size_t output_count;
 };
 
+// A device buffer's base pointer and byte length used for overlap checking.
 struct BufferRange {
   const void* pointer;
   std::size_t bytes;
 };
 
+// Multiplies positive dimensions, failing closed on non-positive values or
+// overflow of the size_t element or byte extent.
 std::size_t CheckedProduct(std::initializer_list<int> dimensions) {
   std::size_t product = 1;
   for (int dimension : dimensions) {
@@ -52,6 +57,8 @@ std::size_t CheckedProduct(std::initializer_list<int> dimensions) {
   return product;
 }
 
+// Validates convolution dimensions, rejects kernels larger than the input, and
+// derives the output shape and element counts.
 ConvolutionShape ValidateConvolutionShape(
     int batch_size, int input_channels, int input_height, int input_width,
     int output_channels, int kernel_height, int kernel_width) {
@@ -78,6 +85,7 @@ ConvolutionShape ValidateConvolutionShape(
       output_width,    input_count,    weight_count, output_count};
 }
 
+// Rejects null pointers and overlapping byte ranges across the supplied buffers.
 void ValidateBuffers(std::initializer_list<BufferRange> buffers) {
   for (const BufferRange& buffer : buffers) {
     if (buffer.pointer == nullptr) {
@@ -106,6 +114,7 @@ void ValidateBuffers(std::initializer_list<BufferRange> buffers) {
   }
 }
 
+// Returns a capped grid-stride block count sufficient to cover count elements.
 unsigned int BlockCount(std::size_t count) {
   const std::size_t needed =
       1 + (count - 1) / static_cast<std::size_t>(kThreadsPerBlock);
@@ -361,6 +370,7 @@ __global__ void ConvolutionBiasGradientKernel(
 
 }  // namespace
 
+// Launches the convolution forward kernel over the validated output extent.
 void LaunchConvolutionForward(
     const float* input, const float* weight, const float* bias, float* output,
     int batch_size, int input_channels, int input_height, int input_width,
@@ -383,6 +393,7 @@ void LaunchConvolutionForward(
   CUDA_KERNEL_CHECK();
 }
 
+// Launches the ordered input, weight, then bias gradient kernels on one stream.
 void LaunchConvolutionBackward(
     const float* input, const float* weight, const float* output_gradient,
     float* input_gradient, float* weight_gradient, float* bias_gradient,

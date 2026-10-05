@@ -10,6 +10,8 @@
 
 namespace {
 
+// Fixed MNIST geometry: 28x28 images, 256 threads per block, and the maximum
+// CUDA grid X capacity.
 constexpr int kImageSide = 28;
 constexpr int kImagePixels = kImageSide * kImageSide;
 constexpr unsigned int kThreadsPerBlock = 256;
@@ -57,6 +59,8 @@ __global__ void NormalizeTranslateKernel(
       (static_cast<float>(pixel) / 255.0F - 0.1307F) / 0.3081F;
 }
 
+// Validates the batch size, computes the element count, and rejects sizes whose
+// grid would exceed the CUDA grid X capacity.
 std::size_t InputElementCount(int batch_size) {
   if (batch_size <= 0) {
     throw std::invalid_argument("input batch_size must be positive");
@@ -76,6 +80,8 @@ std::size_t InputElementCount(int batch_size) {
 
 }  // namespace
 
+// Launches normalized translation over the batch; augmentation requires a
+// positive one-based epoch.
 void LaunchNormalizeTranslate(const std::uint8_t* images,
                               const std::uint32_t* original_indices,
                               float* output, int batch_size,

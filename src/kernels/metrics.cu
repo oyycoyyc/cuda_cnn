@@ -11,19 +11,23 @@
 
 namespace {
 
+// One block of 256 threads handles one sample row; class_count cannot exceed it.
 constexpr int kThreadsPerBlock = 256;
 
+// Validated metrics geometry and the derived logits count.
 struct MetricsShape {
   int batch_size;
   int class_count;
   std::size_t logits_count;
 };
 
+// A device buffer's base pointer and byte length used for overlap checking.
 struct BufferRange {
   const void* pointer;
   std::size_t bytes;
 };
 
+// Validates positive dimensions and enforces the per-block class-count limit.
 MetricsShape ValidateMetricsShape(int batch_size, int class_count) {
   if (batch_size <= 0 || class_count <= 0) {
     throw std::invalid_argument("metrics dimensions must be positive");
@@ -45,6 +49,7 @@ MetricsShape ValidateMetricsShape(int batch_size, int class_count) {
   return MetricsShape{batch_size, class_count, logits_count};
 }
 
+// Rejects null pointers and overlapping byte ranges across the supplied buffers.
 void ValidateBuffers(std::initializer_list<BufferRange> buffers) {
   for (const BufferRange& buffer : buffers) {
     if (buffer.pointer == nullptr) {
@@ -132,6 +137,8 @@ __global__ void CorrectCountKernel(const int* correct_flags,
 
 }  // namespace
 
+// Launches one block per sample for argmax flags, then a single-thread
+// deterministic count, both on the stream.
 void LaunchArgmaxAndCountCorrect(
     const float* logits, const std::uint8_t* labels,
     std::uint8_t* predictions, int* correct_flags, int* correct_count,

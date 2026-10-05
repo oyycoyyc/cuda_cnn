@@ -10,9 +10,11 @@
 
 namespace {
 
+// Fixed launch geometry: 256 threads per block and a 65535-block grid cap.
 constexpr unsigned int kThreadsPerBlock = 256;
 constexpr std::size_t kMaximumBlocks = 65535;
 
+// Rejects float counts whose byte extent would overflow std::size_t.
 void ValidateFloatCount(std::size_t count, const char* operation) {
   if (count > std::numeric_limits<std::size_t>::max() / sizeof(float)) {
     throw std::overflow_error(std::string(operation) +
@@ -20,6 +22,7 @@ void ValidateFloatCount(std::size_t count, const char* operation) {
   }
 }
 
+// Returns a capped grid-stride block count sufficient to cover count elements.
 unsigned int BlockCount(std::size_t count) {
   const std::size_t needed =
       1 + (count - 1) / static_cast<std::size_t>(kThreadsPerBlock);
@@ -87,6 +90,8 @@ __global__ void ReluBackwardKernel(const float* forward_input,
 
 }  // namespace
 
+// Zeroes count floats with a 256-thread grid-stride launch; a zero count returns
+// without launching.
 void LaunchZero(float* values, std::size_t count, cudaStream_t stream) {
   ValidateFloatCount(count, "zero");
   if (count == 0) {
@@ -96,6 +101,8 @@ void LaunchZero(float* values, std::size_t count, cudaStream_t stream) {
   CUDA_KERNEL_CHECK();
 }
 
+// Applies elementwise ReLU with a 256-thread grid-stride launch; a zero count
+// returns without launching.
 void LaunchReluForward(const float* input, float* output, std::size_t count,
                        cudaStream_t stream) {
   ValidateFloatCount(count, "ReLU forward");
@@ -107,6 +114,8 @@ void LaunchReluForward(const float* input, float* output, std::size_t count,
   CUDA_KERNEL_CHECK();
 }
 
+// Applies the ReLU derivative using the forward-input mask; a zero count returns
+// without launching.
 void LaunchReluBackward(const float* forward_input,
                         const float* output_gradient, float* input_gradient,
                         std::size_t count, cudaStream_t stream) {
