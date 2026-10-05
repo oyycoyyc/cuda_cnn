@@ -213,8 +213,8 @@ void SaveCheckpoint(const std::string& path, const Checkpoint& checkpoint) {
   }
 }
 
-// Parses and validates the header and every metadata record before allocating
-// or filling any parameter storage.
+// Parses and validates the header before allocating any parameter storage; the
+// ten metadata records are validated in order afterward.
 Checkpoint LoadCheckpoint(const std::string& path) {
   std::ifstream input(path, std::ios::binary);
   if (!input) {
