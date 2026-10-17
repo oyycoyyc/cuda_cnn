@@ -790,7 +790,7 @@ class ProhibitedCheckerTest(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stdout)
-        self.assertEqual("tests/smoke_tests.cpp\n", result.stdout)
+        self.assertEqual("src/model.cu\ntests/smoke_tests.cpp\n", result.stdout)
 
     def test_parent_relative_include_scans_each_same_real_header_route(self):
         specification = importlib.util.spec_from_file_location(
