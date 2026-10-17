@@ -1645,7 +1645,7 @@ TEST_CASE(lenet_export_fills_canonical_storage_without_reallocation) {
   }
   EXPECT_THROW_CONTAINS(model.ExportParameters(nullptr), "destination");
   parameters[0].values.pop_back();
-  EXPECT_THROW_CONTAINS(model.ExportParameters(&parameters), "element count");
+  EXPECT_THROW_CONTAINS(model.ExportParameters(&parameters), "value count");
 }
 
 TEST_CASE(lenet_storage_bytes_and_constructor_query_are_exact_at_capacities) {
