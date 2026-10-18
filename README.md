@@ -26,6 +26,55 @@ training, timing, and the 99% accuracy requirement must be verified on the H20
 host. See `docs/h20-acceptance.md`; this README makes no local CUDA-success or
 accuracy claim.
 
+### Gemini Persistent Paths
+
+The Gemini deployment keeps source and the validated inference checkpoint under
+`/gemini/code/cuda_cnn`, reads mounted data from `/gemini/data-1`, and writes
+training-task artifacts under `$GEMINI_DATA_OUT`. Source the project environment
+before building or running commands:
+
+```bash
+cd "${GEMINI_CODE:-/gemini/code}/cuda_cnn"
+source scripts/gemini_env.sh
+```
+
+The script honors `$GEMINI_CODE`, `$GEMINI_DATA_IN1`, and `$GEMINI_DATA_OUT`
+when the platform exports them. Otherwise it falls back to the documented
+`/gemini` paths; development output falls back to the persistent
+`$CUDA_LENET_ROOT/runtime-output` directory. It exports the resolved paths as
+`$CUDA_LENET_ROOT`, `$CUDA_LENET_TRAIN_DATA`, `$CUDA_LENET_TEST_DATA`,
+`$CUDA_LENET_WEIGHTS`, and `$CUDA_LENET_OUTPUT_ROOT`. Dataset mounts must be
+treated as read-only. During a training task, save checkpoints and logs below
+`$CUDA_LENET_OUTPUT_ROOT`, never below a data mount.
+
+Train into the task output mount (or the persistent development fallback):
+
+```bash
+set -o pipefail
+: "${CUDA_LENET_OUTPUT_ROOT:?source scripts/gemini_env.sh first}"
+mkdir -p "$CUDA_LENET_OUTPUT_ROOT/weights" "$CUDA_LENET_OUTPUT_ROOT/logs"
+./build/lenet_cuda train \
+  --train "$CUDA_LENET_TRAIN_DATA" \
+  --test "$CUDA_LENET_TEST_DATA" \
+  --output "$CUDA_LENET_OUTPUT_ROOT/weights/lenet.bin" \
+  --epochs 20 --batch-size 128 --seed 1337 --device 0 \
+  2>&1 | tee "$CUDA_LENET_OUTPUT_ROOT/logs/train.log"
+```
+
+Evaluate or infer with the validated checkpoint stored beside the source:
+
+```bash
+./build/lenet_cuda evaluate \
+  --data "$CUDA_LENET_TEST_DATA" \
+  --weights "$CUDA_LENET_WEIGHTS" \
+  --min-accuracy 0.99 --device 0
+
+./build/lenet_cuda infer \
+  --data "$CUDA_LENET_TEST_DATA" \
+  --weights "$CUDA_LENET_WEIGHTS" \
+  --index 0 --device 0
+```
+
 ## Dataset
 
 The converter uses MNIST from the pinned Hugging Face revision

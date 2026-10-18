@@ -129,9 +129,10 @@ compliance:
 # Aggregate target covering all test and compliance suites.
 test: host-tests cuda-tests python-tests compliance
 
-# Run the Makefile behavior tests.
+# Run Makefile behavior and Gemini environment tests.
 makefile-tests:
 	$(Q)sh tests/makefile_tests.sh
+	$(Q)$(BASH) tests/gemini_environment_test.sh
 
 # Full check target combining tests and Makefile tests.
 check: test makefile-tests

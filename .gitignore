@@ -3,6 +3,7 @@ data/
 weights/
 logs/
 downloads/
+runtime-output/
 .worktrees/
 
 __pycache__/
