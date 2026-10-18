@@ -908,7 +908,7 @@ At startup select and print requested device name/capability. Train shuffles onl
 ./build/workflow_tests --case infer
 ```
 
-Expected: loss after overfit is at most 20% of initial loss, training accuracy is at least 95%, and every workflow case passes.
+Expected: loss after overfit is at most 20% of initial loss, training accuracy is at least 98%, and every workflow case passes.
 
 - [ ] **Step 5: Commit**
 

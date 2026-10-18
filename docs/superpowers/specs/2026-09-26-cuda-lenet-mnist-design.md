@@ -393,7 +393,7 @@ Implement straightforward CPU versions of convolution, ReLU, max pooling, fully 
 ### 14.4 Integration and Acceptance
 
 - Run a batch of 17 samples through forward/backward/update and require finite loss, gradients, and parameters.
-- Overfit a fixed 32-sample subset for 200 updates; require final loss at most 20% of initial loss and training accuracy at least 95%.
+- Overfit a fixed 32-sample subset for 200 updates; require final loss at most 20% of initial loss and training accuracy at least 98%.
 - Run one epoch with 1,024 train and 256 validation samples using `--allow-nonstandard-count`; require a checkpoint that can be reloaded for evaluation.
 - Test malformed CLI options, missing files, invalid numeric ranges, missing output parents, unavailable devices, and out-of-range inference indexes; each must return nonzero.
 - Train with the documented defaults on H20.

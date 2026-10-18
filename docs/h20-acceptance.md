@@ -107,7 +107,7 @@ explicitly receive the training binary:
 ```
 
 The overfit case requires final loss at most 20% of initial loss and at least
-95% training accuracy. All workflow records must report `status=pass`.
+98% training accuracy. All workflow records must report `status=pass`.
 
 ## Memory And Binary Evidence
 

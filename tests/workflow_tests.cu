@@ -548,7 +548,7 @@ void CaseReloadBeforeFinalTest() {
           "final test used poisoned memory instead of the disk checkpoint");
 }
 
-// Scenario: 32-sample overfit drives loss down and training accuracy above 95%.
+// Scenario: 32-sample overfit drives loss down and accuracy to at least 98%.
 void CaseOverfit32() {
   FixtureFiles files;
   const std::uint32_t count = 40;
@@ -592,7 +592,8 @@ void CaseOverfit32() {
   workflow_test_hooks::SetBeforeFinalReloadHookForTests(
       &CaptureModelBeforeFinalReload);
   try {
-    Require(RunTrain(TrainFixtureOptions(train, test, weights, 200, 32), output,
+    // Five batches per epoch for 40 epochs exercise exactly 200 updates.
+    Require(RunTrain(TrainFixtureOptions(train, test, weights, 40, 7), output,
                      error) == kSuccess,
             "overfit training failed: " + error.str());
   } catch (...) {
@@ -602,7 +603,7 @@ void CaseOverfit32() {
   workflow_test_hooks::SetBeforeFinalReloadHookForTests(nullptr);
   const std::string records = output.str();
   const std::string first_marker = "event=epoch epoch=1 ";
-  const std::string last_marker = "event=epoch epoch=200 ";
+  const std::string last_marker = "event=epoch epoch=40 ";
   const std::size_t first = records.find(first_marker);
   const std::size_t last = records.find(last_marker);
   Require(first != std::string::npos && last != std::string::npos,
@@ -610,16 +611,26 @@ void CaseOverfit32() {
   const float initial_loss = static_cast<float>(Field(records.substr(first),
                                                        "train_loss"));
   const float final_loss = static_cast<float>(Field(records.substr(last),
-                                                     "train_loss"));
-  Require(final_loss <= initial_loss * 0.2F,
-          "overfit loss did not fall to 20 percent");
+                                                      "train_loss"));
   SaveCheckpoint(final_weights,
-                 Checkpoint{{200, 0.0F, 0.1307F, 0.3081F},
+                 Checkpoint{{40, 0.0F, 0.1307F, 0.3081F},
                             g_captured_parameters});
   std::ostringstream evaluation;
-  Require(RunEvaluate(EvaluateFixtureOptions(subset, final_weights, 0.95F),
-                      evaluation, error) == kSuccess,
-          "overfit training accuracy was below 95 percent");
+  Require(RunEvaluate(EvaluateFixtureOptions(subset, final_weights, 0.0F),
+                       evaluation, error) == kSuccess,
+          "overfit training evaluation failed");
+  const float training_accuracy =
+      static_cast<float>(Field(evaluation.str(), "accuracy"));
+  Require(final_loss <= initial_loss * 0.2F,
+          "overfit loss did not fall to 20 percent: initial=" +
+              std::to_string(initial_loss) + " final=" +
+              std::to_string(final_loss) + " training_accuracy=" +
+              std::to_string(training_accuracy));
+  Require(training_accuracy >= 0.98F,
+          "overfit training accuracy was below 98 percent: accuracy=" +
+              std::to_string(training_accuracy) + " initial_loss=" +
+              std::to_string(initial_loss) + " final_loss=" +
+              std::to_string(final_loss));
 }
 
 // Scenario: one-epoch checkpoint reload and partial evaluation batch.
