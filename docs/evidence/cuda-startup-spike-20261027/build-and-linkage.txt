@@ -1,0 +1,26 @@
+5fa320dfd0bbdbce2a7487342aaf8e808a3bed275304be6ec8c59eff77f1a5d2  cuda_startup_probe.cu
+30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1  empty_host
+6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d  cuda_startup_probe
+	linux-vdso.so.1 (0x00007ffc88dc5000)
+	/opt/orion/orion_runtime/gpu/cuda/libnccl_preload.so (0x00007fa3b8200000)
+	/opt/orion/orion_runtime/gpu/cuda/preloadrun.so (0x00007fa3b7e00000)
+	/usr/lib/libra/preloadrun.so (0x00007fa3b7a00000)
+	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fa3b77d4000)
+	libgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fa3b846a000)
+	libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007fa3b75ab000)
+	libm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007fa3b74c4000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fa3b849b000)
+	linux-vdso.so.1 (0x00007ffe909c6000)
+	/opt/orion/orion_runtime/gpu/cuda/libnccl_preload.so (0x00007fb1a5e00000)
+	/opt/orion/orion_runtime/gpu/cuda/preloadrun.so (0x00007fb1a5a00000)
+	/usr/lib/libra/preloadrun.so (0x00007fb1a5600000)
+	libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fb1a53d4000)
+	libgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fb1a6052000)
+	libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007fb1a51ab000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fb1a6135000)
+	libm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007fb1a50c4000)
+00000000000502b0 t cudaGetDeviceCount
+000000000007b3e0 T cudaGetDeviceProperties
+0000000000050460 t cudaGetDeviceProperties_v2
+0000000000051550 t cudaSetDevice
+0000000000051a80 T cudaSetDeviceFlags

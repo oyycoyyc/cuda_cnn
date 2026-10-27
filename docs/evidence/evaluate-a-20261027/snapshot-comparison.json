@@ -1,0 +1,26 @@
+[
+  {
+    "batch": 1,
+    "bytes": 810000,
+    "identical": true,
+    "sha256": "33248ba9b5cea36c3222d06b8537410c27e36726762fbef61f7d2c2d21451823",
+    "correct": 9911,
+    "samples": 10000
+  },
+  {
+    "batch": 17,
+    "bytes": 810000,
+    "identical": true,
+    "sha256": "33248ba9b5cea36c3222d06b8537410c27e36726762fbef61f7d2c2d21451823",
+    "correct": 9911,
+    "samples": 10000
+  },
+  {
+    "batch": 128,
+    "bytes": 810000,
+    "identical": true,
+    "sha256": "33248ba9b5cea36c3222d06b8537410c27e36726762fbef61f7d2c2d21451823",
+    "correct": 9911,
+    "samples": 10000
+  }
+]

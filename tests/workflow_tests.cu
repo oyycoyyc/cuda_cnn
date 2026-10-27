@@ -180,6 +180,209 @@ int CommandExitCode(const std::string& command) {
 #endif
 }
 
+// Returns one whitespace-delimited name=value field as text.
+std::string TextField(const std::string& record, const std::string& name) {
+  const std::string marker = name + "=";
+  const std::string::size_type begin = record.find(marker);
+  Require(begin != std::string::npos, "missing output field " + name);
+  const std::string::size_type value_begin = begin + marker.size();
+  const std::string::size_type end = record.find(' ', value_begin);
+  std::string value = record.substr(value_begin, end - value_begin);
+  while (!value.empty() &&
+         (value.back() == '\n' || value.back() == '\r')) {
+    value.pop_back();
+  }
+  return value;
+}
+
+// Parses one whitespace-delimited numeric field from an output record.
+double Field(const std::string& record, const std::string& name) {
+  return std::stod(TextField(record, name));
+}
+
+// Returns the first output line beginning with the given record prefix.
+std::string FindRecord(const std::string& text, const std::string& prefix) {
+  std::istringstream lines(text);
+  std::string line;
+  while (std::getline(lines, line)) {
+    if (line.compare(0, prefix.size(), prefix) == 0) {
+      return line;
+    }
+  }
+  throw std::runtime_error("missing output record " + prefix);
+}
+
+// One evaluation subprocess with stdout and stderr captured separately.
+struct CapturedRun {
+  int exit_code;
+  std::string standard_output;
+  std::string standard_error;
+};
+
+// Runs the built evaluation executable with profiling explicitly disabled or
+// enabled, redirecting stdout and stderr to distinct files.
+CapturedRun RunEvaluationProcess(const std::string& data,
+                                 const std::string& weights,
+                                 const std::string& minimum_accuracy,
+                                 bool profiling,
+                                 const std::string& stdout_path,
+                                 const std::string& stderr_path) {
+#ifdef _WIN32
+  const std::string executable = "build\\lenet_cuda.exe";
+  const std::string environment =
+      profiling ? "set CUDA_LENET_PROFILE_EVALUATE=1&& "
+                : "set CUDA_LENET_PROFILE_EVALUATE=&& ";
+#else
+  const std::string executable = "./build/lenet_cuda";
+  const std::string environment =
+      profiling ? "env CUDA_LENET_PROFILE_EVALUATE=1 "
+                : "env -u CUDA_LENET_PROFILE_EVALUATE ";
+#endif
+  const std::string command =
+      environment + executable + " evaluate --data " + data + " --weights " +
+      weights + " --min-accuracy " + minimum_accuracy +
+      " --device 0 --allow-nonstandard-count > " + stdout_path + " 2> " +
+      stderr_path;
+  CapturedRun run;
+  run.exit_code = CommandExitCode(command);
+  run.standard_output = ReadText(stdout_path);
+  run.standard_error = ReadText(stderr_path);
+  return run;
+}
+
+// Requires a captured stream to contain no profiling records.
+void RequireNoProfileRecords(const std::string& text,
+                             const std::string& description) {
+  Require(text.find("event=profile") == std::string::npos,
+          description + " unexpectedly contains profile records");
+}
+
+// Compares evaluation fields that must not depend on instrumentation; timing
+// fields are deliberately excluded because forward timing varies per run.
+void RequireSameNonTimingEvaluation(const std::string& disabled_output,
+                                    const std::string& enabled_output,
+                                    double expected_samples) {
+  const std::string disabled = FindRecord(disabled_output, "event=evaluate ");
+  const std::string enabled = FindRecord(enabled_output, "event=evaluate ");
+  Require(Field(disabled, "samples") == expected_samples,
+          "unprofiled run reported an unexpected sample count");
+  Require(Field(enabled, "samples") == expected_samples,
+          "profiled run reported an unexpected sample count");
+  Require(Field(disabled, "accuracy") == Field(enabled, "accuracy"),
+          "profiling changed evaluation accuracy");
+  Require(Field(disabled, "min_accuracy") == Field(enabled, "min_accuracy"),
+          "profiling changed the acceptance threshold");
+  Require(TextField(disabled, "status") == TextField(enabled, "status"),
+          "profiling changed evaluation status");
+}
+
+// Phase names emitted once each by opt-in evaluation profiling.
+const char* const kEvaluationProfilePhases[] = {
+    "dataset_load",         "checkpoint_load",     "device_select",
+    "storage_setup",        "model_setup",         "batch_pack",
+    "normalize_and_check",  "forward_and_check",   "softmax_and_check",
+    "metrics_and_readback", "workflow_total"};
+
+// One parsed event=profile record from evaluation stderr.
+struct ProfileRecord {
+  std::string phase;
+  double elapsed_ms;
+};
+
+// Requires every character in [begin, end) to be an ASCII digit.
+bool AllDigits(const std::string& text, std::size_t begin, std::size_t end) {
+  if (begin >= end) {
+    return false;
+  }
+  for (std::size_t index = begin; index < end; ++index) {
+    if (text[index] < '0' || text[index] > '9') {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Parses and validates every event=profile record in one captured stream.
+std::vector<ProfileRecord> ParseProfileRecords(const std::string& text) {
+  std::vector<ProfileRecord> records;
+  std::istringstream lines(text);
+  std::string line;
+  while (std::getline(lines, line)) {
+    if (line.find("event=profile") == std::string::npos) {
+      continue;
+    }
+    const std::string prefix = "event=profile ";
+    Require(line.compare(0, prefix.size(), prefix) == 0,
+            "malformed profile record: " + line);
+    std::istringstream fields(line.substr(prefix.size()));
+    std::string phase_field;
+    std::string elapsed_field;
+    std::string unexpected;
+    Require(static_cast<bool>(fields >> phase_field >> elapsed_field) &&
+                !(fields >> unexpected),
+            "profile record must contain exactly two fields: " + line);
+    const std::string phase_prefix = "phase=";
+    Require(phase_field.compare(0, phase_prefix.size(), phase_prefix) == 0,
+            "profile record is missing phase: " + line);
+    const std::string phase = phase_field.substr(phase_prefix.size());
+    Require(!phase.empty(), "profile record has an empty phase: " + line);
+    const std::string elapsed_prefix = "elapsed_ms=";
+    Require(elapsed_field.compare(0, elapsed_prefix.size(), elapsed_prefix) ==
+                0,
+            "profile record is missing elapsed_ms: " + line);
+    const std::string value = elapsed_field.substr(elapsed_prefix.size());
+    const std::string::size_type dot = value.find('.');
+    Require(dot != std::string::npos && dot > 0 &&
+                value.size() == dot + 4 && AllDigits(value, 0, dot) &&
+                AllDigits(value, dot + 1, value.size()),
+            "profile elapsed_ms is not fixed three decimals: " + line);
+    double elapsed_ms = 0.0;
+    try {
+      elapsed_ms = std::stod(value);
+    } catch (const std::exception&) {
+      throw std::runtime_error("profile elapsed_ms is not numeric: " + line);
+    }
+    Require(std::isfinite(elapsed_ms) && elapsed_ms >= 0.0,
+            "profile elapsed_ms is not finite and nonnegative: " + line);
+    records.push_back(ProfileRecord{phase, elapsed_ms});
+  }
+  return records;
+}
+
+// Requires one record per expected phase, no unexpected phases, and a total
+// that dominates every single component.
+void RequireProfileCoverage(const std::vector<ProfileRecord>& records) {
+  const std::size_t expected_count =
+      sizeof(kEvaluationProfilePhases) / sizeof(kEvaluationProfilePhases[0]);
+  Require(records.size() == expected_count,
+          "profiled evaluation emitted " + std::to_string(records.size()) +
+              " records instead of " + std::to_string(expected_count));
+  double total = -1.0;
+  for (std::size_t expected = 0; expected < expected_count; ++expected) {
+    const std::string phase = kEvaluationProfilePhases[expected];
+    std::size_t occurrences = 0;
+    double elapsed_ms = 0.0;
+    for (const ProfileRecord& record : records) {
+      if (record.phase == phase) {
+        ++occurrences;
+        elapsed_ms = record.elapsed_ms;
+      }
+    }
+    Require(occurrences == 1, "profile phase " + phase + " appeared " +
+                                  std::to_string(occurrences) + " times");
+    if (phase == "workflow_total") {
+      total = elapsed_ms;
+    }
+  }
+  Require(total >= 0.0, "profile workflow_total is missing");
+  for (const ProfileRecord& record : records) {
+    if (record.phase != "workflow_total") {
+      Require(record.elapsed_ms <= total, "profile phase " + record.phase +
+                                              " exceeds workflow_total");
+    }
+  }
+}
+
 // Reload hook that overwrites live weights to prove disk data is reloaded.
 void PoisonModelBeforeFinalReload(LeNet* model) {
   Require(model != nullptr, "reload poison hook received null model");
@@ -220,16 +423,6 @@ std::vector<float> CpuLogits(const std::vector<std::uint8_t>& image,
   const std::vector<float> relu4 = cpu_reference::ReluForward(fc2);
   return cpu_reference::LinearForward(relu4, parameters[8].values,
                                       parameters[9].values, 1, 84, 10);
-}
-
-// Parses one whitespace-delimited name=value field from an output record.
-double Field(const std::string& record, const std::string& name) {
-  const std::string marker = name + "=";
-  const std::string::size_type begin = record.find(marker);
-  Require(begin != std::string::npos, "missing output field " + name);
-  const std::string::size_type value_begin = begin + marker.size();
-  const std::string::size_type end = record.find(' ', value_begin);
-  return std::stod(record.substr(value_begin, end - value_begin));
 }
 
 // Parses a comma-separated numeric field from an output record.
@@ -723,6 +916,64 @@ void CaseEvaluate() {
           "failed threshold summary is missing");
 }
 
+// Scenario: opt-in evaluation profiling emits stderr-only phase timings.
+void CaseEvaluateProfile() {
+  FixtureFiles files;
+  const std::string one_data = files.Path("profile_one.bin");
+  const std::string many_data = files.Path("profile_many.bin");
+  const std::string weights = files.Path("profile_weights.bin");
+  WriteDataset(one_data, PatternImages(1), std::vector<std::uint8_t>(1, 0));
+  WriteDataset(many_data, PatternImages(129), CyclicLabels(129));
+  SaveCheckpoint(weights, ZeroCheckpoint());
+
+  const CapturedRun one_disabled = RunEvaluationProcess(
+      one_data, weights, "1", false,
+      files.Path("profile_one_disabled_stdout.txt"),
+      files.Path("profile_one_disabled_stderr.txt"));
+  const CapturedRun one_enabled = RunEvaluationProcess(
+      one_data, weights, "1", true,
+      files.Path("profile_one_enabled_stdout.txt"),
+      files.Path("profile_one_enabled_stderr.txt"));
+  Require(one_disabled.exit_code == kSuccess,
+          "unprofiled one-sample evaluation failed");
+  Require(one_enabled.exit_code == kSuccess,
+          "profiled one-sample evaluation failed");
+  RequireNoProfileRecords(one_disabled.standard_output, "unprofiled stdout");
+  RequireNoProfileRecords(one_enabled.standard_output, "profiled stdout");
+  RequireNoProfileRecords(one_disabled.standard_error, "unprofiled stderr");
+  RequireSameNonTimingEvaluation(one_disabled.standard_output,
+                                 one_enabled.standard_output, 1);
+  Require(Field(FindRecord(one_disabled.standard_output, "event=evaluate "),
+                "mean_forward_ms") == 0.0,
+          "one-batch warm-up timing must be explicit zero");
+  Require(Field(FindRecord(one_enabled.standard_output, "event=evaluate "),
+                "mean_forward_ms") == 0.0,
+          "profiling changed the one-batch zero warm-up timing");
+  RequireProfileCoverage(ParseProfileRecords(one_enabled.standard_error));
+
+  const CapturedRun many_disabled = RunEvaluationProcess(
+      many_data, weights, "0.5", false,
+      files.Path("profile_many_disabled_stdout.txt"),
+      files.Path("profile_many_disabled_stderr.txt"));
+  const CapturedRun many_enabled = RunEvaluationProcess(
+      many_data, weights, "0.5", true,
+      files.Path("profile_many_enabled_stdout.txt"),
+      files.Path("profile_many_enabled_stderr.txt"));
+  Require(many_disabled.exit_code == kAcceptanceFailure,
+          "unprofiled below-threshold evaluation did not return exit code 3");
+  Require(many_enabled.exit_code == kAcceptanceFailure,
+          "profiled below-threshold evaluation did not return exit code 3");
+  RequireNoProfileRecords(many_disabled.standard_output, "unprofiled stdout");
+  RequireNoProfileRecords(many_enabled.standard_output, "profiled stdout");
+  RequireNoProfileRecords(many_disabled.standard_error, "unprofiled stderr");
+  RequireSameNonTimingEvaluation(many_disabled.standard_output,
+                                 many_enabled.standard_output, 129);
+  Require(TextField(FindRecord(many_enabled.standard_output, "event=evaluate "),
+                    "status") == "fail",
+          "below-threshold profiling run did not report status=fail");
+  RequireProfileCoverage(ParseProfileRecords(many_enabled.standard_error));
+}
+
 // Scenario: inference logits/probabilities match the host oracle and sum to one.
 void CaseInfer() {
   FixtureFiles files;
@@ -841,6 +1092,7 @@ const NamedCase kCases[] = {
     {"overfit32", &CaseOverfit32},
     {"one_epoch_checkpoint", &CaseOneEpochCheckpoint},
     {"evaluate", &CaseEvaluate},
+    {"evaluate_profile", &CaseEvaluateProfile},
     {"infer", &CaseInfer},
     {"cli", &CaseCliExecutable},
 };

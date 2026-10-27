@@ -1,0 +1,92 @@
+[
+  {
+    "pair": 1,
+    "kind": "baseline",
+    "wall_ms": 2856.649855,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=1.082 images_per_second=116979.773 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.83\n",
+    "binary_sha256": "d89ab76377be44816c5060055494c2afab0b01b076c689ac2e726ae9a7a937c8"
+  },
+  {
+    "pair": 1,
+    "kind": "candidate",
+    "wall_ms": 2425.244599,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=2.306 images_per_second=54880.379 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.40\n",
+    "binary_sha256": "7309bb46c8c1eab59be049c802ea5a4dc4b4862b53729f376e3d44c28170939a"
+  },
+  {
+    "pair": 2,
+    "kind": "candidate",
+    "wall_ms": 2241.64227,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=1.117 images_per_second=113274.031 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.22\n",
+    "binary_sha256": "7309bb46c8c1eab59be049c802ea5a4dc4b4862b53729f376e3d44c28170939a"
+  },
+  {
+    "pair": 2,
+    "kind": "baseline",
+    "wall_ms": 2737.009149,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=0.452 images_per_second=279864.531 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.71\n",
+    "binary_sha256": "d89ab76377be44816c5060055494c2afab0b01b076c689ac2e726ae9a7a937c8"
+  },
+  {
+    "pair": 3,
+    "kind": "baseline",
+    "wall_ms": 2527.551383,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=1.128 images_per_second=112246.352 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.50\n",
+    "binary_sha256": "d89ab76377be44816c5060055494c2afab0b01b076c689ac2e726ae9a7a937c8"
+  },
+  {
+    "pair": 3,
+    "kind": "candidate",
+    "wall_ms": 2181.182357,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=2.759 images_per_second=45869.793 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.16\n",
+    "binary_sha256": "7309bb46c8c1eab59be049c802ea5a4dc4b4862b53729f376e3d44c28170939a"
+  },
+  {
+    "pair": 4,
+    "kind": "candidate",
+    "wall_ms": 2331.904045,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=3.564 images_per_second=35515.766 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.31\n",
+    "binary_sha256": "7309bb46c8c1eab59be049c802ea5a4dc4b4862b53729f376e3d44c28170939a"
+  },
+  {
+    "pair": 4,
+    "kind": "baseline",
+    "wall_ms": 2839.080514,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=3.390 images_per_second=37339.047 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.81\n",
+    "binary_sha256": "d89ab76377be44816c5060055494c2afab0b01b076c689ac2e726ae9a7a937c8"
+  },
+  {
+    "pair": 5,
+    "kind": "baseline",
+    "wall_ms": 2813.303433,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=1.728 images_per_second=73258.852 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.79\n",
+    "binary_sha256": "d89ab76377be44816c5060055494c2afab0b01b076c689ac2e726ae9a7a937c8"
+  },
+  {
+    "pair": 5,
+    "kind": "candidate",
+    "wall_ms": 2337.048159,
+    "returncode": 0,
+    "stdout": "event=device index=0 name=NVIDIA H20 compute_capability=9.0\nevent=evaluate samples=10000 accuracy=0.991100 mean_forward_ms=3.178 images_per_second=39823.754 min_accuracy=0.990000 status=pass\n",
+    "stderr": "time_wall_seconds=2.31\n",
+    "binary_sha256": "7309bb46c8c1eab59be049c802ea5a4dc4b4862b53729f376e3d44c28170939a"
+  }
+]

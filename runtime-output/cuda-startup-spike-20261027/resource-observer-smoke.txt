@@ -1,0 +1,7 @@
+smoke=true return=0 cpu_s=0.0187 samples=2 sample_races=0
+smoke=sleep return=0 cpu_s=0.0838 samples=18 sample_races=0
+smoke=cpu return=0 cpu_s=0.1119 samples=7 sample_races=0
+smoke=exit7 return=7 cpu_s=0.0805 samples=5 sample_races=0
+smoke=timeout return=-9 cpu_s=0.0778 samples=4 sample_races=0
+smoke=output return=0 cpu_s=0.0768 samples=5 sample_races=0
+observer_smoke_checks=pass python=3.12.12

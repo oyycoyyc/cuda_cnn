@@ -145,6 +145,13 @@ after that manual review; Task 14 requires `--require-reviewed`.
 - [ ] `kernel:src/kernels/pooling.cu:MaxPoolBackwardKernel(const float*output_gradient,const std::uint8_t*winner_offsets,float*input_gradient,std::size_t output_count,int input_height,int input_width,int output_height,int output_width)`
 - [ ] `kernel:src/kernels/pooling.cu:MaxPoolForwardKernel(const float*input,float*output,std::uint8_t*winner_offsets,std::size_t output_count,int input_height,int input_width,int output_height,int output_width)`
 
+## Evaluation Profiling Helpers
+
+- [ ] `manual:src/train.cu:EvaluationProfilingEnabled`
+- [ ] `manual:src/train.cu:ProfileElapsedMilliseconds`
+- [ ] `manual:src/train.cu:PrintProfileRecord`
+- [ ] `manual:src/train.cu:PrintEvaluationProfile`
+
 ## Binary Serializers And Parsers
 
 - [ ] `manual:scripts/prepare_mnist.py:convert_parquet`

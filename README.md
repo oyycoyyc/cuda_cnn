@@ -222,6 +222,35 @@ the remaining forward launches. `mean_forward_ms` and `images_per_second` are
 informational; there is no performance acceptance threshold. A one-batch
 dataset explicitly reports zero for both timing fields.
 
+Set `CUDA_LENET_PROFILE_EVALUATE=1` to emit opt-in stage timings to standard
+error:
+
+```bash
+CUDA_LENET_PROFILE_EVALUATE=1 ./build/lenet_cuda evaluate \
+  --data data/test.bin \
+  --weights weights/lenet.bin \
+  --min-accuracy 0.99 \
+  --device 0
+```
+
+Each phase is written as `event=profile phase=NAME elapsed_ms=VALUE` with
+classic-locale numeric formatting and fixed three decimals. The phases are
+`dataset_load`, `checkpoint_load`, `device_select`, `storage_setup`,
+`model_setup`, `batch_pack`, `normalize_and_check`, `forward_and_check`,
+`softmax_and_check`, `metrics_and_readback`, and `workflow_total`. Timings use
+only the existing synchronized boundaries and add no CUDA synchronization.
+`workflow_total` runs from `RunEvaluate` entry until after the normal evaluation
+summary, before diagnostics and destructors; it is an in-process stage total,
+not external process wall time, and does not include process startup or
+teardown. Unset or any value other than `1` disables the records. Standard
+output and its formatting are unchanged.
+
+An H20 evaluation-flow optimization experiment, including full-process wall
+times, byte-for-byte output comparisons, and environment limitations, is recorded
+in `docs/evaluate-a-results.md`. The experiment improves latency but does not meet
+the startup-inclusive 1000 ms goal; its raw forward timing is not a substitute
+for that wall-time requirement.
+
 ## Infer
 
 ```bash
@@ -251,6 +280,15 @@ event=epoch epoch=1 train_loss=0.123456 validation_accuracy=0.987600 elapsed_ms=
 event=final_test samples=10000 final_test_accuracy=0.991200 best_epoch=17 validation_accuracy=0.992000
 event=evaluate samples=10000 accuracy=0.991200 mean_forward_ms=0.321 images_per_second=398753.875 min_accuracy=0.990000 status=pass
 event=infer index=0 logits=0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000 probabilities=0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000,0.000000000 prediction=0 label=0
+```
+
+With `CUDA_LENET_PROFILE_EVALUATE=1`, evaluation additionally writes diagnostic
+`event=profile` records to standard error only, never standard output. Each of
+the phases listed under Evaluate appears once, followed by `workflow_total`:
+
+```text
+event=profile phase=dataset_load elapsed_ms=12.345
+event=profile phase=workflow_total elapsed_ms=2345.678
 ```
 
 Process exit codes:

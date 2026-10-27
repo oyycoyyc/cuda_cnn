@@ -22,6 +22,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <iomanip>
+#include <locale>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -36,6 +39,64 @@ const int kClassCount = 10;
 const std::uint32_t kEvaluationBatchSize = 128;
 const float kNormalizationMean = 0.1307F;
 const float kNormalizationStddev = 0.3081F;
+
+using ProfileClock = std::chrono::steady_clock;
+
+// Accumulates opt-in evaluation wall times; every field starts at zero.
+struct EvaluationTimings {
+  double dataset_load_ms = 0.0;
+  double checkpoint_load_ms = 0.0;
+  double device_select_ms = 0.0;
+  double storage_setup_ms = 0.0;
+  double model_setup_ms = 0.0;
+  double batch_pack_ms = 0.0;
+  double normalize_and_check_ms = 0.0;
+  double forward_and_check_ms = 0.0;
+  double softmax_and_check_ms = 0.0;
+  double metrics_and_readback_ms = 0.0;
+  double workflow_total_ms = 0.0;
+};
+
+// Returns true only when evaluation profiling is explicitly enabled.
+bool EvaluationProfilingEnabled() {
+  const char* value = std::getenv("CUDA_LENET_PROFILE_EVALUATE");
+  return value != nullptr && value[0] == '1' && value[1] == '\0';
+}
+
+// Returns the wall time between two steady-clock samples in milliseconds.
+double ProfileElapsedMilliseconds(ProfileClock::time_point start,
+                                  ProfileClock::time_point end) {
+  return std::chrono::duration<double, std::milli>(end - start).count();
+}
+
+// Writes one classic-locale, fixed-three-decimal profile record.
+void PrintProfileRecord(std::ostream& error, const char* phase,
+                        double elapsed_ms) {
+  std::ostringstream formatted;
+  formatted.imbue(std::locale::classic());
+  formatted << std::fixed << std::setprecision(3) << "event=profile phase="
+            << phase << " elapsed_ms=" << elapsed_ms << '\n';
+  const std::string record = formatted.str();
+  error.write(record.data(), static_cast<std::streamsize>(record.size()));
+}
+
+// Emits every phase once in canonical order, ending with workflow_total.
+void PrintEvaluationProfile(std::ostream& error,
+                            const EvaluationTimings& timings) {
+  PrintProfileRecord(error, "dataset_load", timings.dataset_load_ms);
+  PrintProfileRecord(error, "checkpoint_load", timings.checkpoint_load_ms);
+  PrintProfileRecord(error, "device_select", timings.device_select_ms);
+  PrintProfileRecord(error, "storage_setup", timings.storage_setup_ms);
+  PrintProfileRecord(error, "model_setup", timings.model_setup_ms);
+  PrintProfileRecord(error, "batch_pack", timings.batch_pack_ms);
+  PrintProfileRecord(error, "normalize_and_check",
+                     timings.normalize_and_check_ms);
+  PrintProfileRecord(error, "forward_and_check", timings.forward_and_check_ms);
+  PrintProfileRecord(error, "softmax_and_check", timings.softmax_and_check_ms);
+  PrintProfileRecord(error, "metrics_and_readback",
+                     timings.metrics_and_readback_ms);
+  PrintProfileRecord(error, "workflow_total", timings.workflow_total_ms);
+}
 
 // RAII owner of a non-blocking workflow stream.
 class WorkflowStream {
@@ -285,26 +346,48 @@ int CopyCorrectCount(WorkflowStorage* storage, cudaStream_t stream) {
 
 // Iterates batches in the given order, accumulating correct predictions and
 // optionally timing forward passes; the first batch is warmed up but not timed.
+// Non-null timings accumulates opt-in wall times for every batch phase.
 EvaluationResult EvaluateBatches(const MnistDataset& dataset,
                                  const std::vector<std::uint32_t>& order,
                                  std::uint32_t batch_size, bool measure,
                                  LeNet* model, WorkflowStorage* storage,
-                                 cudaStream_t stream) {
+                                 cudaStream_t stream,
+                                 EvaluationTimings* timings = nullptr) {
   EvaluationResult result{0, 0.0, 0, 0};
+  const bool profile = timings != nullptr;
   bool first_batch = true;
   std::size_t offset = 0;
   while (offset < order.size()) {
     if (offset > std::numeric_limits<std::uint32_t>::max()) {
       throw std::overflow_error("batch offset does not fit uint32");
     }
+    ProfileClock::time_point phase_start;
+    if (profile) {
+      phase_start = ProfileClock::now();
+    }
     const std::uint32_t actual =
         PackBatch(dataset, order, static_cast<std::uint32_t>(offset),
                   batch_size, &storage->host_batch);
+    if (profile) {
+      timings->batch_pack_ms +=
+          ProfileElapsedMilliseconds(phase_start, ProfileClock::now());
+    }
+
+    if (profile) {
+      phase_start = ProfileClock::now();
+    }
     NormalizeBatch(storage->host_batch, 0, 1, false, storage, stream);
+    if (profile) {
+      timings->normalize_and_check_ms +=
+          ProfileElapsedMilliseconds(phase_start, ProfileClock::now());
+    }
 
     // The warm-up forward still contributes metrics once; only its timing is
     // excluded. This prevents either dropping or replaying the first samples.
     const bool timed = measure && !first_batch;
+    if (profile) {
+      phase_start = ProfileClock::now();
+    }
     if (timed) {
       storage->events.RecordStart(stream);
     }
@@ -314,6 +397,14 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
       storage->events.RecordStop(stream);
     }
     model->RequireFinite(measure ? "evaluation forward" : "validation forward");
+    if (profile) {
+      timings->forward_and_check_ms +=
+          ProfileElapsedMilliseconds(phase_start, ProfileClock::now());
+    }
+
+    if (profile) {
+      phase_start = ProfileClock::now();
+    }
     LaunchSoftmax(logits, storage->probabilities.get(),
                   static_cast<int>(actual), kClassCount, stream);
     RequireFiniteDevice(storage->probabilities.get(),
@@ -321,11 +412,23 @@ EvaluationResult EvaluateBatches(const MnistDataset& dataset,
                         measure ? "evaluation probabilities"
                                 : "validation probabilities",
                         storage, stream);
+    if (profile) {
+      timings->softmax_and_check_ms +=
+          ProfileElapsedMilliseconds(phase_start, ProfileClock::now());
+    }
+
+    if (profile) {
+      phase_start = ProfileClock::now();
+    }
     LaunchArgmaxAndCountCorrect(
         logits, storage->device_labels.get(), storage->predictions.get(),
         storage->correct_flags.get(), storage->correct_count.get(),
         static_cast<int>(actual), kClassCount, stream);
     const int batch_correct = CopyCorrectCount(storage, stream);
+    if (profile) {
+      timings->metrics_and_readback_ms +=
+          ProfileElapsedMilliseconds(phase_start, ProfileClock::now());
+    }
     if (batch_correct < 0 || batch_correct > static_cast<int>(actual)) {
       throw std::runtime_error("GPU correct count is outside batch bounds");
     }
@@ -514,14 +617,35 @@ int RunTrain(const TrainOptions& options, std::ostream& output,
 }
 
 // Evaluates a checkpoint on the test set, timing forward passes, and returns
-// success only when accuracy meets the requested minimum.
+// success only when accuracy meets the requested minimum. With
+// CUDA_LENET_PROFILE_EVALUATE=1 it also writes phase timings to error.
 int RunEvaluate(const EvaluateOptions& options, std::ostream& output,
                 std::ostream& error) {
-  static_cast<void>(error);
+  const ProfileClock::time_point workflow_start = ProfileClock::now();
+  const bool profile = EvaluationProfilingEnabled();
+  EvaluationTimings timings;
+
+  ProfileClock::time_point dataset_start;
+  if (profile) {
+    dataset_start = ProfileClock::now();
+  }
   const MnistDataset dataset = LoadMnistDataset(options.data_path);
   RequireDatasetCount(dataset, 10000, options.allow_nonstandard_count,
                       "evaluation dataset");
+  if (profile) {
+    timings.dataset_load_ms =
+        ProfileElapsedMilliseconds(dataset_start, ProfileClock::now());
+  }
+
+  ProfileClock::time_point checkpoint_start;
+  if (profile) {
+    checkpoint_start = ProfileClock::now();
+  }
   const Checkpoint checkpoint = LoadCheckpoint(options.weights_path);
+  if (profile) {
+    timings.checkpoint_load_ms =
+        ProfileElapsedMilliseconds(checkpoint_start, ProfileClock::now());
+  }
   if (!std::isfinite(options.minimum_accuracy) ||
       options.minimum_accuracy < 0.0F || options.minimum_accuracy > 1.0F) {
     throw std::invalid_argument("minimum accuracy must be finite and in [0, 1]");
@@ -529,15 +653,42 @@ int RunEvaluate(const EvaluateOptions& options, std::ostream& output,
   const std::vector<std::uint32_t> order =
       CanonicalOrder(dataset.sample_count);
 
+  ProfileClock::time_point device_start;
+  if (profile) {
+    device_start = ProfileClock::now();
+  }
   SelectAndReportDevice(options.device, output);
+  if (profile) {
+    timings.device_select_ms =
+        ProfileElapsedMilliseconds(device_start, ProfileClock::now());
+  }
+
+  ProfileClock::time_point storage_start;
+  if (profile) {
+    storage_start = ProfileClock::now();
+  }
   WorkflowStream stream;
   WorkflowStorage storage(kEvaluationBatchSize);
+  if (profile) {
+    timings.storage_setup_ms =
+        ProfileElapsedMilliseconds(storage_start, ProfileClock::now());
+  }
+
+  ProfileClock::time_point model_start;
+  if (profile) {
+    model_start = ProfileClock::now();
+  }
   LeNet model(static_cast<int>(kEvaluationBatchSize), 0, stream.get());
   model.ImportParameters(checkpoint.parameters);
   model.RequireFinite("evaluation checkpoint import");
+  if (profile) {
+    timings.model_setup_ms =
+        ProfileElapsedMilliseconds(model_start, ProfileClock::now());
+  }
+
   const EvaluationResult result = EvaluateBatches(
       dataset, order, kEvaluationBatchSize, true, &model, &storage,
-      stream.get());
+      stream.get(), profile ? &timings : nullptr);
   const float accuracy = static_cast<float>(result.correct) /
                          static_cast<float>(dataset.sample_count);
   const float mean_forward_ms =
@@ -558,6 +709,13 @@ int RunEvaluate(const EvaluateOptions& options, std::ostream& output,
   PrintEvaluationSummary(output, dataset.sample_count, accuracy,
                          mean_forward_ms, images_per_second,
                          options.minimum_accuracy, passed);
+  // workflow_total ends after the normal summary, before diagnostics and
+  // before stream, storage, and model destructors run.
+  if (profile) {
+    timings.workflow_total_ms =
+        ProfileElapsedMilliseconds(workflow_start, ProfileClock::now());
+    PrintEvaluationProfile(error, timings);
+  }
   return passed ? kSuccess : kAcceptanceFailure;
 }
 

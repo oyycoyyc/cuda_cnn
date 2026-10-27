@@ -1,0 +1,144 @@
+[
+  {
+    "case": "host-empty",
+    "n": 6,
+    "wall_median_ms": 40.216128999999995,
+    "wall_min_ms": 39.645543,
+    "wall_max_ms": 40.585518,
+    "main_median_ms": 0.0069925000000000005,
+    "api_medians_ms": []
+  },
+  {
+    "case": "cuda-empty",
+    "n": 6,
+    "wall_median_ms": 42.7674945,
+    "wall_min_ms": 42.493545,
+    "wall_max_ms": 47.496788,
+    "main_median_ms": 0.0054335,
+    "api_medians_ms": []
+  },
+  {
+    "case": "count-first",
+    "n": 6,
+    "wall_median_ms": 1251.7731294999999,
+    "wall_min_ms": 1154.113623,
+    "wall_max_ms": 4333.321006,
+    "main_median_ms": 1174.746979,
+    "api_medians_ms": [
+      {
+        "api": "cudaGetDeviceCount",
+        "call": 1,
+        "median_ms": 1174.6816239999998,
+        "min_ms": 1078.801127,
+        "max_ms": 3838.961828
+      },
+      {
+        "api": "cudaGetDeviceCount",
+        "call": 2,
+        "median_ms": 0.0002075,
+        "min_ms": 0.000143,
+        "max_ms": 0.000348
+      }
+    ]
+  },
+  {
+    "case": "set-first",
+    "n": 6,
+    "wall_median_ms": 1472.0398719999998,
+    "wall_min_ms": 1428.640265,
+    "wall_max_ms": 4025.103563,
+    "main_median_ms": 1307.5410185,
+    "api_medians_ms": [
+      {
+        "api": "cudaSetDevice",
+        "call": 1,
+        "median_ms": 1307.4876,
+        "min_ms": 1268.801363,
+        "max_ms": 3862.726066
+      },
+      {
+        "api": "cudaSetDevice",
+        "call": 2,
+        "median_ms": 0.0024045,
+        "min_ms": 0.002312,
+        "max_ms": 0.002688
+      }
+    ]
+  },
+  {
+    "case": "properties-first",
+    "n": 6,
+    "wall_median_ms": 1197.7165775,
+    "wall_min_ms": 1127.9973,
+    "wall_max_ms": 4489.278347,
+    "main_median_ms": 1118.0773425,
+    "api_medians_ms": [
+      {
+        "api": "cudaGetDeviceProperties",
+        "call": 1,
+        "median_ms": 1118.0200575,
+        "min_ms": 1051.34453,
+        "max_ms": 4006.684582
+      },
+      {
+        "api": "cudaGetDeviceProperties",
+        "call": 2,
+        "median_ms": 0.000772,
+        "min_ms": 0.000624,
+        "max_ms": 0.001035
+      }
+    ]
+  },
+  {
+    "case": "sequence",
+    "n": 6,
+    "wall_median_ms": 1470.251737,
+    "wall_min_ms": 1435.560949,
+    "wall_max_ms": 4527.304893,
+    "main_median_ms": 1307.9888234999999,
+    "api_medians_ms": [
+      {
+        "api": "cudaGetDeviceCount",
+        "call": 1,
+        "median_ms": 1149.1515565,
+        "min_ms": 1115.280291,
+        "max_ms": 3818.065038
+      },
+      {
+        "api": "cudaSetDevice",
+        "call": 1,
+        "median_ms": 159.8566905,
+        "min_ms": 131.448868,
+        "max_ms": 173.257026
+      },
+      {
+        "api": "cudaGetDeviceProperties",
+        "call": 1,
+        "median_ms": 0.0047125,
+        "min_ms": 0.00408,
+        "max_ms": 0.00502
+      },
+      {
+        "api": "cudaGetDeviceCount",
+        "call": 2,
+        "median_ms": 0.0003465,
+        "min_ms": 0.000302,
+        "max_ms": 0.000371
+      },
+      {
+        "api": "cudaSetDevice",
+        "call": 2,
+        "median_ms": 0.0025885,
+        "min_ms": 0.002055,
+        "max_ms": 0.003953
+      },
+      {
+        "api": "cudaGetDeviceProperties",
+        "call": 2,
+        "median_ms": 0.000389,
+        "min_ms": 0.00034,
+        "max_ms": 0.000404
+      }
+    ]
+  }
+]

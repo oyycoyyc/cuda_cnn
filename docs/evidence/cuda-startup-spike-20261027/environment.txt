@@ -1,0 +1,20 @@
+38ec67f732e92bc0d6b47b7807ea30c5-taskrole1-0
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2024 NVIDIA Corporation
+Built on Tue_Oct_29_23:50:19_PDT_2024
+Cuda compilation tools, release 12.6, V12.6.85
+Build cuda_12.6.r12.6/compiler.35059454_0
+g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
+Copyright (C) 2021 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  580.82.07  Release Build  (dvs-builder@U22-I3-B07-03-2)  Wed Aug 27 18:20:54 UTC 2025
+GCC version:  gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.2) 
+/opt/orion/orion_runtime/gpu/cuda/libnccl_preload.so
+/opt/orion/orion_runtime/gpu/cuda/preloadrun.so
+/usr/lib/libra/preloadrun.so
+/usr/lib/libra/preloadrun.so
+/opt/orion/orion_runtime/gpu/cuda/libcuda_orion.so
+TARGET       FSTYPE OPTIONS
+/gemini/code gpfs   rw,relatime

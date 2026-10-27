@@ -43,7 +43,7 @@ std::size_t CheckedMultiply(std::size_t left, std::size_t right) {
 
 // Computes the exact arena size for a batch capacity: one canonical parameter
 // array, one gradient array, two optimizer moment arrays, per-sample activations
-// and gradients, winner records, and one scan result.
+// and gradients, winner records, and one scan result per scanned tensor.
 std::size_t RequiredBytes(int maximum_batch_size) {
   if (maximum_batch_size <= 0) {
     throw std::invalid_argument("maximum_batch_size must be positive");
@@ -60,7 +60,7 @@ std::size_t RequiredBytes(int maximum_batch_size) {
       CheckedMultiply(kWinnerBytesPerSample, batch);
   return CheckedAdd(CheckedAdd(CheckedAdd(parameter_bytes, sample_float_bytes),
                                winner_bytes),
-                    sizeof(int));
+                    CheckedMultiply(kMaximumScannedTensors, sizeof(int)));
 }
 
 // Enforces AdamW domains: positive step, finite nonnegative learning rate,
@@ -309,10 +309,12 @@ class LeNet::Impl {
 
     for (std::size_t index = 0; index < count; ++index) {
       LaunchFindFirstNonFinite(tensors[index].values, tensors[index].count,
-                               scan_result_, stream_);
-      CUDA_CHECK(cudaMemcpyAsync(&scan_results_[index], scan_result_,
-                                 sizeof(int), cudaMemcpyDeviceToHost, stream_));
+                               scan_result_ + index, stream_);
     }
+    // One contiguous readback transfers every tensor's result after all scans.
+    CUDA_CHECK(cudaMemcpyAsync(scan_results_.data(), scan_result_,
+                               count * sizeof(int), cudaMemcpyDeviceToHost,
+                               stream_));
     CUDA_CHECK(cudaStreamSynchronize(stream_));
     for (std::size_t index = 0; index < count; ++index) {
       if (scan_results_[index] != static_cast<int>(tensors[index].count)) {
@@ -438,7 +440,7 @@ class LeNet::Impl {
 
   // Partitions the arena in canonical order: parameters, gradients, first and
   // second moments, per-batch activations, gradient buffers, winner records,
-  // and one scan result.
+  // and one scan result slot per scanned tensor.
   void PlanArena() {
     std::size_t offset = 0;
     const auto& specs = LenetParameterSpecs();
@@ -479,7 +481,7 @@ class LeNet::Impl {
 
     pool1_winners_ = Take<std::uint8_t>(batch * 864, &offset);
     pool2_winners_ = Take<std::uint8_t>(batch * 256, &offset);
-    scan_result_ = Take<int>(1, &offset);
+    scan_result_ = Take<int>(kMaximumScannedTensors, &offset);
     if (offset != required_bytes_) {
       throw std::logic_error("LeNet device memory plan byte mismatch");
     }
@@ -517,7 +519,7 @@ class LeNet::Impl {
   float* grad_pool1_ = nullptr;
   float* grad_relu1_ = nullptr;
   float* input_gradient_ = nullptr;
-  // Pooling winner records and the shared finite-scan result slot.
+  // Pooling winner records and one finite-scan result slot per scanned tensor.
   std::uint8_t* pool1_winners_ = nullptr;
   std::uint8_t* pool2_winners_ = nullptr;
   int* scan_result_ = nullptr;

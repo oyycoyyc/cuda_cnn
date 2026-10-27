@@ -1,0 +1,1130 @@
+[
+  {
+    "round": 1,
+    "position": 1,
+    "case": "host-empty",
+    "wall_ms": 40.350263,
+    "main_ms": 0.0076,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.007600 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 1,
+    "position": 2,
+    "case": "cuda-empty",
+    "wall_ms": 47.496788,
+    "main_ms": 0.005122,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005122 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 1,
+    "position": 3,
+    "case": "count-first",
+    "wall_ms": 1222.877496,
+    "main_ms": 1146.244602,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1146.204502",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000178",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1146.204502 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000178 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=1146.244602 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.20\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 1,
+    "position": 4,
+    "case": "set-first",
+    "wall_ms": 1494.046112,
+    "main_ms": 1323.918657,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "1323.875924",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002405",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1323.875924 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002405 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=1323.918657 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.47\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 1,
+    "position": 5,
+    "case": "properties-first",
+    "wall_ms": 4489.278347,
+    "main_ms": 4006.752858,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "4006.684582",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000624",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=4006.684582 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000624 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=4006.752858 status=pass\n",
+    "stderr": "gnu_wall_seconds=4.47\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 1,
+    "position": 6,
+    "case": "sequence",
+    "wall_ms": 4527.304893,
+    "main_ms": 3970.611137,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "3818.065038",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "152.426617",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.004922",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000371",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.003953",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000378",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=3818.065038 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=152.426617 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.004922 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000371 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.003953 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000378 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=3970.611137 status=pass\n",
+    "stderr": "gnu_wall_seconds=4.50\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 1,
+    "case": "cuda-empty",
+    "wall_ms": 44.416494,
+    "main_ms": 0.00558,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005580 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 2,
+    "case": "count-first",
+    "wall_ms": 4333.321006,
+    "main_ms": 3839.041854,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "3838.961828",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000237",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=3838.961828 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000237 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=3839.041854 status=pass\n",
+    "stderr": "gnu_wall_seconds=4.31\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 3,
+    "case": "set-first",
+    "wall_ms": 4025.103563,
+    "main_ms": 3862.780716,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "3862.726066",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002312",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=3862.726066 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002312 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=3862.780716 status=pass\n",
+    "stderr": "gnu_wall_seconds=4.00\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 4,
+    "case": "properties-first",
+    "wall_ms": 1180.79031,
+    "main_ms": 1097.733577,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "1097.674837",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000909",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1097.674837 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000909 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=1097.733577 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.16\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 5,
+    "case": "sequence",
+    "wall_ms": 1479.37084,
+    "main_ms": 1319.741538,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1169.466423",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "150.189101",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.004080",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000307",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002055",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000393",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1169.466423 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=150.189101 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.004080 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000307 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.002055 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000393 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=1319.741538 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.46\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 2,
+    "position": 6,
+    "case": "host-empty",
+    "wall_ms": 40.585518,
+    "main_ms": 0.007126,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.007126 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 3,
+    "position": 1,
+    "case": "count-first",
+    "wall_ms": 1154.113623,
+    "main_ms": 1078.855373,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1078.801127",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000143",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1078.801127 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000143 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=1078.855373 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.13\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 3,
+    "position": 2,
+    "case": "set-first",
+    "wall_ms": 1437.312026,
+    "main_ms": 1278.685774,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "1278.620319",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002688",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1278.620319 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002688 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=1278.685774 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.41\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 3,
+    "position": 3,
+    "case": "properties-first",
+    "wall_ms": 1127.9973,
+    "main_ms": 1051.40721,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "1051.344530",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000776",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1051.344530 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000776 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=1051.407210 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.10\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 3,
+    "position": 4,
+    "case": "sequence",
+    "wall_ms": 1435.560949,
+    "main_ms": 1260.370836,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1128.836690",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "131.448868",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.004225",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000344",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002188",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000398",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1128.836690 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=131.448868 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.004225 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000344 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.002188 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000398 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=1260.370836 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.41\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 3,
+    "position": 5,
+    "case": "host-empty",
+    "wall_ms": 40.583346,
+    "main_ms": 0.006603,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.006603 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 3,
+    "position": 6,
+    "case": "cuda-empty",
+    "wall_ms": 42.770845,
+    "main_ms": 0.005855,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005855 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 4,
+    "position": 1,
+    "case": "set-first",
+    "wall_ms": 1450.033632,
+    "main_ms": 1291.16338,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "1291.099276",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002312",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1291.099276 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002312 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=1291.163380 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.43\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 4,
+    "position": 2,
+    "case": "properties-first",
+    "wall_ms": 1153.782926,
+    "main_ms": 1078.250784,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "1078.186300",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000768",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1078.186300 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000768 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=1078.250784 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.13\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 4,
+    "position": 3,
+    "case": "sequence",
+    "wall_ms": 1445.007993,
+    "main_ms": 1282.663766,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1115.280291",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "167.286764",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.004875",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000361",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002622",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000404",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1115.280291 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=167.286764 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.004875 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000361 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.002622 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000404 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=1282.663766 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.42\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 4,
+    "position": 4,
+    "case": "host-empty",
+    "wall_ms": 40.081995,
+    "main_ms": 0.006453,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.006453 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 4,
+    "position": 5,
+    "case": "cuda-empty",
+    "wall_ms": 42.605394,
+    "main_ms": 0.005287,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005287 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 4,
+    "position": 6,
+    "case": "count-first",
+    "wall_ms": 1240.620887,
+    "main_ms": 1162.885284,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1162.821403",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000348",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1162.821403 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000348 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=1162.885284 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.22\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 5,
+    "position": 1,
+    "case": "properties-first",
+    "wall_ms": 1233.06403,
+    "main_ms": 1155.412814,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "1155.332701",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.001035",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1155.332701 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.001035 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=1155.412814 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.21\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 5,
+    "position": 2,
+    "case": "sequence",
+    "wall_ms": 1525.715583,
+    "main_ms": 1358.640571,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1185.281424",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "173.257026",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.005020",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000302",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002650",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000340",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1185.281424 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=173.257026 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.005020 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000302 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.002650 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000340 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=1358.640571 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.50\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 5,
+    "position": 3,
+    "case": "host-empty",
+    "wall_ms": 39.711352,
+    "main_ms": 0.006874,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.006874 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 5,
+    "position": 4,
+    "case": "cuda-empty",
+    "wall_ms": 42.493545,
+    "main_ms": 0.005638,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005638 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 5,
+    "position": 5,
+    "case": "count-first",
+    "wall_ms": 1262.925372,
+    "main_ms": 1186.608674,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1186.541845",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000171",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1186.541845 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000171 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=1186.608674 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.24\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 5,
+    "position": 6,
+    "case": "set-first",
+    "wall_ms": 1507.745288,
+    "main_ms": 1339.250145,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "1339.179628",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002502",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1339.179628 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002502 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=1339.250145 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.48\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 6,
+    "position": 1,
+    "case": "sequence",
+    "wall_ms": 1461.132634,
+    "main_ms": 1296.236109,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1125.569862",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "170.589460",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "0.004550",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000349",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002555",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "sequence",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000385",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1125.569862 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=170.589460 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.004550 code=0 major=9 minor=0\nevent=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000349 code=0 count=1\nevent=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.002555 code=0 device=0\nevent=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000385 code=0 major=9 minor=0\nevent=summary mode=sequence build=cuda api_calls=6 main_ms=1296.236109 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.44\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 6,
+    "position": 2,
+    "case": "host-empty",
+    "wall_ms": 39.645543,
+    "main_ms": 0.007111,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=host api_calls=0 main_ms=0.007111 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1"
+  },
+  {
+    "round": 6,
+    "position": 3,
+    "case": "cuda-empty",
+    "wall_ms": 42.764144,
+    "main_ms": 0.005056,
+    "returncode": 0,
+    "api_records": [],
+    "stdout": "event=summary mode=empty build=cuda api_calls=0 main_ms=0.005056 status=pass\n",
+    "stderr": "gnu_wall_seconds=0.02\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 6,
+    "position": 4,
+    "case": "count-first",
+    "wall_ms": 1273.260147,
+    "main_ms": 1197.255735,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "1",
+        "elapsed_ms": "1197.194968",
+        "code": "0",
+        "count": "1"
+      },
+      {
+        "event": "api",
+        "mode": "count-first",
+        "api": "cudaGetDeviceCount",
+        "call": "2",
+        "elapsed_ms": "0.000243",
+        "code": "0",
+        "count": "1"
+      }
+    ],
+    "stdout": "event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1197.194968 code=0 count=1\nevent=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000243 code=0 count=1\nevent=summary mode=count-first build=cuda api_calls=2 main_ms=1197.255735 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.25\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 6,
+    "position": 5,
+    "case": "set-first",
+    "wall_ms": 1428.640265,
+    "main_ms": 1268.861567,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "1",
+        "elapsed_ms": "1268.801363",
+        "code": "0",
+        "device": "0"
+      },
+      {
+        "event": "api",
+        "mode": "set-first",
+        "api": "cudaSetDevice",
+        "call": "2",
+        "elapsed_ms": "0.002404",
+        "code": "0",
+        "device": "0"
+      }
+    ],
+    "stdout": "event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1268.801363 code=0 device=0\nevent=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002404 code=0 device=0\nevent=summary mode=set-first build=cuda api_calls=2 main_ms=1268.861567 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.41\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  {
+    "round": 6,
+    "position": 6,
+    "case": "properties-first",
+    "wall_ms": 1214.642845,
+    "main_ms": 1138.421108,
+    "returncode": 0,
+    "api_records": [
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "1",
+        "elapsed_ms": "1138.365278",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      },
+      {
+        "event": "api",
+        "mode": "properties-first",
+        "api": "cudaGetDeviceProperties",
+        "call": "2",
+        "elapsed_ms": "0.000724",
+        "code": "0",
+        "major": "9",
+        "minor": "0"
+      }
+    ],
+    "stdout": "event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1138.365278 code=0 major=9 minor=0\nevent=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000724 code=0 major=9 minor=0\nevent=summary mode=properties-first build=cuda api_calls=2 main_ms=1138.421108 status=pass\n",
+    "stderr": "gnu_wall_seconds=1.19\n",
+    "binary_sha256": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  }
+]

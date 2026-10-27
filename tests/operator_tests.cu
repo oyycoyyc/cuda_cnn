@@ -1587,7 +1587,7 @@ TEST_CASE(finite_scan_rejects_invalid_count_pointers_and_overlap) {
 // LeNet single-arena storage, forward stages, backward, and train-step contracts.
 TEST_CASE(lenet_storage_owns_one_exact_fixed_arena_and_canonical_parameters) {
   constexpr int kMaximumBatch = 17;
-  constexpr std::size_t kExpectedBytes = 1891708;
+  constexpr std::size_t kExpectedBytes = 1891936;
   const std::size_t before = DeviceBufferAllocationCountForTests();
   {
     LeNet model(kMaximumBatch, UINT64_C(1337), nullptr);
@@ -1651,7 +1651,7 @@ TEST_CASE(lenet_export_fills_canonical_storage_without_reallocation) {
 TEST_CASE(lenet_storage_bytes_and_constructor_query_are_exact_at_capacities) {
   const std::array<int, 3> capacities{{1, 17, 1024}};
   const std::array<std::size_t, 3> expected_bytes{{
-      780284, 1891708, 71841956}};
+      780512, 1891936, 71842184}};
   NonblockingTestStream stream;
   for (std::size_t index = 0; index < capacities.size(); ++index) {
     const std::size_t live_before = DeviceBufferAllocationCountForTests();
@@ -1992,4 +1992,82 @@ TEST_CASE(lenet_storage_import_validates_schema_and_finite_scan_names_value) {
   model.ImportParameters(nonfinite);
   EXPECT_THROW_CONTAINS(model.RequireFinite("import"),
                         "import: conv2.weight[19]");
+}
+
+// Consolidated finite readback must keep canonical tensor order and the
+// smallest bad index even when several parameters are poisoned at once.
+TEST_CASE(lenet_finite_readback_preserves_canonical_order) {
+  LeNet model(1, UINT64_C(223), nullptr);
+  const ParameterSet finite = model.ExportParameters();
+  ParameterSet poisoned = finite;
+  poisoned[0].values[21] = std::numeric_limits<float>::infinity();
+  poisoned[0].values[100] = -std::numeric_limits<float>::infinity();
+  poisoned[2].values[19] = std::numeric_limits<float>::quiet_NaN();
+
+  model.ImportParameters(poisoned);
+  for (int repeat = 0; repeat < 3; ++repeat) {
+    std::string message;
+    try {
+      model.RequireFinite("batch");
+    } catch (const std::exception& error) {
+      message = error.what();
+    }
+    EXPECT_EQ(std::string("batch: conv1.weight[21] is not finite"), message);
+  }
+
+  model.ImportParameters(finite);
+  model.RequireFinite("batch");
+}
+
+// A later non-finite sample must be diagnosed once, while a following batch of
+// one over the finite first sample ignores the stale tail and result slots.
+TEST_CASE(lenet_finite_readback_ignores_inactive_tail_and_stale_slots) {
+  constexpr int kMaximumBatch = 17;
+  constexpr int kNonFiniteSample = 5;
+  constexpr std::size_t kPixelsPerSample = 28 * 28;
+  constexpr std::size_t kConv1FloatsPerSample = 3456;
+  std::vector<float> input(kMaximumBatch * kPixelsPerSample, 0.125F);
+  input[static_cast<std::size_t>(kNonFiniteSample) * kPixelsPerSample] =
+      std::numeric_limits<float>::quiet_NaN();
+  const std::vector<float> zero_gradient(10, 0.0F);
+  DeviceBuffer<float> device_input = CopyToDevice(input);
+  DeviceBuffer<float> device_gradient = CopyToDevice(zero_gradient);
+  LeNet model(kMaximumBatch, UINT64_C(227), nullptr);
+  const std::size_t live_allocations = DeviceBufferAllocationCountForTests();
+  const std::size_t allocation_events =
+      DeviceBufferSuccessfulAllocationEventCountForTests();
+
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    model.RequireFinite("batch");
+  }
+
+  model.Forward(device_input.get(), kMaximumBatch);
+  std::ostringstream expected;
+  expected << "batch: conv1.pre_activation["
+           << static_cast<std::size_t>(kNonFiniteSample) *
+                  kConv1FloatsPerSample
+           << "] is not finite";
+  for (int repeat = 0; repeat < 3; ++repeat) {
+    std::string message;
+    try {
+      model.RequireFinite("batch");
+    } catch (const std::exception& error) {
+      message = error.what();
+    }
+    EXPECT_EQ(expected.str(), message);
+  }
+
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    model.Forward(device_input.get(), 1);
+    model.RequireFinite("batch");
+  }
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    model.Forward(device_input.get(), 1);
+    model.Backward(device_gradient.get(), 1);
+    model.RequireFinite("batch");
+  }
+
+  EXPECT_EQ(live_allocations, DeviceBufferAllocationCountForTests());
+  EXPECT_EQ(allocation_events,
+            DeviceBufferSuccessfulAllocationEventCountForTests());
 }

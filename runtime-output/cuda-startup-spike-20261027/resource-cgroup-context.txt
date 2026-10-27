@@ -1,0 +1,13 @@
+path=/proc/self/cgroup
+0::/
+path=/sys/fs/cgroup/cpu.max
+200000 100000
+path=/sys/fs/cgroup/cpu.stat
+usage_usec 882234307
+user_usec 566156230
+system_usec 316078077
+nr_periods 14183
+nr_throttled 658
+throttled_usec 129533040
+path=/sys/fs/cgroup/memory.max
+10737418240

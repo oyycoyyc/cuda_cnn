@@ -1,0 +1,18 @@
+event=summary mode=empty build=host api_calls=0 main_ms=0.006937 status=pass
+event=summary mode=empty build=cuda api_calls=0 main_ms=0.009704 status=pass
+event=api mode=count-first api=cudaGetDeviceCount call=1 elapsed_ms=1162.291108 code=0 count=1
+event=api mode=count-first api=cudaGetDeviceCount call=2 elapsed_ms=0.000186 code=0 count=1
+event=summary mode=count-first build=cuda api_calls=2 main_ms=1162.334560 status=pass
+event=api mode=set-first api=cudaSetDevice call=1 elapsed_ms=1400.273051 code=0 device=0
+event=api mode=set-first api=cudaSetDevice call=2 elapsed_ms=0.002553 code=0 device=0
+event=summary mode=set-first build=cuda api_calls=2 main_ms=1400.323998 status=pass
+event=api mode=properties-first api=cudaGetDeviceProperties call=1 elapsed_ms=1161.372721 code=0 major=9 minor=0
+event=api mode=properties-first api=cudaGetDeviceProperties call=2 elapsed_ms=0.000933 code=0 major=9 minor=0
+event=summary mode=properties-first build=cuda api_calls=2 main_ms=1161.419716 status=pass
+event=api mode=sequence api=cudaGetDeviceCount call=1 elapsed_ms=1160.315095 code=0 count=1
+event=api mode=sequence api=cudaSetDevice call=1 elapsed_ms=209.460758 code=0 device=0
+event=api mode=sequence api=cudaGetDeviceProperties call=1 elapsed_ms=0.003588 code=0 major=9 minor=0
+event=api mode=sequence api=cudaGetDeviceCount call=2 elapsed_ms=0.000187 code=0 count=1
+event=api mode=sequence api=cudaSetDevice call=2 elapsed_ms=0.001935 code=0 device=0
+event=api mode=sequence api=cudaGetDeviceProperties call=2 elapsed_ms=0.000364 code=0 major=9 minor=0
+event=summary mode=sequence build=cuda api_calls=6 main_ms=1369.841204 status=pass

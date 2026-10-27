@@ -1,0 +1,220 @@
+{
+  "verified_at_utc": "2026-10-27T08:17:59.444227+00:00",
+  "files": [
+    {
+      "file": "Makefile",
+      "sha256_normalized": "00044b6f514bbe0d00b22f9696151a63f753a7c465e7a1d780369a7accf3c374",
+      "remote_matches_local": true
+    },
+    {
+      "file": "README.md",
+      "sha256_normalized": "ded0c647a7d80949eba22d15220bdf756a1350ca01b52b00e28e8e44f52a81d2",
+      "remote_matches_local": true
+    },
+    {
+      "file": "docs/comment-review-checklist.md",
+      "sha256_normalized": "341a34c3be8984c3326df448fd7f828041bb7f5f2de2da0f98534a0228e5c12b",
+      "remote_matches_local": true
+    },
+    {
+      "file": "docs/evaluate-a-results.md",
+      "sha256_normalized": "262a2770cec2bb3e52821bc7c5bf63625b2b2c4598eb1059fe4cd62ab0312993",
+      "remote_matches_local": true
+    },
+    {
+      "file": "docs/server-environment.md",
+      "sha256_normalized": "62a719164c211139031166f04bc803f6add9b90f1654047689fd9c4e553de8b6",
+      "remote_matches_local": true
+    },
+    {
+      "file": "docs/superpowers/plans/2026-10-27-evaluate-a.md",
+      "sha256_normalized": "f9195f24432a0f83f4f84e1cfeac5eaf6e58b0feba2edb7d453e94e38407b8be",
+      "remote_matches_local": true
+    },
+    {
+      "file": "docs/superpowers/specs/2026-10-27-evaluate-a-design.md",
+      "sha256_normalized": "39b920ad65a9ddc703d77108e656d3d2d29aa695933dfab32e1de319f6fae42d",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/checkpoint.h",
+      "sha256_normalized": "9fbf133e80b60dde4552f6d193fbad927c9beb5c0be0d16f63b97c1313578f8c",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/cli.h",
+      "sha256_normalized": "91c44c11c95e9066437ad219c9a5b76da12fd885c1378d39db60ac66c4af429b",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/cuda_check.h",
+      "sha256_normalized": "5829f92765f6d0606d54eada266f848f36f9bd7adc8372eaaa849b26a64bf939",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/dataset.h",
+      "sha256_normalized": "ee897bfdc6ac8dde3a5d2fffdda16ee11baf29294c17ea8d667108830aa2a479",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/layers.h",
+      "sha256_normalized": "97042c11f25f4975d4028e9797e0afa1936c0a75109425b6756b94f2023ec0f1",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/lenet.h",
+      "sha256_normalized": "c0541ad87ceeeb9ebc820db1d158b44af1b796af29d6efadce92180f14c59751",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/parameters.h",
+      "sha256_normalized": "1638468f6787ea8c12f337c4ed5880f9234a056bfb19e3bfb4b3ab475150bcaa",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/random.h",
+      "sha256_normalized": "1832b8b2b83ae1fb954e54638e6ee2bf35511ab98e3fe05597109792f53fcf20",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/reporting.h",
+      "sha256_normalized": "28ffa7426b14d9f8849933d899a2471951cfe6c76ecf23f10c78bfe81a95e26e",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/tensor.h",
+      "sha256_normalized": "bc702c35b64e0b255bcc1eb2682a3bd3e63b363b33b67132b66e0d1357350f70",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/train.h",
+      "sha256_normalized": "00237dec27ffc7e8b1004030ec6c911ae2b7ab633c306d870ae547aca0ff6544",
+      "remote_matches_local": true
+    },
+    {
+      "file": "include/training_data.h",
+      "sha256_normalized": "0b1eb396c7a69a53ec8bda805a2645030b2ef75af742af481fc036c6e65d4e3c",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/binary_io.h",
+      "sha256_normalized": "599347663565309b9eae3b4e8d63127ad4cb05960300ff94e68e66cdaa9d0a8f",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/checkpoint.cpp",
+      "sha256_normalized": "865e8bba527439bdeaf6f8bc55ce625a861043e8c5fb62366c23c7be6726a824",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/cli.cpp",
+      "sha256_normalized": "e7d0dea038743e06ea0e6ff296ea45b4f1780f0aeddab5ae516f6026b58308d3",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/dataset.cpp",
+      "sha256_normalized": "07751d4d67342ce2670c7c4147e725d8f7c46f5db3e4e72dbaee614b57c9e550",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/activation.cu",
+      "sha256_normalized": "95461ff88cc326704c058f514d8f749fb734aab1ac4748c96bd89c869683e53b",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/adam.cu",
+      "sha256_normalized": "7ceffee9cf18eb716597ffe07b234319006c161d94f60d7610ba52dc1fdc6729",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/convolution.cu",
+      "sha256_normalized": "82f845c10fbfe5c8ce401b6f47c77520bf696c7ba72a1f5fcb054a695120ef05",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/input.cu",
+      "sha256_normalized": "d0c4752594ef623379d890d20dd5aab8df9b3f7eb28a5e26793864c97d2173d3",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/linear.cu",
+      "sha256_normalized": "b1e1c1d657d3bb5bfac2f7a5246be8b4933126716bbf7bc181c73c4f7d541b14",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/loss.cu",
+      "sha256_normalized": "e33363b272718ee2e1b54ca73421fd8cb74365eb2ecb792c6bbf37fc7b22090e",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/metrics.cu",
+      "sha256_normalized": "067b6b4f020f48d7a052cc6658b9ace3bf874cf58864b02e6ad93edf040cdb93",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/kernels/pooling.cu",
+      "sha256_normalized": "a5e96558326d907d431af071f36130c433ee60b58989f62bc753f0aee20168c1",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/lenet.cu",
+      "sha256_normalized": "3fe710fa8e9642054ce9dfb0f6ab54e6b295d4353cdb426f13acbd51f87565de",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/main.cu",
+      "sha256_normalized": "31aecb3b23f48675074789378d730033c4e96a4db2a20a2b0bdb94f9718c9904",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/parameters.cpp",
+      "sha256_normalized": "28f6b2a0364e96568a64dbe6331f7a5088e6d2d684eef3c1bf921905864a3c42",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/random.cpp",
+      "sha256_normalized": "0781de9ed1f000ed220a0d9fb86a18ba19e0d82778795c04ab72f4dd039942ac",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/reporting.cpp",
+      "sha256_normalized": "76d56c4c7d8b8498ba3a0ee69322509a1d6b57a6c497db774cb250c8c94a494a",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/train.cu",
+      "sha256_normalized": "411bcecae0c8936a9b625efe17469751e585dcc76fdf0c66857d0fbf394e5423",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/training_data.cpp",
+      "sha256_normalized": "39668164ed497e1ae62bebc3af79c704541a996e3af602ff535f35c87a0f4f92",
+      "remote_matches_local": true
+    },
+    {
+      "file": "src/workflow_test_hooks.h",
+      "sha256_normalized": "9a9eb46671066be8811d165d707b34d259e226feed981cc4e2198d2051013e94",
+      "remote_matches_local": true
+    },
+    {
+      "file": "tests/evaluate_snapshot.cu",
+      "sha256_normalized": "b8b9054ca9663ecf446638bdf637b0fdd70f441b47d10720b2120fad0d197563",
+      "remote_matches_local": true
+    },
+    {
+      "file": "tests/operator_tests.cu",
+      "sha256_normalized": "021e2ddc6b980c8639ef97ab3f2dc5941130663fd398df1321902d7e286e785e",
+      "remote_matches_local": true
+    },
+    {
+      "file": "tests/test_evaluate_snapshot.py",
+      "sha256_normalized": "8365b7f39bfedb12d50c17ad2b70f9b4b3ba87def60bf1487d3ee2d87c389099",
+      "remote_matches_local": true
+    },
+    {
+      "file": "tests/workflow_tests.cu",
+      "sha256_normalized": "a911801c8ddcee23be6b0bcf066c5464126ebcb0dbfcb16eaf7c93e1ad225e44",
+      "remote_matches_local": true
+    }
+  ]
+}

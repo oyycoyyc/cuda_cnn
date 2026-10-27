@@ -29,7 +29,7 @@ endif
 HOST_TEST_SOURCES := $(wildcard tests/*_tests.cpp)
 CUDA_TEST_SOURCES := $(wildcard tests/*_tests.cu)
 COMPLIANCE_TEST_SOURCES := $(HOST_TEST_SOURCES) $(CUDA_TEST_SOURCES) \
-  tests/cpu_reference.cpp
+  tests/cpu_reference.cpp tests/evaluate_snapshot.cu
 # Partition test basenames shared by both host and CUDA suites.
 HOST_TEST_NAMES := $(basename $(notdir $(HOST_TEST_SOURCES)))
 CUDA_TEST_NAMES := $(basename $(notdir $(CUDA_TEST_SOURCES)))
@@ -48,6 +48,7 @@ LENET_OBJECT := $(CUDA_OBJECT_DIR)/lenet.o
 TRAIN_OBJECT := $(CUDA_OBJECT_DIR)/train.o
 MAIN_OBJECT := $(CUDA_OBJECT_DIR)/main.o
 DATASET_PROBE_OBJECT := $(HOST_OBJECT_DIR)/dataset_probe.o
+EVALUATE_SNAPSHOT_OBJECT := $(CUDA_OBJECT_DIR)/evaluate_snapshot.o
 DATASET_OBJECT := $(HOST_OBJECT_DIR)/dataset.o
 RANDOM_OBJECT := $(HOST_OBJECT_DIR)/random.o
 PARAMETERS_OBJECT := $(HOST_OBJECT_DIR)/parameters.o
@@ -71,6 +72,7 @@ COMPLIANCE_TEST_MODULES := tests.test_check_prohibited \
   tests.output_format_tests tests.compliance_tests
 # Generated dependency files included at the end of the build.
 DEPENDENCY_FILES := $(HOST_TEST_OBJECTS:.o=.d) $(CUDA_TEST_OBJECTS:.o=.d) \
+  $(EVALUATE_SNAPSHOT_OBJECT:.o=.d) \
   $(DATASET_PROBE_OBJECT:.o=.d) $(DATASET_OBJECT:.o=.d) \
   $(RANDOM_OBJECT:.o=.d) $(PARAMETERS_OBJECT:.o=.d) \
   $(CHECKPOINT_OBJECT:.o=.d) $(CPU_REFERENCE_OBJECT:.o=.d) \
@@ -91,9 +93,10 @@ endif
   makefile-tests check acceptance compliance-test-sources clean
 .SECONDARY: $(HOST_TEST_OBJECTS) $(CUDA_TEST_OBJECTS)
 
-# Default goal: build the application and all test programs.
+# Default goal: build the application, all test programs, and the tests-owned
+# snapshot comparison utility.
 all: $(BUILD_DIR)/lenet_cuda$(EXEEXT) $(HOST_TEST_PROGRAMS) \
-  $(CUDA_TEST_PROGRAMS)
+  $(CUDA_TEST_PROGRAMS) $(BUILD_DIR)/evaluate_snapshot$(EXEEXT)
 	@echo "event=build status=pass target=all"
 
 # Manifest target that lists the compliance test sources.
@@ -175,10 +178,18 @@ $(BUILD_DIR)/lenet_cuda$(EXEEXT): $(MAIN_OBJECT) $(CLI_OBJECT) $(DATASET_OBJECT)
 $(BUILD_DIR)/dataset_probe$(EXEEXT): $(DATASET_PROBE_OBJECT) $(DATASET_OBJECT) | $(BUILD_DIR)
 	$(Q)$(CXX) $(CXXFLAGS) $^ -o $@
 
+# Snapshot comparison utility link rule. It is tests-owned, built by all, and
+# never linked into lenet_cuda or added to a test runner list.
+$(BUILD_DIR)/evaluate_snapshot$(EXEEXT): $(EVALUATE_SNAPSHOT_OBJECT) \
+    $(DATASET_OBJECT) $(CHECKPOINT_OBJECT) $(PARAMETERS_OBJECT) \
+    $(RANDOM_OBJECT) $(LENET_OBJECT) $(CUDA_KERNEL_OBJECTS) | $(BUILD_DIR)
+	$(Q)$(NVCC) $(NVCCFLAGS) $^ -o $@
+
 # Extensionless aliases for tests and the application on suffixed platforms.
 ifneq ($(EXEEXT),)
 $(BUILD_DIR)/dataset_tests: $(BUILD_DIR)/dataset_tests$(EXEEXT)
 $(BUILD_DIR)/dataset_probe: $(BUILD_DIR)/dataset_probe$(EXEEXT)
+$(BUILD_DIR)/evaluate_snapshot: $(BUILD_DIR)/evaluate_snapshot$(EXEEXT)
 $(BUILD_DIR)/random_tests: $(BUILD_DIR)/random_tests$(EXEEXT)
 $(BUILD_DIR)/parameters_tests: $(BUILD_DIR)/parameters_tests$(EXEEXT)
 $(BUILD_DIR)/checkpoint_tests: $(BUILD_DIR)/checkpoint_tests$(EXEEXT)

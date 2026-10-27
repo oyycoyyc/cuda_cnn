@@ -1,0 +1,37 @@
+event=test_suite name=operator_tests status=pass
+event=workflow_test case=schedule status=pass
+event=workflow_test case=validation status=pass
+event=workflow_test case=batch17 status=pass
+event=workflow_test case=global_step status=pass
+event=workflow_test case=strict_checkpoint_tie status=pass
+event=workflow_test case=reload_before_final status=pass
+event=workflow_test case=overfit32 status=pass
+event=workflow_test case=one_epoch_checkpoint status=pass
+event=workflow_test case=evaluate status=pass
+event=workflow_test case=evaluate_profile status=pass
+event=workflow_test case=infer status=pass
+event=workflow_test case=cli status=pass
+test_000_snapshot_utility_is_built (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_000_snapshot_utility_is_built) ... ok
+test_full_official_dataset_snapshot_has_exact_layout_and_values (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_full_official_dataset_snapshot_has_exact_layout_and_values) ... ok
+test_refuses_symlink_aliases_of_weight_and_data_files (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_refuses_symlink_aliases_of_weight_and_data_files) ... ok
+test_refuses_to_overwrite_an_existing_output_file (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_refuses_to_overwrite_an_existing_output_file) ... ok
+test_rejects_dataset_with_nonproduction_sample_count (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_dataset_with_nonproduction_sample_count) ... ok
+test_rejects_out_of_range_and_malformed_batch_sizes (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_out_of_range_and_malformed_batch_sizes) ... ok
+test_rejects_outputs_inside_simulated_environment_mounts (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_outputs_inside_simulated_environment_mounts) ... ok
+test_rejects_outputs_under_environment_selected_mount (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_outputs_under_environment_selected_mount) ... ok
+test_rejects_symlinked_output_parent_inside_a_mount (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_symlinked_output_parent_inside_a_mount) ... ok
+test_rejects_symlinked_parent_into_nested_mount_directory (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_rejects_symlinked_parent_into_nested_mount_directory) ... ok
+test_repeated_full_snapshots_are_byte_identical (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_repeated_full_snapshots_are_byte_identical) ... ok
+test_requires_exactly_four_positional_arguments (tests.test_evaluate_snapshot.EvaluateSnapshotTest.test_requires_exactly_four_positional_arguments) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 7.864s
+
+OK
+comment check passed: inventory=151 checklist_items=151
+compliance scan passed: mode=source scope=make-compiled-inputs
+compliance scan passed: mode=build evidence=successful-build
+9800e552ae6b250946ba8d3ff35d353998c67cf34ace5fa88c20dfa3847ccf06  build/lenet_cuda
+d06280dfd2a50c88f846e5eb85970dc0146a4b77a40afc6f0837f5d81df549dc  /gemini/code/cuda_cnn/build/lenet_cuda
+619eb82e36ca9f401bff4508719cdb7a298330f84ea18bb03e909f06eb56d625  /gemini/data-1/test.bin
+89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9  /gemini/code/cuda_cnn/weights/lenet.bin
