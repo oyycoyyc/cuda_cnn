@@ -2,6 +2,7 @@ Course submission report
 Model source: course_train
 Input mode: unit
 Preprocessing assumption: caller supplies unit floats [0,1]; inference applies the persisted GPU transform (x - 0.1307) / 0.3081 from course.meta; the mode is never guessed from test images or overridden
+Preprocessing caveat: official course preprocessing remains unconfirmed.
 Training completion: event=course_train status=pass epochs=20 best_epoch=15 validation_accuracy=0.992399991 input_mode=unit checkpoint_crc32=f473014f
 Training epochs: 20
 Configuration: n=10000 batch=1024 runs=5 profiled=false
@@ -16,6 +17,7 @@ Max full-process wall: 1684.154 ms
 max_ms=1684.154
 Test Accuracy: 99.11% (9911/10000)
 Test Time: 1657.41 ms (median of 5 full-process runs)
+Timing scope: full-process wall from startup through exit, including model/image loading, CUDA setup, transfers, computation, validation, and stdout/stderr output; GPU event substages are separate diagnostics, not a substitute for the full-process wall.
 Performance target (full-process <100 ms): FAILED
 Leaderboard timing: unresolved; the official leaderboard timing scope is unknown and no leaderboard performance is claimed here.
 Provenance:

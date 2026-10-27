@@ -123,6 +123,26 @@ def prediction_lines(predictions, final_newline=True):
     return text
 
 
+def record_image_text(drawn, boxes):
+    """Patch the real ImageDraw.text, recording strings and pixel bounds."""
+    from PIL import ImageDraw
+
+    original = ImageDraw.ImageDraw.text
+
+    def record(draw, xy, text, *args, **kwargs):
+        drawn.append(text)
+        bound_options = {}
+        for key in ("font", "anchor", "stroke_width", "spacing", "align",
+                    "direction", "features", "language"):
+            if key in kwargs:
+                bound_options[key] = kwargs[key]
+        if hasattr(draw, "textbbox"):
+            boxes.append(draw.textbbox(xy, text, **bound_options))
+        return original(draw, xy, text, *args, **kwargs)
+
+    return mock.patch.object(ImageDraw.ImageDraw, "text", record)
+
+
 class CoursePackageTest(unittest.TestCase):
     # Every test owns its repository tree, model, binary, inputs, benchmark,
     # training log, and output path. All numerical values are synthetic test
@@ -445,6 +465,32 @@ class CoursePackageTest(unittest.TestCase):
                               fixture["binary"], fixture["benchmark_json"]):
             self.assertNotIn(absolute_path, report)
 
+    @requires_pillow
+    def test_report_timing_scope_enumerates_every_full_process_stage(self):
+        fixture = self._make_fixture()
+        self._package(fixture)
+        with open(os.path.join(fixture["root"], "report"), "r",
+                  encoding="utf-8") as input_file:
+            report = input_file.read()
+        lowered = report.lower()
+        for stage in ("startup", "model/image loading", "cuda setup",
+                      "transfers", "computation", "validation",
+                      "stdout/stderr", "exit"):
+            self.assertIn(stage, lowered)
+        self.assertIn(
+            "GPU event substages are separate diagnostics, not a substitute "
+            "for the full-process wall", report)
+
+    @requires_pillow
+    def test_report_states_official_preprocessing_unconfirmed(self):
+        fixture = self._make_fixture()
+        self._package(fixture)
+        with open(os.path.join(fixture["root"], "report"), "r",
+                  encoding="utf-8") as input_file:
+            report = input_file.read()
+        self.assertIn("official course preprocessing remains unconfirmed",
+                      report.lower())
+
     def test_metric_lines_are_one_accuracy_group_and_one_time_group(self):
         lines = course_package.metric_lines(0.9642, 88.1)
         self.assertEqual(list(lines), [
@@ -507,6 +553,54 @@ class CoursePackageTest(unittest.TestCase):
                               fixture["model_dir"], fixture["images"],
                               fixture["binary"], fixture["benchmark_json"]):
             self.assertNotIn(absolute_path, joined)
+
+    @requires_pillow
+    def test_image_reports_five_run_range_and_scope(self):
+        fixture = self._make_fixture(walls=FAST_WALLS)
+        drawn = []
+        boxes = []
+        with record_image_text(drawn, boxes):
+            self._package(fixture)
+        joined = "\n".join(drawn)
+        self.assertEqual(joined.count("Test Accuracy:"), 1)
+        self.assertEqual(joined.count("Test Time:"), 1)
+        self.assertIn(
+            "Test Time: 88.10 ms (median of 5 full-process runs)", joined)
+        self.assertIn("5-run full-process range: 85.30 - 91.50 ms", joined)
+        self.assertIn("Scope: startup through exit", joined)
+        self.assertNotIn("Test Time: 85.30", joined)
+        self.assertNotIn("Test Time: 91.50", joined)
+        self.assertTrue(boxes)
+        with Image.open(os.path.join(fixture["root"], "result.png")) as image:
+            for box in boxes:
+                self.assertGreaterEqual(box[0], 0)
+                self.assertGreaterEqual(box[1], 0)
+                self.assertLessEqual(box[2], image.width)
+                self.assertLessEqual(box[3], image.height)
+
+    @requires_pillow
+    def test_slow_image_reports_range_scope_and_failed_verdict(self):
+        fixture = self._make_fixture(correct=9670, walls=SLOW_WALLS)
+        drawn = []
+        boxes = []
+        with record_image_text(drawn, boxes):
+            self._package(fixture)
+        joined = "\n".join(drawn)
+        self.assertEqual(joined.count("Test Accuracy:"), 1)
+        self.assertEqual(joined.count("Test Time:"), 1)
+        self.assertIn(
+            "Test Time: 150.00 ms (median of 5 full-process runs)", joined)
+        self.assertIn("5-run full-process range: 148.00 - 152.00 ms", joined)
+        self.assertIn("Scope: startup through exit", joined)
+        self.assertIn("FAILED", joined)
+        self.assertNotIn("ACHIEVED", joined)
+        self.assertTrue(boxes)
+        with Image.open(os.path.join(fixture["root"], "result.png")) as image:
+            for box in boxes:
+                self.assertGreaterEqual(box[0], 0)
+                self.assertGreaterEqual(box[1], 0)
+                self.assertLessEqual(box[2], image.width)
+                self.assertLessEqual(box[3], image.height)
 
     @requires_pillow
     def test_slow_truthful_result_is_accepted_and_labelled_failed(self):

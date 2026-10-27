@@ -702,9 +702,10 @@ def _import_pillow():
     return Image, ImageDraw, ImageFont
 
 
-def render_result_png(accuracy, median_ms, performance_target):
+def render_result_png(accuracy, median_ms, performance_target, min_ms,
+                      max_ms):
     Image, ImageDraw, ImageFont = _import_pillow()
-    image = Image.new("RGB", (900, 320), (255, 255, 255))
+    image = Image.new("RGB", (900, 420), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     try:
         font = ImageFont.load_default(size=24)
@@ -716,6 +717,12 @@ def render_result_png(accuracy, median_ms, performance_target):
     for line in metric_lines(accuracy, median_ms):
         draw.text((24, y), line, font=font, fill=(0, 0, 0))
         y += 50
+    for line in (
+            "5-run full-process range: {0:.2f} - {1:.2f} ms".format(
+                float(min_ms), float(max_ms)),
+            "Scope: startup through exit (full process)"):
+        draw.text((24, y), line, font=font, fill=(0, 0, 0))
+        y += 40
     verdict = (
         "FAILED" if performance_target == "failed" else "ACHIEVED")
     draw.text(
@@ -742,6 +749,8 @@ def _report_text(validated):
         "Input mode: {0}".format(validated["input_mode"]),
         "Preprocessing assumption: {0}".format(
             _input_assumption(validated["input_mode"])),
+        "Preprocessing caveat: official course preprocessing remains "
+        "unconfirmed.",
         "Training completion: {0}".format(training["line"]),
         "Training epochs: {0}".format(training["epochs"]),
         "Configuration: n={0} batch={1} runs={2} profiled={3}".format(
@@ -762,6 +771,10 @@ def _report_text(validated):
         "Test Accuracy: {0:.2f}% ({1}/{2})".format(
             accuracy * 100.0, correct, n),
         metric_lines(accuracy, validated["median_ms"])[1],
+        "Timing scope: full-process wall from startup through exit, including "
+        "model/image loading, CUDA setup, transfers, computation, validation, "
+        "and stdout/stderr output; GPU event substages are separate "
+        "diagnostics, not a substitute for the full-process wall.",
     ])
     verdict = (
         "FAILED" if validated["performance_target"] == "failed"
@@ -880,7 +893,8 @@ def run_package(benchmark_json, training_log, output_zip, root=None):
     validated = _validate_benchmark(benchmark_json, training)
     png = render_result_png(
         validated["accuracy"], validated["median_ms"],
-        validated["performance_target"])
+        validated["performance_target"],
+        min(validated["walls"]), max(validated["walls"]))
     report = _report_text(validated).encode("utf-8")
     evaluation = EVALUATION_JSON_TEXT.encode("utf-8")
     archive, members = _build_archive(

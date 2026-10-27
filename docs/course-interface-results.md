@@ -1,6 +1,6 @@
 # Course interface measurement helpers
 
-Status: all66 helper tests pass on Linux/Python3.12.12 with existing development
+Status: all70 helper tests pass on Linux/Python3.12.12 with existing development
 Pillow12.1.0 and no skips; the prior27 stdlib-only tests also passed with site
 packages disabled.
 The new GPU inference path has now been measured on all 10000 images using the
@@ -254,10 +254,18 @@ The independently reviewed helper generated root `evaluation.json`, `report`,
 five-run record above. The image visibly shows one99.11%/1657.41ms metric group
 and a red performance FAILED verdict, with no competing timing number.
 
-The ZIP contains exactly34required runtime source/header files plus3root
+The final ZIP contains exactly34required runtime source/header files plus3root
 artifacts; no model/data/tests/tools/Python/private evidence or symlinks. It is
-110545bytes compressed and327328bytes unpacked. The900x320 PNG is19932bytes.
-Archive SHA256: `41e6ef0451b032de33cbd564fd1b58d50063deaf11359df67c1795ef4e45276a`.
+119946bytes compressed and338343bytes unpacked. The900x420 PNG is30620bytes.
+Archive SHA256: `76da207fb76641745e10a8db6fb5e6063e51ade6b7e5db239d033f742eb977f8`.
+After whole-branch review, one consolidated disclosure fix added the observed
+five-run range1637.53–1684.15ms and startup-through-exit scope to the same image
+metric group, plus explicit timing stages and the unconfirmed-official-
+preprocessing caveat to the report. Four new tests first failed against the
+frozen old helper, then passed; all70helper tests pass without skips. Old
+artifact versions were preserved. Runtime source members are byte-identical
+between archive versions; no retraining, measurement replacement or numerical
+change occurred.
 
 A fresh remote extraction built default `train`/`infer` without optional
 test/tool/Python files, with0warnings. Official bounded train->infer passed
@@ -272,5 +280,5 @@ originaloperator suite, all12originalworkflow scenarios, nineoldhost suites,
 remain explicit: old `test_prepare_mnist` cannot import missing `pyarrow`
 (data_interop passes), and the previous ComputeSanitizer self-disable is not a
 valid sanitizer result. No dependencies were installed or platform protections
-bypassed. Whole-branch review and final backup are the remaining global gates;
+bypassed. The scoped final disclosure re-review and final backup remain;
 no automatic upload/deployment is performed.

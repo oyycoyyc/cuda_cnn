@@ -1,0 +1,9 @@
+{
+  "fresh_default_build": "pass",
+  "warnings": 0,
+  "bounded_official_train_infer": "pass",
+  "valid_final_model_full10000_predictions": "match",
+  "inference_input_directory_images_only": true,
+  "runtime_python_tests_tools_required": false,
+  "no_retiming_or_retraining_of_finalmodel": true
+}
