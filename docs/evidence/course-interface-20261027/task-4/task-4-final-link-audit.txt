@@ -1,0 +1,3 @@
+final_infer_dependency_and_symbol_separation=pass flags_arch90_O2_cpp14_no_fastmath=pass
+default_source_no_optionaltests_tools=pass small_profile_every4batches=pass diagnostic_not_fulltest_timing=1
+infer_link=/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/infer.dir/main.cu.o -o infer   -L/usr/local/cuda/targets/x86_64-linux/lib/stubs  -L/usr/local/cuda/targets/x86_64-linux/lib  libcourse_runtime.a libcourse_host.a libcourse_checkpoint.a libcourse_forward.a libcourse_parameters.a libcourse_reference_forward.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl

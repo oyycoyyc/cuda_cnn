@@ -1,0 +1,13 @@
+[
+  {
+    "sink": "stdout",
+    "returncode": 1,
+    "stderr": "error: could not write inference predictions\n"
+  },
+  {
+    "sink": "stderr",
+    "returncode": 1,
+    "stdout": "1\n1\n1\n1\n",
+    "note": "predictions already published, no rollback promised"
+  }
+]

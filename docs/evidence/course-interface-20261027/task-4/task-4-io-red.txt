@@ -1,0 +1,2 @@
+test failure: run_course_infer_reports_buffered_sink_failures: course/tests/runtime_tests.cu:1496: EXPECT_THROWS_AS(course::RunCourseInfer(options, failing_predictions, prediction_failure_diagnostics), std::runtime_error) did not throw
+event=test_suite name=course_runtime_before_io_fix cases=15 executed=1 failures=1 status=fail

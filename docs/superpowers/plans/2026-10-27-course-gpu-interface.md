@@ -104,6 +104,8 @@
 
 ### Task 3: Course-only GPU training and persisted preprocessing
 
+**Status:** Complete;48host/8GPU/9training cases pass on H20, including bounded2epoch execution and best-bundle consistency; reviewed checkpoint `backup/course-interface-task-3-20261027` / `a8e0bc3`. Default20epoch/full-test acceptance remains Task6.
+
 **Files:** Create `course/training.h/.cu`, `course/tests/training_tests.cu`; extend CMake with training library/test only.
 
 **Consumes:** Task1 TrainOptions/readers/SaveCourseModel; Task2 preparation/argmax; original LeNet and GPU loss/AdamW; original MakeTrainValidationSplit/ShuffledTrainingIndices.

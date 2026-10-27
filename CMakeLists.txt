@@ -79,6 +79,13 @@ target_link_libraries(course_forward PUBLIC
   course_reference_forward
   course_parameters)
 
+# Official course inference runtime. It depends only on host bundle I/O and the
+# forward-only course model; it must never link the trainable LeNet backend,
+# loss/metrics/Adam kernels, or the original train/CLI workflow.
+add_library(course_runtime STATIC course/runtime.cu)
+target_link_libraries(course_runtime PUBLIC course_host course_forward)
+course_enable_host_warnings(course_runtime)
+
 # Original trainable LeNet and its training-only kernels. Production course
 # training uses this reviewed backend; course_forward/inference never depends on
 # it. The old src/train.cu workflow, CLI, dataset, and reporting sources are
@@ -104,6 +111,17 @@ target_link_libraries(course_training PUBLIC
   course_reference_training)
 course_enable_host_warnings(course_training)
 
+# Official executables are part of the default build, outside the optional test
+# switch. The exclusive compile definition selects the only workflow compiled
+# into each binary.
+add_executable(train main.cu)
+target_compile_definitions(train PRIVATE COURSE_TRAIN)
+target_link_libraries(train PRIVATE course_training)
+
+add_executable(infer main.cu)
+target_compile_definitions(infer PRIVATE COURSE_INFER)
+target_link_libraries(infer PRIVATE course_runtime)
+
 # Optional tests and development tools. None of these sources are needed by the
 # default submission build.
 option(COURSE_BUILD_TESTS "Build course host/GPU tests and model bundle tool" OFF)
@@ -123,6 +141,12 @@ if(COURSE_BUILD_TESTS)
   add_executable(course_training_tests course/tests/training_tests.cu)
   target_link_libraries(course_training_tests PRIVATE course_training)
 
+  add_executable(course_runtime_tests course/tests/runtime_tests.cu)
+  target_link_libraries(course_runtime_tests PRIVATE
+    course_runtime
+    course_host)
+  course_enable_host_warnings(course_runtime_tests)
+
   add_executable(course_model_bundle course/tools/model_bundle.cpp)
   target_link_libraries(course_model_bundle PRIVATE course_host)
   course_enable_host_warnings(course_model_bundle)
@@ -132,4 +156,8 @@ if(COURSE_BUILD_TESTS)
   add_test(NAME course_training COMMAND course_training_tests)
   set_tests_properties(course_training PROPERTIES
     PASS_REGULAR_EXPRESSION "executed=9 failures=0 status=pass")
+
+  add_test(NAME course_runtime COMMAND course_runtime_tests)
+  set_tests_properties(course_runtime PROPERTIES
+    PASS_REGULAR_EXPRESSION "executed=15 failures=0 status=pass")
 endif()

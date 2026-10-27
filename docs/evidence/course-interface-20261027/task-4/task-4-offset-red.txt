@@ -1,0 +1,2 @@
+test failure: infer_batch_partitions_keep_each_sample_input: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/tests/runtime_tests.cu:1101: EXPECT_EQ(0, split_predictions[1])
+event=test_suite name=course_runtime_tests cases=14 executed=1 failures=1 status=fail
