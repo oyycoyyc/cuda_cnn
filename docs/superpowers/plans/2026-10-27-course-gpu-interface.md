@@ -83,6 +83,8 @@
 
 ### Task 2: GPU input/argmax helpers and forward-only LeNet arena
 
+**Status:** Complete; full optional CMake build and48host/8GPU tests pass on H20, bitwise logits verified, atomic flag PTX inspected; checkpoint `backup/course-interface-task-2-20261027` / `17884b8`. Detailed evidence/remaining minor observations are in the SDD ledger.
+
 **Files:** Create `course/gpu_ops.h/.cu`, `course/inference.h/.cu`, `course/tests/gpu_tests.cu`; create initial `CMakeLists.txt`, register Task1 host tests and new GPU tests.
 
 **Consumes:** Task1 `InputMode`, original `ParameterSet`, original forward launchers and DeviceBuffer accounting.

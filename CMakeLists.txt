@@ -79,24 +79,37 @@ target_link_libraries(course_forward PUBLIC
   course_reference_forward
   course_parameters)
 
+# Original trainable LeNet and its training-only kernels. Production course
+# training uses this reviewed backend; course_forward/inference never depends on
+# it. The old src/train.cu workflow, CLI, dataset, and reporting sources are
+# deliberately not part of this library.
+add_library(course_reference_training STATIC
+  src/lenet.cu
+  src/kernels/input.cu
+  src/kernels/loss.cu
+  src/kernels/metrics.cu
+  src/kernels/adam.cu)
+target_link_libraries(course_reference_training PUBLIC
+  course_reference_forward
+  course_parameters)
+
+# Course-only training workflow over supplied FP32/int32 arrays, plus the
+# original deterministic split/shuffle helper it consumes.
+add_library(course_training STATIC
+  course/training.cu
+  src/random.cpp)
+target_link_libraries(course_training PUBLIC
+  course_host
+  course_forward
+  course_reference_training)
+course_enable_host_warnings(course_training)
+
 # Optional tests and development tools. None of these sources are needed by the
 # default submission build.
 option(COURSE_BUILD_TESTS "Build course host/GPU tests and model bundle tool" OFF)
 
 if(COURSE_BUILD_TESTS)
   enable_testing()
-
-  # Separately built original training backend, required only by tests that
-  # compare against the reference LeNet.
-  add_library(course_reference_training STATIC
-    src/lenet.cu
-    src/kernels/input.cu
-    src/kernels/loss.cu
-    src/kernels/metrics.cu
-    src/kernels/adam.cu)
-  target_link_libraries(course_reference_training PUBLIC
-    course_reference_forward
-    course_parameters)
 
   add_executable(course_io_tests course/tests/io_tests.cpp)
   target_link_libraries(course_io_tests PRIVATE course_host)
@@ -107,10 +120,16 @@ if(COURSE_BUILD_TESTS)
     course_forward
     course_reference_training)
 
+  add_executable(course_training_tests course/tests/training_tests.cu)
+  target_link_libraries(course_training_tests PRIVATE course_training)
+
   add_executable(course_model_bundle course/tools/model_bundle.cpp)
   target_link_libraries(course_model_bundle PRIVATE course_host)
   course_enable_host_warnings(course_model_bundle)
 
   add_test(NAME course_io_tests COMMAND course_io_tests)
   add_test(NAME course_gpu_tests COMMAND course_gpu_tests)
+  add_test(NAME course_training COMMAND course_training_tests)
+  set_tests_properties(course_training PROPERTIES
+    PASS_REGULAR_EXPRESSION "executed=9 failures=0 status=pass")
 endif()

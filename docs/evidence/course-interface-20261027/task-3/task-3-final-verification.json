@@ -1,0 +1,32 @@
+{
+  "verified_at_utc": "2026-10-27T12:04:41.543344+00:00",
+  "existing_local_unchanged": 67,
+  "reviewed_prior_sources_unchanged_except_authorized_CMake": 12,
+  "training_production_unchanged_during_coverage_fix": true,
+  "protected_remote_unchanged": 8,
+  "normalized_current_source_sha256": {
+    "CMakeLists.txt": "a74c05c33ad9d53b3096b2f74d733cb6a3b47876c7ed2f65087337542fe98402",
+    "course/gpu_ops.cu": "5d23daab7c7a5a267c4fb094a316b95a9c5c42108385650e623064f78e8baf4f",
+    "course/gpu_ops.h": "02a7c69143187866e797386c0519600e7286fb11da3a6aa011074331c6b41280",
+    "course/inference.cu": "2a9dea61e2b5257242ca7dedf48a534e28082e1e3302e0bf919311250561cd54",
+    "course/inference.h": "75ba8d5aee8c2dfdd99e441400c1cb408be8f87db0bba82c4388eb95c4e06106",
+    "course/interface.h": "12b71d24f9a062d4cb793a1e28f41c15c8479b6c2264a4e6c447cbb56431f10d",
+    "course/io.cpp": "0e942c9b244788cd9b76025742df4fcdbf705f02c1e0cae63407921bcf8c7309",
+    "course/model_io.cpp": "bc9f827c06f6b69b86193094b76dc770c91280eedce86af00680c9458695fb2f",
+    "course/model_io.h": "2cdf47c29de6b3eaae1f89d36b4114fd702dde5fda97711927356659b20c9ba6",
+    "course/tests/gpu_tests.cu": "0d509eb334f79403d08cb50a0c623bcf9b2d193982cd27084e13964e24261056",
+    "course/tests/io_tests.cpp": "0e870d6cb63e81be98b2b4f33000abb7be04101833032902bbde04a540b12cdf",
+    "course/tests/test_support.h": "caabfb57986cfd025398aa8313211719d0065363f9f96b9e5351b278e6953e16",
+    "course/tests/training_tests.cu": "191162f734ebdfc930dd005c0af8350cd04785843019defbdf231cfcb5225cbe",
+    "course/tools/model_bundle.cpp": "ef324a8b330b774370ba9a51f7b6d9bc54b500317aca14d213239ccfcb0c573f",
+    "course/training.cu": "cbb49dfb3da92ce4367b33076d9f0263ef1a373fae97b94d166bc44d0985083f",
+    "course/training.h": "e1ca2a7593a482a34940006554177157d6b9717d19058ede9af680cc626dc386"
+  },
+  "host_cases": 48,
+  "gpu_cases": 8,
+  "training_cases": 9,
+  "test_failures": 0,
+  "full_original_operator": "pass",
+  "minimal_default_build": "pass",
+  "two_epoch_workflow": "pass"
+}

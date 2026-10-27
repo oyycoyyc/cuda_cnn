@@ -1,0 +1,183 @@
+/usr/bin/cmake -S/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -B/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 --check-build-system CMakeFiles/Makefile.cmake 0
+/usr/bin/cmake -E cmake_progress_start /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3//CMakeFiles/progress.marks
+/usr/bin/gmake  -f CMakeFiles/Makefile2 all
+gmake[1]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_parameters.dir/build.make CMakeFiles/course_parameters.dir/depend
+/usr/bin/gmake  -f CMakeFiles/course_reference_forward.dir/build.make CMakeFiles/course_reference_forward.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_parameters.dir/DependInfo.cmake --color=
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_reference_forward.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_reference_forward.dir/build.make CMakeFiles/course_reference_forward.dir/build
+/usr/bin/gmake  -f CMakeFiles/course_parameters.dir/build.make CMakeFiles/course_parameters.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[  3%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o
+[  6%] Building CXX object CMakeFiles/course_parameters.dir/src/parameters.cpp.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o -MF CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/activation.cu -o CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o
+[  9%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_parameters.dir/src/parameters.cpp.o -MF CMakeFiles/course_parameters.dir/src/parameters.cpp.o.d -o CMakeFiles/course_parameters.dir/src/parameters.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/parameters.cpp
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o -MF CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/pooling.cu -o CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o
+[ 12%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o -MF CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/linear.cu -o CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o
+[ 15%] Linking CXX static library libcourse_parameters.a
+/usr/bin/cmake -P CMakeFiles/course_parameters.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_parameters.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_parameters.a CMakeFiles/course_parameters.dir/src/parameters.cpp.o
+/usr/bin/ranlib libcourse_parameters.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 15%] Built target course_parameters
+[ 18%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o -MF CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/convolution.cu -o CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o
+/usr/bin/gmake  -f CMakeFiles/course_checkpoint.dir/build.make CMakeFiles/course_checkpoint.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_checkpoint.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_checkpoint.dir/build.make CMakeFiles/course_checkpoint.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 21%] Building CXX object CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o -MF CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o.d -o CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/checkpoint.cpp
+[ 25%] Linking CXX static library libcourse_checkpoint.a
+/usr/bin/cmake -P CMakeFiles/course_checkpoint.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_checkpoint.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_checkpoint.a CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o
+/usr/bin/ranlib libcourse_checkpoint.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 28%] Linking CUDA static library libcourse_reference_forward.a
+/usr/bin/cmake -P CMakeFiles/course_reference_forward.dir/cmake_clean_target.cmake
+[ 28%] Built target course_checkpoint
+/usr/bin/gmake  -f CMakeFiles/course_host.dir/build.make CMakeFiles/course_host.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_host.dir/DependInfo.cmake --color=
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_reference_forward.dir/link.txt --verbose=1
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_host.dir/build.make CMakeFiles/course_host.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/ar qc libcourse_reference_forward.a CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o
+/usr/bin/ranlib libcourse_reference_forward.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 31%] Building CXX object CMakeFiles/course_host.dir/course/model_io.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_host.dir/course/model_io.cpp.o -MF CMakeFiles/course_host.dir/course/model_io.cpp.o.d -o CMakeFiles/course_host.dir/course/model_io.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/model_io.cpp
+[ 34%] Building CXX object CMakeFiles/course_host.dir/course/io.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_host.dir/course/io.cpp.o -MF CMakeFiles/course_host.dir/course/io.cpp.o.d -o CMakeFiles/course_host.dir/course/io.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/io.cpp
+[ 34%] Built target course_reference_forward
+/usr/bin/gmake  -f CMakeFiles/course_forward.dir/build.make CMakeFiles/course_forward.dir/depend
+/usr/bin/gmake  -f CMakeFiles/course_reference_training.dir/build.make CMakeFiles/course_reference_training.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_reference_training.dir/DependInfo.cmake --color=
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_forward.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_reference_training.dir/build.make CMakeFiles/course_reference_training.dir/build
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_forward.dir/build.make CMakeFiles/course_forward.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 37%] Building CUDA object CMakeFiles/course_reference_training.dir/src/lenet.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_training.dir/src/lenet.cu.o -MF CMakeFiles/course_reference_training.dir/src/lenet.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/lenet.cu -o CMakeFiles/course_reference_training.dir/src/lenet.cu.o
+[ 40%] Building CUDA object CMakeFiles/course_forward.dir/course/gpu_ops.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_forward.dir/course/gpu_ops.cu.o -MF CMakeFiles/course_forward.dir/course/gpu_ops.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/gpu_ops.cu -o CMakeFiles/course_forward.dir/course/gpu_ops.cu.o
+[ 43%] Building CUDA object CMakeFiles/course_forward.dir/course/inference.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_forward.dir/course/inference.cu.o -MF CMakeFiles/course_forward.dir/course/inference.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/inference.cu -o CMakeFiles/course_forward.dir/course/inference.cu.o
+[ 46%] Linking CXX static library libcourse_host.a
+/usr/bin/cmake -P CMakeFiles/course_host.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_host.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_host.a CMakeFiles/course_host.dir/course/io.cpp.o CMakeFiles/course_host.dir/course/model_io.cpp.o
+/usr/bin/ranlib libcourse_host.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 46%] Built target course_host
+[ 50%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o -MF CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/input.cu -o CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o
+/usr/bin/gmake  -f CMakeFiles/course_io_tests.dir/build.make CMakeFiles/course_io_tests.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_io_tests.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_io_tests.dir/build.make CMakeFiles/course_io_tests.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 53%] Building CXX object CMakeFiles/course_io_tests.dir/course/tests/io_tests.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_io_tests.dir/course/tests/io_tests.cpp.o -MF CMakeFiles/course_io_tests.dir/course/tests/io_tests.cpp.o.d -o CMakeFiles/course_io_tests.dir/course/tests/io_tests.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/tests/io_tests.cpp
+[ 56%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o -MF CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/loss.cu -o CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o
+[ 59%] Linking CXX static library libcourse_forward.a
+/usr/bin/cmake -P CMakeFiles/course_forward.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_forward.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_forward.a CMakeFiles/course_forward.dir/course/gpu_ops.cu.o CMakeFiles/course_forward.dir/course/inference.cu.o
+/usr/bin/ranlib libcourse_forward.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 62%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o -MF CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/metrics.cu -o CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o
+[ 62%] Built target course_forward
+/usr/bin/gmake  -f CMakeFiles/course_model_bundle.dir/build.make CMakeFiles/course_model_bundle.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_model_bundle.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_model_bundle.dir/build.make CMakeFiles/course_model_bundle.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 65%] Building CXX object CMakeFiles/course_model_bundle.dir/course/tools/model_bundle.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_model_bundle.dir/course/tools/model_bundle.cpp.o -MF CMakeFiles/course_model_bundle.dir/course/tools/model_bundle.cpp.o.d -o CMakeFiles/course_model_bundle.dir/course/tools/model_bundle.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/tools/model_bundle.cpp
+[ 68%] Linking CXX executable course_model_bundle
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_model_bundle.dir/link.txt --verbose=1
+/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_model_bundle.dir/course/tools/model_bundle.cpp.o -o course_model_bundle  libcourse_host.a libcourse_checkpoint.a libcourse_parameters.a 
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 71%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o -MF CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/kernels/adam.cu -o CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o
+[ 71%] Built target course_model_bundle
+[ 75%] Linking CXX executable course_io_tests
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_io_tests.dir/link.txt --verbose=1
+/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_io_tests.dir/course/tests/io_tests.cpp.o -o course_io_tests  libcourse_host.a libcourse_checkpoint.a libcourse_parameters.a 
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 75%] Built target course_io_tests
+[ 78%] Linking CXX static library libcourse_reference_training.a
+/usr/bin/cmake -P CMakeFiles/course_reference_training.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_reference_training.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_reference_training.a CMakeFiles/course_reference_training.dir/src/lenet.cu.o CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o
+/usr/bin/ranlib libcourse_reference_training.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 78%] Built target course_reference_training
+/usr/bin/gmake  -f CMakeFiles/course_training.dir/build.make CMakeFiles/course_training.dir/depend
+/usr/bin/gmake  -f CMakeFiles/course_gpu_tests.dir/build.make CMakeFiles/course_gpu_tests.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_training.dir/DependInfo.cmake --color=
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_gpu_tests.dir/DependInfo.cmake --color=
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_gpu_tests.dir/build.make CMakeFiles/course_gpu_tests.dir/build
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_training.dir/build.make CMakeFiles/course_training.dir/build
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 81%] Building CUDA object CMakeFiles/course_training.dir/course/training.cu.o
+[ 84%] Building CUDA object CMakeFiles/course_gpu_tests.dir/course/tests/gpu_tests.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_training.dir/course/training.cu.o -MF CMakeFiles/course_training.dir/course/training.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/training.cu -o CMakeFiles/course_training.dir/course/training.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_gpu_tests.dir/course/tests/gpu_tests.cu.o -MF CMakeFiles/course_gpu_tests.dir/course/tests/gpu_tests.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/tests/gpu_tests.cu -o CMakeFiles/course_gpu_tests.dir/course/tests/gpu_tests.cu.o
+[ 87%] Building CXX object CMakeFiles/course_training.dir/src/random.cpp.o
+/usr/bin/c++  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG -O2 -Wall -Wextra -Wpedantic -std=c++14 -MD -MT CMakeFiles/course_training.dir/src/random.cpp.o -MF CMakeFiles/course_training.dir/src/random.cpp.o.d -o CMakeFiles/course_training.dir/src/random.cpp.o -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src/random.cpp
+[ 90%] Linking CXX static library libcourse_training.a
+/usr/bin/cmake -P CMakeFiles/course_training.dir/cmake_clean_target.cmake
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_training.dir/link.txt --verbose=1
+/usr/bin/ar qc libcourse_training.a CMakeFiles/course_training.dir/course/training.cu.o CMakeFiles/course_training.dir/src/random.cpp.o
+/usr/bin/ranlib libcourse_training.a
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 93%] Linking CXX executable course_gpu_tests
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_gpu_tests.dir/link.txt --verbose=1
+[ 93%] Built target course_training
+/usr/bin/gmake  -f CMakeFiles/course_training_tests.dir/build.make CMakeFiles/course_training_tests.dir/depend
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+cd /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3 /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles/course_training_tests.dir/DependInfo.cmake --color=
+/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_gpu_tests.dir/course/tests/gpu_tests.cu.o -o course_gpu_tests   -L/usr/local/cuda/targets/x86_64-linux/lib/stubs  -L/usr/local/cuda/targets/x86_64-linux/lib  libcourse_forward.a libcourse_reference_training.a libcourse_reference_forward.a libcourse_parameters.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl 
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/gmake  -f CMakeFiles/course_training_tests.dir/build.make CMakeFiles/course_training_tests.dir/build
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+gmake[2]: Entering directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[ 93%] Built target course_gpu_tests
+[ 96%] Building CUDA object CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o
+/usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler  -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/include -I/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/src -O2 -DNDEBUG --generate-code=arch=compute_90,code=[compute_90,sm_90] -O2 -std=c++14 -MD -MT CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o -MF CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o.d -x cu -c /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/course/tests/training_tests.cu -o CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o
+[100%] Linking CXX executable course_training_tests
+/usr/bin/cmake -E cmake_link_script CMakeFiles/course_training_tests.dir/link.txt --verbose=1
+/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o -o course_training_tests   -L/usr/local/cuda/targets/x86_64-linux/lib/stubs  -L/usr/local/cuda/targets/x86_64-linux/lib  libcourse_training.a libcourse_host.a libcourse_checkpoint.a libcourse_forward.a libcourse_reference_training.a libcourse_parameters.a libcourse_reference_forward.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl 
+gmake[2]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+[100%] Built target course_training_tests
+gmake[1]: Leaving directory '/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3'
+/usr/bin/cmake -E cmake_progress_start /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task3/CMakeFiles 0

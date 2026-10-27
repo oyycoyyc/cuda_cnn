@@ -1,0 +1,3 @@
+minimal_default_without_test_or_tool_sources=pass default_arch90_flags=pass
+training_archive_members=training.cu.o,random.cpp.o forbidden_old_workflows_absent=pass
+training_test_link=/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_training_tests.dir/course/tests/training_tests.cu.o -o course_training_tests   -L/usr/local/cuda/targets/x86_64-linux/lib/stubs  -L/usr/local/cuda/targets/x86_64-linux/lib  libcourse_training.a libcourse_host.a libcourse_checkpoint.a libcourse_forward.a libcourse_reference_training.a libcourse_parameters.a libcourse_reference_forward.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl
