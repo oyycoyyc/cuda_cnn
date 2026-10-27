@@ -1,0 +1,42 @@
+Internal ctest changing into directory: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete
+UpdateCTestConfiguration  from :/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/DartConfiguration.tcl
+Test project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: course_io_tests
+
+1: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/course_io_tests
+1: Test timeout computed to be: 10000000
+1: event=test_suite name=course_io_tests cases=48 executed=48 failures=0 status=pass
+1/4 Test #1: course_io_tests ..................   Passed    0.27 sec
+test 2
+    Start 2: course_gpu_tests
+
+2: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/course_gpu_tests
+2: Test timeout computed to be: 10000000
+2: event=test_suite name=course_gpu_tests cases=8 executed=8 failures=0 status=pass
+2/4 Test #2: course_gpu_tests .................   Passed    1.99 sec
+test 3
+    Start 3: course_training
+
+3: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/course_training_tests
+3: Test timeout computed to be: 10000000
+3: event=test_suite name=course_training_tests cases=9 executed=9 failures=0 status=pass
+3/4 Test #3: course_training ..................   Passed    2.31 sec
+test 4
+    Start 4: course_runtime
+
+4: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task6-complete/course_runtime_tests
+4: Test timeout computed to be: 10000000
+4: event=test_suite name=course_runtime_tests cases=15 executed=15 failures=0 status=pass
+4/4 Test #4: course_runtime ...................   Passed   35.11 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =  39.69 sec

@@ -1,0 +1,12 @@
+event=workflow_test case=schedule status=pass
+event=workflow_test case=validation status=pass
+event=workflow_test case=batch17 status=pass
+event=workflow_test case=global_step status=pass
+event=workflow_test case=strict_checkpoint_tie status=pass
+event=workflow_test case=reload_before_final status=pass
+event=workflow_test case=overfit32 status=pass
+event=workflow_test case=one_epoch_checkpoint status=pass
+event=workflow_test case=evaluate status=pass
+event=workflow_test case=evaluate_profile status=pass
+event=workflow_test case=infer status=pass
+event=workflow_test case=cli status=pass

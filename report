@@ -1,0 +1,27 @@
+Course submission report
+Model source: course_train
+Input mode: unit
+Preprocessing assumption: caller supplies unit floats [0,1]; inference applies the persisted GPU transform (x - 0.1307) / 0.3081 from course.meta; the mode is never guessed from test images or overridden
+Training completion: event=course_train status=pass epochs=20 best_epoch=15 validation_accuracy=0.992399991 input_mode=unit checkpoint_crc32=f473014f
+Training epochs: 20
+Configuration: n=10000 batch=1024 runs=5 profiled=false
+Accuracy target (>=96%): PASS
+Run 1: wall_ms=1684.154 correct=9911
+Run 2: wall_ms=1641.134 correct=9911
+Run 3: wall_ms=1659.598 correct=9911
+Run 4: wall_ms=1637.526 correct=9911
+Run 5: wall_ms=1657.408 correct=9911
+Median full-process wall: 1657.408 ms
+Max full-process wall: 1684.154 ms
+max_ms=1684.154
+Test Accuracy: 99.11% (9911/10000)
+Test Time: 1657.41 ms (median of 5 full-process runs)
+Performance target (full-process <100 ms): FAILED
+Leaderboard timing: unresolved; the official leaderboard timing scope is unknown and no leaderboard performance is claimed here.
+Provenance:
+checkpoint_crc32=f473014f
+binary_sha256=c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e
+model_sha256=89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9
+meta_sha256=ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159
+images_sha256=bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165
+labels_sha256=52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126

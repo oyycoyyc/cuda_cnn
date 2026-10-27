@@ -1,0 +1,21 @@
+event=course_train_epoch epoch=1 weighted_loss=0.559880912 val_accuracy=0.954599977 elapsed_ms=27017.388
+event=course_train_epoch epoch=2 weighted_loss=0.146337971 val_accuracy=0.976999998 elapsed_ms=29284.789
+event=course_train_epoch epoch=3 weighted_loss=0.104696691 val_accuracy=0.977599978 elapsed_ms=41398.283
+event=course_train_epoch epoch=4 weighted_loss=0.087549001 val_accuracy=0.983799994 elapsed_ms=27733.514
+event=course_train_epoch epoch=5 weighted_loss=0.0746725127 val_accuracy=0.985199988 elapsed_ms=21914.495
+event=course_train_epoch epoch=6 weighted_loss=0.065548867 val_accuracy=0.98299998 elapsed_ms=28979.927
+event=course_train_epoch epoch=7 weighted_loss=0.0614371002 val_accuracy=0.988799989 elapsed_ms=48563.817
+event=course_train_epoch epoch=8 weighted_loss=0.054583095 val_accuracy=0.986800015 elapsed_ms=29205.978
+event=course_train_epoch epoch=9 weighted_loss=0.0529589504 val_accuracy=0.988600016 elapsed_ms=26448.947
+event=course_train_epoch epoch=10 weighted_loss=0.0486228988 val_accuracy=0.988200009 elapsed_ms=27004.771
+event=course_train_epoch epoch=11 weighted_loss=0.0470107384 val_accuracy=0.989600003 elapsed_ms=28282.783
+event=course_train_epoch epoch=12 weighted_loss=0.0429017544 val_accuracy=0.989000022 elapsed_ms=28025.559
+event=course_train_epoch epoch=13 weighted_loss=0.0301875304 val_accuracy=0.991599977 elapsed_ms=27845.784
+event=course_train_epoch epoch=14 weighted_loss=0.0274221301 val_accuracy=0.992200017 elapsed_ms=30503.425
+event=course_train_epoch epoch=15 weighted_loss=0.0278918389 val_accuracy=0.992399991 elapsed_ms=27719.424
+event=course_train_epoch epoch=16 weighted_loss=0.0265925657 val_accuracy=0.991599977 elapsed_ms=27013.368
+event=course_train_epoch epoch=17 weighted_loss=0.025835745 val_accuracy=0.991999984 elapsed_ms=28411.583
+event=course_train_epoch epoch=18 weighted_loss=0.0245329291 val_accuracy=0.990999997 elapsed_ms=30135.743
+event=course_train_epoch epoch=19 weighted_loss=0.0247782338 val_accuracy=0.990999997 elapsed_ms=29626.375
+event=course_train_epoch epoch=20 weighted_loss=0.0235814508 val_accuracy=0.99119997 elapsed_ms=25364.966
+event=course_train status=pass epochs=20 best_epoch=15 validation_accuracy=0.992399991 input_mode=unit checkpoint_crc32=f473014f

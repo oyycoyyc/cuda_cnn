@@ -1,0 +1,53 @@
+{
+  "schema": "course-final-independent-acceptance-v1",
+  "epochs_completed": 20,
+  "training_wall_seconds": 594.7404939299449,
+  "selected_best_epoch": 15,
+  "checkpoint_crc32": "f473014f",
+  "model_source": "course_train",
+  "n": 10000,
+  "runs": [
+    {
+      "run": 1,
+      "wall_ms": 1684.1537430882454,
+      "correct": 9911,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "run": 2,
+      "wall_ms": 1641.1338690668344,
+      "correct": 9911,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "run": 3,
+      "wall_ms": 1659.5975421369076,
+      "correct": 9911,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "run": 4,
+      "wall_ms": 1637.5257335603237,
+      "correct": 9911,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "run": 5,
+      "wall_ms": 1657.407839782536,
+      "correct": 9911,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    }
+  ],
+  "summary": {
+    "accuracy": 0.9911,
+    "accuracy_pass": true,
+    "all_wall_below_100ms": false,
+    "correct": 9911,
+    "max_ms": 1684.1537430882454,
+    "median_ms": 1657.407839782536
+  },
+  "current_hashes_match_measurement": true,
+  "original_test_labels_independently_checked": true,
+  "model_bytes_equal_legacy": true,
+  "model_equality_note": "Observed byte identity after actual deterministic fresh-directory retraining; not evidence substituting for training. Separate launch/20 epoch/completion/resource logs retained."
+}

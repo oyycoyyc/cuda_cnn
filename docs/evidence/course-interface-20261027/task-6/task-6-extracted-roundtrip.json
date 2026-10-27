@@ -1,0 +1,13 @@
+{
+  "fresh_archive_default_build": "pass",
+  "bounded_official_train_infer": "pass",
+  "bounded_infer_lines": 4,
+  "bounded_labels_not_at_infer_expected_path": true,
+  "valid_actual_course_model_infer": "pass",
+  "valid_input_directory_contains_only_images": true,
+  "full10000_outputs_match_measured_model": true,
+  "runtime_python_or_tests_or_tools_required": false,
+  "warnings": 0,
+  "new_build_infer_sha256": "ea6043b93ed4767b260d4af3e4b14557f37c270396bf9d5f38e492ef3f493d3e",
+  "note": "Rebuilt binary functional verification only; original five-process timings remain authoritative for their measured binary."
+}

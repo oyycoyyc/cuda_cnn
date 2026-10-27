@@ -1,10 +1,12 @@
 # Course interface measurement helpers
 
-Status: 27 stdlib tests pass on Linux/Python 3.12.12 with site packages disabled.
+Status: all66 helper tests pass on Linux/Python3.12.12 with existing development
+Pillow12.1.0 and no skips; the prior27 stdlib-only tests also passed with site
+packages disabled.
 The new GPU inference path has now been measured on all 10000 images using the
 preserved **legacy** weights. Predictions match the original reference exactly;
-the full-process 100 ms goal is **not achieved**. Default course training and
-final course-trained-model acceptance remain pending. Task5 independent review
+the full-process 100 ms goal is **not achieved**. Actual default course training
+and its full-test five-process acceptance are now complete (see below). Task5 independent review
 has approved spec compliance and quality; these measurements are not a final
 course-trained-model submission claim.
 
@@ -190,4 +192,85 @@ retained in the private experiment benchmark JSON records.
 The `unit` input interpretation remains the user-approved project assumption,
 not independently confirmed official preprocessing. The leaderboard's timing
 boundary remains unknown. This legacy99.11% result is not a claim that the
-pending actual course-trained model meets96%, nor a final image/package claim.
+actual course-trained model meets96%; that separate acceptance is recorded below.
+
+## Actual course-interface default training and final-model acceptance
+
+The official `train images.f32 labels.i32 60000 1 28 28 10 work_dir`
+was run in a fresh experiment model directory, with all inherited `COURSE_*`
+variables removed. In particular, `COURSE_EPOCHS` was absent: the actual default
+20 epochs, seed1337, batch128, original AdamW and learning-rate schedule were
+used. Only the supplied training split was consumed (55000 training/5000
+validation); the test split was reserved for external post-training evaluation.
+
+A separate one-epoch resource pilot took34.028539s, peak host RSS353096KiB.
+Its linear20epoch estimate was680.570789s. The actual independent default20
+training completed successfully in594.740494s, peak host RSS369252KiB, no swaps,
+and no stdout. All20 ordered epoch records and one final completion are saved:
+
+```text
+event=course_train status=pass epochs=20 best_epoch=15 validation_accuracy=0.992399991 input_mode=unit checkpoint_crc32=f473014f
+```
+
+Independent strict-best selection from the epoch records confirms epoch15;
+checkpoint header/validation float bits, normalization, mode and recomputed
+CRC agree with the completion and metadata. Actual retraining produced bytes
+identical to the preserved legacy bundle with the same deterministic defaults.
+That identity is an observed outcome, not a substitute for training: fresh
+launch, full20epoch diagnostics, resource use and completion evidence are kept
+separately. No fallback weights or hidden test data were used.
+
+The **course-trained best model** was then measured on all10000 test images in
+five fresh **unprofiled** processes, inference batch1024. Every process returned0
+and gave9911 correct (99.11%), with identical predictions. The main controller
+independently parsed saved raw stdout and counted against both the original
+read-only test labels and the converted external-checker labels. `infer`
+received no label argument. Current binary/model/meta/image/label SHA256 values
+were rechecked after the series; identities match the table above.
+
+| Run | Full-process wall / ms | Correct / 10000 |
+|---|---:|---:|
+|1|1684.153743|9911|
+|2|1641.133869|9911|
+|3|1659.597542|9911|
+|4|1637.525734|9911|
+|5|1657.407840|9911|
+
+- **Accuracy target >=96%: PASS (99.11%).**
+- **Full-process median:1657.407840ms; maximum:1684.153743ms.**
+- **Full-process <100ms target: FAILED**, not reinterpreted as GPU-only time.
+- Final image `Test Time` must use1657.41ms, the median of these five actual
+  course-model full-process runs, not a legacy series or internal stage.
+
+The timing boundary still includes startup through exit. No paired speedup or
+regression claim is made from differences between separate shared-machine
+measurement series. Official preprocessing and leaderboard timing remain
+unconfirmed.
+
+### Submission artifacts and fresh extraction verification
+
+The independently reviewed helper generated root `evaluation.json`, `report`,
+`result.png`, and `course-submission.zip` from the actual course-training log and
+five-run record above. The image visibly shows one99.11%/1657.41ms metric group
+and a red performance FAILED verdict, with no competing timing number.
+
+The ZIP contains exactly34required runtime source/header files plus3root
+artifacts; no model/data/tests/tools/Python/private evidence or symlinks. It is
+110545bytes compressed and327328bytes unpacked. The900x320 PNG is19932bytes.
+Archive SHA256: `41e6ef0451b032de33cbd564fd1b58d50063deaf11359df67c1795ef4e45276a`.
+
+A fresh remote extraction built default `train`/`infer` without optional
+test/tool/Python files, with0warnings. Official bounded train->infer passed
+with labels withheld from the inference path. The rebuilt infer also used the
+actual default20-trained model on all10000 images from an images-only working
+directory and reproduced the measured predictions exactly. This is functional
+verification of the rebuilt binary, not a replacement timing series.
+
+Fresh regressions passed: courseCTest48host/8GPU/9training/15runtime,
+originaloperator suite, all12originalworkflow scenarios, nineoldhost suites,
+198compliance tests, and Makefile/environment tests. Existing limitations
+remain explicit: old `test_prepare_mnist` cannot import missing `pyarrow`
+(data_interop passes), and the previous ComputeSanitizer self-disable is not a
+valid sanitizer result. No dependencies were installed or platform protections
+bypassed. Whole-branch review and final backup are the remaining global gates;
+no automatic upload/deployment is performed.

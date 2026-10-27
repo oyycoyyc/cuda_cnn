@@ -1,0 +1,23 @@
+{
+  "started_at_utc": "2026-10-27T13:49:33.402341+00:00",
+  "returncode": 0,
+  "wall_seconds": 34.02853944059461,
+  "estimated_20epoch_seconds": 680.5707888118923,
+  "identities": {
+    "train_binary": "609eb922d3dfffe457cd17b345f0c3654b9d35a2cd891455950617e817302cd6",
+    "images": "257f039238a0be158bad088c051a53908383fd47df03a7b1c229bb7bc968f160",
+    "labels": "ba2e26c82ab7a46fbcd5ec6de8eee4d541cf3829f5050669177da23b515defeb"
+  },
+  "epochs": 1,
+  "n": 60000,
+  "batch": 128,
+  "seed": 1337,
+  "input_mode": "unit",
+  "model_dir": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/models/task-6-pilot-unit",
+  "stdout_empty": true,
+  "completion_lines": [
+    "event=course_train status=pass epochs=1 best_epoch=1 validation_accuracy=0.954599977 input_mode=unit checkpoint_crc32=2b5e0853"
+  ],
+  "model_sha256": "34ff0adac47d120def592fa7934507dabb3571eba62f52b69bcec063f61f39fb",
+  "meta_sha256": "df800d627fe90551c482244893447f92daac30eca23a377a3cbfcda6bc89dde3"
+}

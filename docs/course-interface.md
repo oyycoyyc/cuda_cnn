@@ -163,3 +163,25 @@ stage looks fast. Report full-process and internal timings separately.
   It does not read labels, fallback weights, Python packages, or a test split.
 - The provided tests are optional and Linux-oriented; the default submission
   build does not require the `course/tests` sources.
+
+## Development-only final artifacts
+
+After actual default20epoch training and five successful unprofiled full10000
+test processes with at least96% accuracy, the development helper validates the
+saved training completion CRC and the current measured binary/model/input hashes:
+
+```sh
+python3 scripts/course_package.py --benchmark final-benchmark.json \
+  --training-log final-training.log --output course-submission.zip
+```
+
+It creates `evaluation.json`, `report`, `result.png` exclusively in the source
+root and an explicit-whitelist ZIP; existing output files are never overwritten.
+The PNG uses one accuracy/time group and the five-run full-process median. A
+missed100ms target is labelled FAILED, not suppressed. Incomplete training,
+low accuracy, stale hashes, profiled/inconsistent data or unsafe members fail
+before publication. Pillow is required only in the development environment to
+generate the PNG; no auto-install is performed, and neither Python nor Pillow
+is included or required by the submitted CMake runtime. Model weights, datasets,
+tests, helpers and private evidence are excluded from the ZIP. Actual final
+metrics and known environmental limits are in `docs/course-interface-results.md`.

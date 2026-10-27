@@ -140,6 +140,8 @@
 
 ### Task 5: Reproducible development fixtures, full-test correctness and timing
 
+**Status:** Complete; Linux27helper tests pass, all18full10000 GPU process outputs match reference/9911correct. Fullwall medians1519.771/1536.751/1518.187ms:100ms goal failed honestly. Reviewed checkpoint `backup/course-interface-task-5-20261027` / `66b3018`. Actualdefault20epochmodel acceptance remains Task6.
+
 **Files:** Create `scripts/course_fixture.py`, `scripts/course_benchmark.py`, `tests/test_course_fixture.py`, `tests/test_course_benchmark.py`, `docs/course-interface-results.md`.
 
 **Interfaces:**
