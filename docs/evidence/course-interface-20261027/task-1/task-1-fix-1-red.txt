@@ -1,0 +1,4 @@
+test failure: ErrorTaxonomy_corrupt_file_data_throws_runtime_error: course/tests/io_tests.cpp:469: EXPECT_THROWS_AS(course::ReadImages(out_of_range_path, UnitShape(1), course::InputMode::kUnit), std::runtime_error) threw a different std::exception type
+test failure: CourseModel_rejects_lone_regular_reserved_artifacts: course/tests/io_tests.cpp:1008: EXPECT_THROWS_AS(course::SaveCourseModel(checkpoint_directory, SampleCheckpoint(), course::InputMode::kUnit), std::runtime_error) did not throw
+test failure: CourseModel_rejects_junk_regular_reserved_pairs: course/tests/io_tests.cpp:1035: EXPECT_THROWS_AS(course::SaveCourseModel(junk_pair_directory, SampleCheckpoint(), course::InputMode::kUnit), std::runtime_error) did not throw
+event=test_suite name=course_io_before_fix cases=48 executed=48 failures=3 status=fail

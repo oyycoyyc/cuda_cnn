@@ -1,0 +1,29 @@
+{
+  "verified_at_utc": "2026-10-27T10:01:06.376095+00:00",
+  "existing_local_files_unchanged": 68,
+  "protected_remote_files_unchanged": 6,
+  "protected_remote_sha256": {
+    "/gemini/code/cuda_cnn/build/lenet_cuda": "d06280dfd2a50c88f846e5eb85970dc0146a4b77a40afc6f0837f5d81df549dc",
+    "/gemini/code/cuda_cnn/runtime-output/evaluate-a-20261027/candidate/build/lenet_cuda": "9800e552ae6b250946ba8d3ff35d353998c67cf34ace5fa88c20dfa3847ccf06",
+    "/gemini/code/cuda_cnn/weights/lenet.bin": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9",
+    "/gemini/data-1/train.bin": "5504236b369e3421512e22552a74b7d8580d0c8cf1abfe3e658579654c6aec4d",
+    "/gemini/data-1/test.bin": "619eb82e36ca9f401bff4508719cdb7a298330f84ea18bb03e909f06eb56d625",
+    "/etc/ld.so.preload": "d3a88e76e15e8a217b2fef859896212cc913ed3106b76e07f35ecb598c08c7fb"
+  },
+  "source_and_binary_sha256": {
+    "diagnostics/cuda_startup_probe.cu": "5fa320dfd0bbdbce2a7487342aaf8e808a3bed275304be6ec8c59eff77f1a5d2",
+    "diagnostics/observe_cuda_startup.py": "e0d288ed2d23860ea08d9e15bfa15fefdbabf9c4635404ba06aab9676470df90",
+    "empty_host": "30ad224874bfcbf770739a172be33865236d26abdb057a8dfe6f399dfd006fb1",
+    "cuda_startup_probe": "6207ee36ae1420ee83fd0e95ab971a09af5d8b67998f4fddeb9cbb03d3a8313d"
+  },
+  "resource_probe_invocations": 4,
+  "all_resource_probes_exit_zero": true,
+  "all_proc_samples_read_without_errors": true,
+  "original_36_measurements_retained_unchanged": true,
+  "backup_ref": "refs/heads/backup/pre-100ms-20261027",
+  "backup_commit": "c4c9265d4cbef1bc96a5902f5e404d053abbec8e",
+  "current_head_unchanged": true,
+  "new_goal_ms": 100,
+  "new_min_accuracy_percent": 96,
+  "new_goal_achieved": false
+}

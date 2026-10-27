@@ -1,0 +1,445 @@
+{
+  "cases": [
+    {
+      "case": "host-empty",
+      "pid": 15633,
+      "observation_wall_ms": 43.36837865412235,
+      "rusage": {
+        "cpu_user_s": 0.013488,
+        "cpu_system_s": 0.008992,
+        "maxrss_kb": 89340,
+        "minor_faults": 1216,
+        "major_faults": 0,
+        "voluntary_context_switches": 5,
+        "involuntary_context_switches": 0,
+        "inblock": 0,
+        "oublock": 0,
+        "signals": 0
+      },
+      "samples": 3,
+      "main_states": {
+        "R": 2,
+        "Z": 1
+      },
+      "main_wchans": {
+        "0": 3
+      },
+      "max_threads": 1,
+      "sampled_max_rss_kib": 7640,
+      "sample_error_kinds": {},
+      "sample_error_count": 0,
+      "max_sample_duration_ms": 0.18026866018772125,
+      "scheduler_threads": [
+        {
+          "tid": 15633,
+          "is_main": true,
+          "comm": "empty_host",
+          "sampled_cpu_delta_ms": 21.874082,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "R": 2,
+            "Z": 1
+          },
+          "wchans": {
+            "0": 3
+          }
+        }
+      ]
+    },
+    {
+      "case": "count-first",
+      "pid": 15634,
+      "observation_wall_ms": 1338.60535454005,
+      "rusage": {
+        "cpu_user_s": 0.031548,
+        "cpu_system_s": 0.515375,
+        "maxrss_kb": 157720,
+        "minor_faults": 68951,
+        "major_faults": 2219,
+        "voluntary_context_switches": 392,
+        "involuntary_context_switches": 6,
+        "inblock": 0,
+        "oublock": 24,
+        "signals": 0
+      },
+      "samples": 67,
+      "main_states": {
+        "R": 23,
+        "S": 29,
+        "D": 14,
+        "Z": 1
+      },
+      "main_wchans": {
+        "0": 24,
+        "do_poll.constprop.0": 28,
+        "msleep": 2,
+        "down": 2,
+        "hrtimer_nanosleep": 1,
+        "__wait_rcu_gp": 2,
+        "rwsem_down_write_slowpath": 5,
+        "os_acquire_rwlock_read": 3
+      },
+      "max_threads": 5,
+      "sampled_max_rss_kib": 119216,
+      "sample_error_kinds": {},
+      "sample_error_count": 0,
+      "max_sample_duration_ms": 0.3669438883662224,
+      "scheduler_threads": [
+        {
+          "tid": 15634,
+          "is_main": true,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 545.508924,
+          "sampled_runqueue_wait_delta_ms": 0.402628,
+          "states": {
+            "R": 23,
+            "S": 29,
+            "D": 14,
+            "Z": 1
+          },
+          "wchans": {
+            "0": 24,
+            "do_poll.constprop.0": 28,
+            "msleep": 2,
+            "down": 2,
+            "hrtimer_nanosleep": 1,
+            "__wait_rcu_gp": 2,
+            "rwsem_down_write_slowpath": 5,
+            "os_acquire_rwlock_read": 3
+          }
+        },
+        {
+          "tid": 15635,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.097981,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 56
+          },
+          "wchans": {
+            "do_poll.constprop.0": 56
+          }
+        },
+        {
+          "tid": 15636,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.0,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 56
+          },
+          "wchans": {
+            "eventfd_read": 56
+          }
+        },
+        {
+          "tid": 15637,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.291883,
+          "sampled_runqueue_wait_delta_ms": 0.0025,
+          "states": {
+            "S": 30
+          },
+          "wchans": {
+            "futex_wait_queue_me": 30
+          }
+        },
+        {
+          "tid": 15638,
+          "is_main": false,
+          "comm": "cuda0000380000f",
+          "sampled_cpu_delta_ms": 0.0,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 26
+          },
+          "wchans": {
+            "do_poll.constprop.0": 26
+          }
+        }
+      ]
+    },
+    {
+      "case": "set-first",
+      "pid": 15639,
+      "observation_wall_ms": 1581.408235244453,
+      "rusage": {
+        "cpu_user_s": 0.060056,
+        "cpu_system_s": 0.740696,
+        "maxrss_kb": 159696,
+        "minor_faults": 74255,
+        "major_faults": 2219,
+        "voluntary_context_switches": 507,
+        "involuntary_context_switches": 6,
+        "inblock": 0,
+        "oublock": 24,
+        "signals": 0
+      },
+      "samples": 79,
+      "main_states": {
+        "R": 31,
+        "S": 27,
+        "D": 13,
+        "Z": 8
+      },
+      "main_wchans": {
+        "0": 39,
+        "do_poll.constprop.0": 25,
+        "msleep": 2,
+        "os_acquire_rwlock_read": 5,
+        "hrtimer_nanosleep": 2,
+        "down": 1,
+        "__wait_rcu_gp": 2,
+        "rwsem_down_write_slowpath": 3
+      },
+      "max_threads": 6,
+      "sampled_max_rss_kib": 158552,
+      "sample_error_kinds": {},
+      "sample_error_count": 0,
+      "max_sample_duration_ms": 0.39552804082632065,
+      "scheduler_threads": [
+        {
+          "tid": 15639,
+          "is_main": true,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 668.994272,
+          "sampled_runqueue_wait_delta_ms": 0.149087,
+          "states": {
+            "R": 31,
+            "S": 27,
+            "D": 13,
+            "Z": 8
+          },
+          "wchans": {
+            "0": 39,
+            "do_poll.constprop.0": 25,
+            "msleep": 2,
+            "os_acquire_rwlock_read": 5,
+            "hrtimer_nanosleep": 2,
+            "down": 1,
+            "__wait_rcu_gp": 2,
+            "rwsem_down_write_slowpath": 3
+          }
+        },
+        {
+          "tid": 15640,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.104726,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 63
+          },
+          "wchans": {
+            "do_poll.constprop.0": 63
+          }
+        },
+        {
+          "tid": 15641,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.0,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 63
+          },
+          "wchans": {
+            "eventfd_read": 63
+          }
+        },
+        {
+          "tid": 15642,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.38998,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 40
+          },
+          "wchans": {
+            "futex_wait_queue_me": 40
+          }
+        },
+        {
+          "tid": 15643,
+          "is_main": false,
+          "comm": "cuda0000380000f",
+          "sampled_cpu_delta_ms": 0.010283,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 35
+          },
+          "wchans": {
+            "do_poll.constprop.0": 35
+          }
+        },
+        {
+          "tid": 15644,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.099376,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 10
+          },
+          "wchans": {
+            "do_poll.constprop.0": 10
+          }
+        },
+        {
+          "tid": 15645,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 109.988697,
+          "sampled_runqueue_wait_delta_ms": 0.346187,
+          "states": {
+            "D": 1,
+            "R": 6
+          },
+          "wchans": {
+            "rwsem_down_write_slowpath": 1,
+            "0": 6
+          }
+        }
+      ]
+    },
+    {
+      "case": "sequence",
+      "pid": 15647,
+      "observation_wall_ms": 1641.401082277298,
+      "rusage": {
+        "cpu_user_s": 0.045307,
+        "cpu_system_s": 0.7743479999999999,
+        "maxrss_kb": 159564,
+        "minor_faults": 74252,
+        "major_faults": 2219,
+        "voluntary_context_switches": 549,
+        "involuntary_context_switches": 6,
+        "inblock": 0,
+        "oublock": 24,
+        "signals": 0
+      },
+      "samples": 82,
+      "main_states": {
+        "R": 41,
+        "S": 29,
+        "D": 11,
+        "Z": 1
+      },
+      "main_wchans": {
+        "0": 42,
+        "do_poll.constprop.0": 28,
+        "msleep": 2,
+        "hrtimer_nanosleep": 1,
+        "os_acquire_rwlock_read": 5,
+        "down": 2,
+        "__wait_rcu_gp": 2
+      },
+      "max_threads": 6,
+      "sampled_max_rss_kib": 151384,
+      "sample_error_kinds": {},
+      "sample_error_count": 0,
+      "max_sample_duration_ms": 0.3006765618920326,
+      "scheduler_threads": [
+        {
+          "tid": 15647,
+          "is_main": true,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 814.106739,
+          "sampled_runqueue_wait_delta_ms": 0.619067,
+          "states": {
+            "R": 41,
+            "S": 29,
+            "D": 11,
+            "Z": 1
+          },
+          "wchans": {
+            "0": 42,
+            "do_poll.constprop.0": 28,
+            "msleep": 2,
+            "hrtimer_nanosleep": 1,
+            "os_acquire_rwlock_read": 5,
+            "down": 2,
+            "__wait_rcu_gp": 2
+          }
+        },
+        {
+          "tid": 15648,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.12112,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 66
+          },
+          "wchans": {
+            "do_poll.constprop.0": 66
+          }
+        },
+        {
+          "tid": 15649,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.0,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 66
+          },
+          "wchans": {
+            "eventfd_read": 66
+          }
+        },
+        {
+          "tid": 15650,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.392145,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 40
+          },
+          "wchans": {
+            "futex_wait_queue_me": 40
+          }
+        },
+        {
+          "tid": 15651,
+          "is_main": false,
+          "comm": "cuda0000380000f",
+          "sampled_cpu_delta_ms": 0.010212,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 36
+          },
+          "wchans": {
+            "do_poll.constprop.0": 36
+          }
+        },
+        {
+          "tid": 15652,
+          "is_main": false,
+          "comm": "cuda_startup_pr",
+          "sampled_cpu_delta_ms": 0.063067,
+          "sampled_runqueue_wait_delta_ms": 0.0,
+          "states": {
+            "S": 10
+          },
+          "wchans": {
+            "do_poll.constprop.0": 10
+          }
+        }
+      ]
+    }
+  ],
+  "cgroup_cpu_stat_delta": {
+    "usage_usec": 2408262,
+    "user_usec": 285962,
+    "system_usec": 2122299,
+    "nr_periods": 48,
+    "nr_throttled": 0,
+    "throttled_usec": 0
+  }
+}

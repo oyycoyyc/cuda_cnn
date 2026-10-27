@@ -1,0 +1,4 @@
+event=test_suite name=course_io_tests cases=43 executed=43 failures=0 status=pass
+event=test_suite name=course_io_tests cases=43 executed=13 failures=0 status=pass
+event=test_suite name=course_io_tests cases=43 executed=13 failures=0 status=pass
+task1_linux_host_checks=pass cases=43 concurrent_model_suites=2 preserved_existing_sentinel=1 zlib_crc_match=1 source_checkpoint_unchanged=1

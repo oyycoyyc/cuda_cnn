@@ -1,0 +1,12 @@
+{
+  "ref": "refs/heads/backup/pre-100ms-20261027",
+  "commit": "c4c9265d4cbef1bc96a5902f5e404d053abbec8e",
+  "parent": "bf6aae802b80dfe98809bf9c7f15adefb87efe58",
+  "tree": "f4e76d066a71ab0a547b419056bcba24fb6e8794",
+  "changed_files_preserved": 44,
+  "head_unchanged": true,
+  "real_index_unchanged": true,
+  "author": "OpenCode Backup Agent <opencode-backup@localhost>",
+  "credentials_check": "pass",
+  "pushed": false
+}
