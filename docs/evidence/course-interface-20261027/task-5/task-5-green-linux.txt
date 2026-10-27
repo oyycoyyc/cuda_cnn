@@ -1,0 +1,32 @@
+test_all_modes_write_exact_little_endian_pixels_and_labels (tests.test_course_fixture.CourseFixtureTest.test_all_modes_write_exact_little_endian_pixels_and_labels) ... ok
+test_cli_converts_an_explicit_mode_without_third_party_packages (tests.test_course_fixture.CourseFixtureTest.test_cli_converts_an_explicit_mode_without_third_party_packages) ... ok
+test_cli_reports_usage_and_conversion_errors_without_artifacts (tests.test_course_fixture.CourseFixtureTest.test_cli_reports_usage_and_conversion_errors_without_artifacts) ... ok
+test_conversion_streams_across_small_chunk_boundaries (tests.test_course_fixture.CourseFixtureTest.test_conversion_streams_across_small_chunk_boundaries) ... ok
+test_conversion_through_source_symlink_keeps_target_intact (tests.test_course_fixture.CourseFixtureTest.test_conversion_through_source_symlink_keeps_target_intact) ... ok
+test_labels_are_read_from_the_trailing_block (tests.test_course_fixture.CourseFixtureTest.test_labels_are_read_from_the_trailing_block) ... ok
+test_main_returns_zero_for_a_fresh_output_directory (tests.test_course_fixture.CourseFixtureTest.test_main_returns_zero_for_a_fresh_output_directory) ... ok
+test_manifest_records_exact_fixture_metadata (tests.test_course_fixture.CourseFixtureTest.test_manifest_records_exact_fixture_metadata) ... ok
+test_refuses_existing_output_directory_and_preserves_contents (tests.test_course_fixture.CourseFixtureTest.test_refuses_existing_output_directory_and_preserves_contents) ... ok
+test_refuses_output_aliases_of_the_source (tests.test_course_fixture.CourseFixtureTest.test_refuses_output_aliases_of_the_source) ... ok
+test_refuses_symlinked_output_directory (tests.test_course_fixture.CourseFixtureTest.test_refuses_symlinked_output_directory) ... ok
+test_rejects_invalid_headers_and_exact_size_mismatches (tests.test_course_fixture.CourseFixtureTest.test_rejects_invalid_headers_and_exact_size_mismatches) ... ok
+test_rejects_labels_outside_the_decimal_class_range (tests.test_course_fixture.CourseFixtureTest.test_rejects_labels_outside_the_decimal_class_range) ... ok
+test_all_slow_samples_are_retained_with_max_and_median (tests.test_course_benchmark.CourseBenchmarkTest.test_all_slow_samples_are_retained_with_max_and_median) ... ok
+test_cli_defaults_to_five_runs_and_batch_1024 (tests.test_course_benchmark.CourseBenchmarkTest.test_cli_defaults_to_five_runs_and_batch_1024) ... ok
+test_cli_failure_exit_codes_and_reference_mismatch (tests.test_course_benchmark.CourseBenchmarkTest.test_cli_failure_exit_codes_and_reference_mismatch) ... ok
+test_cli_slow_correct_run_keeps_wall_flag_separate (tests.test_course_benchmark.CourseBenchmarkTest.test_cli_slow_correct_run_keeps_wall_flag_separate) ... ok
+test_cli_usage_errors_exit_two_without_output (tests.test_course_benchmark.CourseBenchmarkTest.test_cli_usage_errors_exit_two_without_output) ... ok
+test_existing_output_json_is_never_overwritten (tests.test_course_benchmark.CourseBenchmarkTest.test_existing_output_json_is_never_overwritten) ... ok
+test_invalid_label_files_are_rejected_before_any_run (tests.test_course_benchmark.CourseBenchmarkTest.test_invalid_label_files_are_rejected_before_any_run) ... ok
+test_json_schema_hashes_and_official_argv_only (tests.test_course_benchmark.CourseBenchmarkTest.test_json_schema_hashes_and_official_argv_only) ... ok
+test_malformed_predictions_never_produce_a_passing_summary (tests.test_course_benchmark.CourseBenchmarkTest.test_malformed_predictions_never_produce_a_passing_summary) ... ok
+test_nonzero_exit_is_retained_and_not_a_pass (tests.test_course_benchmark.CourseBenchmarkTest.test_nonzero_exit_is_retained_and_not_a_pass) ... ok
+test_profile_run_is_separate_and_inherited_profile_is_cleared (tests.test_course_benchmark.CourseBenchmarkTest.test_profile_run_is_separate_and_inherited_profile_is_cleared) ... ok
+test_reference_uint8_validation_and_mismatch_count (tests.test_course_benchmark.CourseBenchmarkTest.test_reference_uint8_validation_and_mismatch_count) ... ok
+test_repeated_runs_with_different_predictions_do_not_pass (tests.test_course_benchmark.CourseBenchmarkTest.test_repeated_runs_with_different_predictions_do_not_pass) ... ok
+test_symlinked_output_json_target_is_never_overwritten (tests.test_course_benchmark.CourseBenchmarkTest.test_symlinked_output_json_target_is_never_overwritten) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 5.121s
+
+OK

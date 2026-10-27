@@ -122,6 +122,8 @@
 
 ### Task 4: Official executables, buffered predictions and honest profiling
 
+**Status:** Complete; official targets/default minimal roundtrip, infer dependency separation and48/8/9/15 H20 suites pass. Offset and buffered-I/O failure regressions verified RED/GREEN; reviewed checkpoint `backup/course-interface-task-4-20261027` / `8f1e3e5`. Full10000/20epoch/timing acceptance remains Tasks5/6.
+
 **Files:** Create root `main.cu`, `course/runtime.h/.cu`, `course/tests/runtime_tests.cu`; extend CMake with train/infer and runtime tests; create `docs/course-interface.md`.
 
 **Consumes:** Tasks1–3 exact interfaces.

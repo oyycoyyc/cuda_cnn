@@ -1,0 +1,134 @@
+{
+  "schema": "course-independent-prediction-audit-v1",
+  "checked_full10000_processes": 18,
+  "raw_record_predictions_independently_match_reference": true,
+  "converted_labels_match_original_source": true,
+  "runs": [
+    {
+      "artifact": "legacy-byte-correctness.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-normalized-correctness.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-1024.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-1024.json",
+      "run": 2,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-1024.json",
+      "run": 3,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-1024.json",
+      "run": 4,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-1024.json",
+      "run": 5,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-128.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-128.json",
+      "run": 2,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-128.json",
+      "run": 3,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-128.json",
+      "run": 4,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-128.json",
+      "run": 5,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-4096.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-4096.json",
+      "run": 2,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-4096.json",
+      "run": 3,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-4096.json",
+      "run": 4,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-batch-4096.json",
+      "run": 5,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    },
+    {
+      "artifact": "legacy-unit-profile-1024.json",
+      "run": 1,
+      "correct": 9911,
+      "reference_mismatches": 0,
+      "prediction_sha256": "ed3089f6c607def90561bf4ece8b372e3d7f437205b83ca7c5445b8c956a7df3"
+    }
+  ]
+}

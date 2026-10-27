@@ -1,0 +1,170 @@
+[
+  {
+    "artifact": "legacy-unit-batch-128.json",
+    "input_mode": "unit",
+    "batch": 128,
+    "profiled": false,
+    "runs": 5,
+    "wall_ms": [
+      1605.926481075585,
+      1507.3134629055858,
+      1491.829952225089,
+      1522.7122763171792,
+      1519.7710925713181
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1605.926481075585,
+      "median_ms": 1519.7710925713181
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  },
+  {
+    "artifact": "legacy-unit-batch-1024.json",
+    "input_mode": "unit",
+    "batch": 1024,
+    "profiled": false,
+    "runs": 5,
+    "wall_ms": [
+      1536.7510141804814,
+      1493.4764774516225,
+      1582.205904647708,
+      1555.140383541584,
+      1504.481672309339
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1582.205904647708,
+      "median_ms": 1536.7510141804814
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  },
+  {
+    "artifact": "legacy-unit-batch-4096.json",
+    "input_mode": "unit",
+    "batch": 4096,
+    "profiled": false,
+    "runs": 5,
+    "wall_ms": [
+      1547.490487806499,
+      1564.9877935647964,
+      1511.3549577072263,
+      1479.6353792771697,
+      1518.1869519874454
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1564.9877935647964,
+      "median_ms": 1518.1869519874454
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  },
+  {
+    "artifact": "legacy-unit-profile-1024.json",
+    "input_mode": "unit",
+    "batch": 1024,
+    "profiled": true,
+    "runs": 1,
+    "wall_ms": [
+      1513.449347577989
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1513.449347577989,
+      "median_ms": 1513.449347577989
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  },
+  {
+    "artifact": "legacy-byte-correctness.json",
+    "input_mode": "byte",
+    "batch": 1024,
+    "profiled": false,
+    "runs": 1,
+    "wall_ms": [
+      1535.3775899857283
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1535.3775899857283,
+      "median_ms": 1535.3775899857283
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "c259c1106d95a61666273919e6a5ead79e444e78f51af66d7a502ec200874e11",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "d45eb66c5018196f6efc66c9cb439860a4edd8b73ebd80c2573afd6cb4099906",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  },
+  {
+    "artifact": "legacy-normalized-correctness.json",
+    "input_mode": "normalized",
+    "batch": 1024,
+    "profiled": false,
+    "runs": 1,
+    "wall_ms": [
+      1590.3277788311243
+    ],
+    "summary": {
+      "accuracy": 0.9911,
+      "accuracy_pass": true,
+      "all_wall_below_100ms": false,
+      "correct": 9911,
+      "max_ms": 1590.3277788311243,
+      "median_ms": 1590.3277788311243
+    },
+    "reference_mismatches": 0,
+    "sha256": {
+      "binary": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e",
+      "images": "757b3cee157a4aa2c485805da043b480cbfaf2ac25054baf1a0d998fbb91f8b4",
+      "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+      "meta": "d29e0d82b76c13bc252083a8e1228dfc8eee8aebab4cb53bd154b997d053b730",
+      "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9"
+    }
+  }
+]
