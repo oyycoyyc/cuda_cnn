@@ -1,0 +1,32 @@
+Internal ctest changing into directory: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final
+UpdateCTestConfiguration  from :/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final/DartConfiguration.tcl
+Test project /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: course_io_tests
+
+1: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final/course_io_tests
+1: Test timeout computed to be: 10000000
+1: event=test_suite name=course_io_tests cases=48 executed=48 failures=0 status=pass
+1/2 Test #1: course_io_tests ..................   Passed    0.26 sec
+test 2
+    Start 2: course_gpu_tests
+
+2: Test command: /gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task2-final/course_gpu_tests
+2: Test timeout computed to be: 10000000
+2: event=test_suite name=course_gpu_tests cases=8 executed=8 failures=0 status=pass
+2/2 Test #2: course_gpu_tests .................   Passed    4.79 sec
+
+The following tests passed:
+	course_io_tests
+	course_gpu_tests
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =   5.05 sec

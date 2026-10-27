@@ -1,0 +1,3 @@
+default-fixed commands=10 architecture=90 O2_cpp14_no_fastmath_no_optional_sources=pass
+override-fixed commands=10 architecture=86 O2_cpp14_no_fastmath_no_optional_sources=pass
+argmax_specific_generated_atomic_exchange=pass internal_entry_without_visible_supported=1

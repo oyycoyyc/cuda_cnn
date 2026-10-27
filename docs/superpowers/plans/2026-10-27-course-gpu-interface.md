@@ -54,6 +54,8 @@
 
 ### Task 1: Strict host interface, data contracts and model handoff
 
+**Status:** Complete; all steps verified,48 Linux cases pass, old code reproduces3 failures; reviewed checkpoint `backup/course-interface-task-1-20261027` / `aacad14`. Per-step historical boxes below are superseded by this status and the SDD ledger.
+
 **Files:** Create `course/interface.h`, `course/io.cpp`, `course/model_io.h`, `course/model_io.cpp`, `course/tests/io_tests.cpp`, `course/tests/test_support.h`, `course/tools/model_bundle.cpp`.
 
 **Interfaces (namespace `course`):**
