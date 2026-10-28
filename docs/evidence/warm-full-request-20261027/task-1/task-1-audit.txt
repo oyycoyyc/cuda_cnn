@@ -1,0 +1,4 @@
+all5CTest=pass host48_GPU8_training9_runtime15_warm7
+default_source_build_without_optional_files=pass warnings=0
+newwarm_tool_normalW2R3_and_stdout_stderr_devfull_exit1=pass
+official_infer_behavior_and_link_unchanged=source_verified

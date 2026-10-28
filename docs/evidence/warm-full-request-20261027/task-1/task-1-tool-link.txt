@@ -1,0 +1,1 @@
+/usr/bin/c++ -O2 -DNDEBUG CMakeFiles/course_warm_benchmark.dir/course/tools/warm_benchmark.cu.o -o course_warm_benchmark   -L/usr/local/cuda/targets/x86_64-linux/lib/stubs  -L/usr/local/cuda/targets/x86_64-linux/lib  libcourse_host.a libcourse_forward.a libcourse_checkpoint.a libcourse_parameters.a libcourse_reference_forward.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl 

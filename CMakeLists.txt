@@ -160,4 +160,22 @@ if(COURSE_BUILD_TESTS)
   add_test(NAME course_runtime COMMAND course_runtime_tests)
   set_tests_properties(course_runtime PROPERTIES
     PASS_REGULAR_EXPRESSION "executed=15 failures=0 status=pass")
+
+  # Development-only warm full-request benchmark. Neither target is part of the
+  # default build or the official train/infer executables.
+  add_executable(course_warm_benchmark course/tools/warm_benchmark.cu)
+  target_link_libraries(course_warm_benchmark PRIVATE
+    course_host
+    course_forward)
+  course_enable_host_warnings(course_warm_benchmark)
+
+  add_executable(course_warm_benchmark_tests
+    course/tests/warm_benchmark_tests.cu)
+  target_link_libraries(course_warm_benchmark_tests PRIVATE course_host)
+  course_enable_host_warnings(course_warm_benchmark_tests)
+
+  add_test(NAME course_warm_benchmark COMMAND course_warm_benchmark_tests)
+  set_tests_properties(course_warm_benchmark PROPERTIES
+    PASS_REGULAR_EXPRESSION "executed=7 failures=0 status=pass"
+    TIMEOUT 300)
 endif()
