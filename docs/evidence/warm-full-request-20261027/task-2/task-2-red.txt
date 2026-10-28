@@ -1,0 +1,19 @@
+test_course_warm_benchmark (unittest.loader._FailedTest.test_course_warm_benchmark) ... ERROR
+
+======================================================================
+ERROR: test_course_warm_benchmark (unittest.loader._FailedTest.test_course_warm_benchmark)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_course_warm_benchmark
+Traceback (most recent call last):
+  File "/root/miniconda3/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/tests/test_course_warm_benchmark.py", line 17, in <module>
+    from scripts import course_warm_benchmark as warm
+ImportError: cannot import name 'course_warm_benchmark' from 'scripts' (unknown location)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

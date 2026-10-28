@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "/root/miniconda3/bin/python3",
+    "-S",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/scripts/course_warm_benchmark.py",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-warm-task1/course_warm_benchmark",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task4/infer",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/fixtures/test-unit/images.f32",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/fixtures/test-unit/labels.i32",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/models/task-6-default20-unit",
+    "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/artifacts/warm-task-2-benchmarks/course-default20-unit-w5-r101.json",
+    "--count",
+    "10000",
+    "--batch",
+    "1024",
+    "--warmups",
+    "5",
+    "--runs",
+    "101",
+    "--model-source",
+    "course_train"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": ""
+}

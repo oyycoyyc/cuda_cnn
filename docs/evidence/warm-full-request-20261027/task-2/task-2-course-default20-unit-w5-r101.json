@@ -1,0 +1,690 @@
+{
+  "batch": 1024,
+  "errors": [],
+  "executable": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-warm-task1/course_warm_benchmark",
+  "hashes_stable": true,
+  "images_path": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/fixtures/test-unit/images.f32",
+  "input_mode": "unit",
+  "labels_path": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/fixtures/test-unit/labels.i32",
+  "measured_records": [
+    {
+      "iteration": 1,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 83.289848
+    },
+    {
+      "iteration": 2,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 115.309203
+    },
+    {
+      "iteration": 3,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 75.899192
+    },
+    {
+      "iteration": 4,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 120.693311
+    },
+    {
+      "iteration": 5,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 41.348061
+    },
+    {
+      "iteration": 6,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.557377
+    },
+    {
+      "iteration": 7,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.583363
+    },
+    {
+      "iteration": 8,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.550677
+    },
+    {
+      "iteration": 9,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.55568
+    },
+    {
+      "iteration": 10,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.571659
+    },
+    {
+      "iteration": 11,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.578397
+    },
+    {
+      "iteration": 12,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 8.887374
+    },
+    {
+      "iteration": 13,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 638.715843
+    },
+    {
+      "iteration": 14,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.57106
+    },
+    {
+      "iteration": 15,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.588407
+    },
+    {
+      "iteration": 16,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.589537
+    },
+    {
+      "iteration": 17,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.584008
+    },
+    {
+      "iteration": 18,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.592308
+    },
+    {
+      "iteration": 19,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.579047
+    },
+    {
+      "iteration": 20,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.60224
+    },
+    {
+      "iteration": 21,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 554.646595
+    },
+    {
+      "iteration": 22,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 80.111884
+    },
+    {
+      "iteration": 23,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 89.403725
+    },
+    {
+      "iteration": 24,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 65.266935
+    },
+    {
+      "iteration": 25,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 57.752155
+    },
+    {
+      "iteration": 26,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 103.734743
+    },
+    {
+      "iteration": 27,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 89.990129
+    },
+    {
+      "iteration": 28,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 88.979226
+    },
+    {
+      "iteration": 29,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 55.324509
+    },
+    {
+      "iteration": 30,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 80.281734
+    },
+    {
+      "iteration": 31,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 81.451516
+    },
+    {
+      "iteration": 32,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 79.787008
+    },
+    {
+      "iteration": 33,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 55.509607
+    },
+    {
+      "iteration": 34,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 88.575041
+    },
+    {
+      "iteration": 35,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 82.226956
+    },
+    {
+      "iteration": 36,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 70.865575
+    },
+    {
+      "iteration": 37,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 25.08692
+    },
+    {
+      "iteration": 38,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 84.458424
+    },
+    {
+      "iteration": 39,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 70.510186
+    },
+    {
+      "iteration": 40,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 98.265812
+    },
+    {
+      "iteration": 41,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 57.180962
+    },
+    {
+      "iteration": 42,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 71.977094
+    },
+    {
+      "iteration": 43,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 78.281077
+    },
+    {
+      "iteration": 44,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 63.570845
+    },
+    {
+      "iteration": 45,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 72.012902
+    },
+    {
+      "iteration": 46,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 72.630926
+    },
+    {
+      "iteration": 47,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 71.193417
+    },
+    {
+      "iteration": 48,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 54.902386
+    },
+    {
+      "iteration": 49,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 74.512007
+    },
+    {
+      "iteration": 50,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 43.990937
+    },
+    {
+      "iteration": 51,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 8.28607
+    },
+    {
+      "iteration": 52,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.585124
+    },
+    {
+      "iteration": 53,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.588186
+    },
+    {
+      "iteration": 54,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.593264
+    },
+    {
+      "iteration": 55,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.586927
+    },
+    {
+      "iteration": 56,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 347.330598
+    },
+    {
+      "iteration": 57,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 79.158331
+    },
+    {
+      "iteration": 58,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 63.30903
+    },
+    {
+      "iteration": 59,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 56.734287
+    },
+    {
+      "iteration": 60,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.592734
+    },
+    {
+      "iteration": 61,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.584539
+    },
+    {
+      "iteration": 62,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.593588
+    },
+    {
+      "iteration": 63,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.587076
+    },
+    {
+      "iteration": 64,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.598622
+    },
+    {
+      "iteration": 65,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.582562
+    },
+    {
+      "iteration": 66,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.592012
+    },
+    {
+      "iteration": 67,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 386.615954
+    },
+    {
+      "iteration": 68,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 72.752125
+    },
+    {
+      "iteration": 69,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 70.671741
+    },
+    {
+      "iteration": 70,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 54.945898
+    },
+    {
+      "iteration": 71,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 63.633411
+    },
+    {
+      "iteration": 72,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 72.30111
+    },
+    {
+      "iteration": 73,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 62.080197
+    },
+    {
+      "iteration": 74,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 65.578597
+    },
+    {
+      "iteration": 75,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 52.500234
+    },
+    {
+      "iteration": 76,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 89.347032
+    },
+    {
+      "iteration": 77,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 26.673453
+    },
+    {
+      "iteration": 78,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 64.071092
+    },
+    {
+      "iteration": 79,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 62.014736
+    },
+    {
+      "iteration": 80,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 54.158235
+    },
+    {
+      "iteration": 81,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 79.809753
+    },
+    {
+      "iteration": 82,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 39.822599
+    },
+    {
+      "iteration": 83,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 69.457575
+    },
+    {
+      "iteration": 84,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 61.897575
+    },
+    {
+      "iteration": 85,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 55.873237
+    },
+    {
+      "iteration": 86,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 43.649406
+    },
+    {
+      "iteration": 87,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 37.091917
+    },
+    {
+      "iteration": 88,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 124.938809
+    },
+    {
+      "iteration": 89,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.585125
+    },
+    {
+      "iteration": 90,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 7.591962
+    },
+    {
+      "iteration": 91,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 38.477624
+    },
+    {
+      "iteration": 92,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 54.408345
+    },
+    {
+      "iteration": 93,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 36.640212
+    },
+    {
+      "iteration": 94,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 71.752495
+    },
+    {
+      "iteration": 95,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 70.853412
+    },
+    {
+      "iteration": 96,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 63.882289
+    },
+    {
+      "iteration": 97,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 54.167081
+    },
+    {
+      "iteration": 98,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 53.755154
+    },
+    {
+      "iteration": 99,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 41.714371
+    },
+    {
+      "iteration": 100,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 85.425673
+    },
+    {
+      "iteration": 101,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 70.950068
+    }
+  ],
+  "model_dir": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/models/task-6-default20-unit",
+  "model_source": "course_train",
+  "n": 10000,
+  "official_infer": "/gemini/code/cuda_cnn/runtime-output/course-interface-20261027/project/build-course-task4/infer",
+  "predictions_identical_all": true,
+  "process_wall_ms": 9004.474382847548,
+  "returncode": 0,
+  "runs": 101,
+  "schema": "course-warm-benchmark-v1",
+  "sha256": {
+    "binary": "465b53d46f12a6f8cc6dde34e5da26e1a4a6e1ac9ec12bf3bdc6047ba2b6d782",
+    "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+    "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+    "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+    "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9",
+    "official_infer": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e"
+  },
+  "sha256_after": {
+    "binary": "465b53d46f12a6f8cc6dde34e5da26e1a4a6e1ac9ec12bf3bdc6047ba2b6d782",
+    "images": "bc9f8f501f39b3ca61f899a2f402edf2024bde012b73223431b6bd735e47a165",
+    "labels": "52aa149c856ca033d02e1d2e5cc61033b4c56ed4a56f0edc328206a178c42126",
+    "meta": "ca3461d59afaf460c61814058f6db41090a4de3cbde4cc2c70d2feaca2981159",
+    "model": "89e1d79758ab50960ef27d24f51d3aca7d722452c84602f41e3f402d2ae92eb9",
+    "official_infer": "c7c929225d6abfd5b23bae4aead58ac622100a6ede0362b25a1daaadd3ffae0e"
+  },
+  "status": "pass",
+  "stderr": "event=course_warm_iteration phase=warmup iteration=1 samples=10000 wall_ms=93.895522 predictions_identical=1\nevent=course_warm_iteration phase=warmup iteration=2 samples=10000 wall_ms=113.08797800000001 predictions_identical=1\nevent=course_warm_iteration phase=warmup iteration=3 samples=10000 wall_ms=57.724755000000002 predictions_identical=1\nevent=course_warm_iteration phase=warmup iteration=4 samples=10000 wall_ms=132.00708499999999 predictions_identical=1\nevent=course_warm_iteration phase=warmup iteration=5 samples=10000 wall_ms=108.231758 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=1 samples=10000 wall_ms=83.289848000000006 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=2 samples=10000 wall_ms=115.309203 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=3 samples=10000 wall_ms=75.899191999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=4 samples=10000 wall_ms=120.69331099999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=5 samples=10000 wall_ms=41.348061000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=6 samples=10000 wall_ms=7.5573769999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=7 samples=10000 wall_ms=7.5833630000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=8 samples=10000 wall_ms=7.5506770000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=9 samples=10000 wall_ms=7.5556799999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=10 samples=10000 wall_ms=7.5716590000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=11 samples=10000 wall_ms=7.5783969999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=12 samples=10000 wall_ms=8.8873739999999994 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=13 samples=10000 wall_ms=638.71584299999995 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=14 samples=10000 wall_ms=7.5710600000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=15 samples=10000 wall_ms=7.5884070000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=16 samples=10000 wall_ms=7.589537 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=17 samples=10000 wall_ms=7.5840079999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=18 samples=10000 wall_ms=7.5923080000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=19 samples=10000 wall_ms=7.5790470000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=20 samples=10000 wall_ms=7.6022400000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=21 samples=10000 wall_ms=554.64659500000005 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=22 samples=10000 wall_ms=80.111884000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=23 samples=10000 wall_ms=89.403724999999994 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=24 samples=10000 wall_ms=65.266935000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=25 samples=10000 wall_ms=57.752155000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=26 samples=10000 wall_ms=103.73474299999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=27 samples=10000 wall_ms=89.990128999999996 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=28 samples=10000 wall_ms=88.979225999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=29 samples=10000 wall_ms=55.324508999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=30 samples=10000 wall_ms=80.281734 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=31 samples=10000 wall_ms=81.451515999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=32 samples=10000 wall_ms=79.787008 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=33 samples=10000 wall_ms=55.509607000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=34 samples=10000 wall_ms=88.575040999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=35 samples=10000 wall_ms=82.226956000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=36 samples=10000 wall_ms=70.865575000000007 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=37 samples=10000 wall_ms=25.086919999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=38 samples=10000 wall_ms=84.458423999999994 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=39 samples=10000 wall_ms=70.510186000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=40 samples=10000 wall_ms=98.265811999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=41 samples=10000 wall_ms=57.180962000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=42 samples=10000 wall_ms=71.977093999999994 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=43 samples=10000 wall_ms=78.281076999999996 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=44 samples=10000 wall_ms=63.570844999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=45 samples=10000 wall_ms=72.012901999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=46 samples=10000 wall_ms=72.630926000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=47 samples=10000 wall_ms=71.193416999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=48 samples=10000 wall_ms=54.902386 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=49 samples=10000 wall_ms=74.512006999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=50 samples=10000 wall_ms=43.990937000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=51 samples=10000 wall_ms=8.2860700000000005 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=52 samples=10000 wall_ms=7.5851240000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=53 samples=10000 wall_ms=7.5881860000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=54 samples=10000 wall_ms=7.5932639999999996 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=55 samples=10000 wall_ms=7.5869270000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=56 samples=10000 wall_ms=347.33059800000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=57 samples=10000 wall_ms=79.158331000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=58 samples=10000 wall_ms=63.30903 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=59 samples=10000 wall_ms=56.734287000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=60 samples=10000 wall_ms=7.5927340000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=61 samples=10000 wall_ms=7.5845390000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=62 samples=10000 wall_ms=7.5935879999999996 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=63 samples=10000 wall_ms=7.5870759999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=64 samples=10000 wall_ms=7.5986219999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=65 samples=10000 wall_ms=7.5825620000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=66 samples=10000 wall_ms=7.5920120000000004 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=67 samples=10000 wall_ms=386.61595399999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=68 samples=10000 wall_ms=72.752125000000007 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=69 samples=10000 wall_ms=70.671740999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=70 samples=10000 wall_ms=54.945898 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=71 samples=10000 wall_ms=63.633411000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=72 samples=10000 wall_ms=72.301109999999994 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=73 samples=10000 wall_ms=62.080196999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=74 samples=10000 wall_ms=65.578597000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=75 samples=10000 wall_ms=52.500233999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=76 samples=10000 wall_ms=89.347031999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=77 samples=10000 wall_ms=26.673452999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=78 samples=10000 wall_ms=64.071091999999993 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=79 samples=10000 wall_ms=62.014735999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=80 samples=10000 wall_ms=54.158234999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=81 samples=10000 wall_ms=79.809753000000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=82 samples=10000 wall_ms=39.822598999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=83 samples=10000 wall_ms=69.457575000000006 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=84 samples=10000 wall_ms=61.897575000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=85 samples=10000 wall_ms=55.873237000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=86 samples=10000 wall_ms=43.649405999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=87 samples=10000 wall_ms=37.091917000000002 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=88 samples=10000 wall_ms=124.93880900000001 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=89 samples=10000 wall_ms=7.5851249999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=90 samples=10000 wall_ms=7.5919619999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=91 samples=10000 wall_ms=38.477623999999999 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=92 samples=10000 wall_ms=54.408344999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=93 samples=10000 wall_ms=36.640211999999998 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=94 samples=10000 wall_ms=71.752494999999996 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=95 samples=10000 wall_ms=70.853412000000006 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=96 samples=10000 wall_ms=63.882289 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=97 samples=10000 wall_ms=54.167081000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=98 samples=10000 wall_ms=53.755153999999997 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=99 samples=10000 wall_ms=41.714371 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=100 samples=10000 wall_ms=85.425673000000003 predictions_identical=1\nevent=course_warm_iteration phase=measure iteration=101 samples=10000 wall_ms=70.950068000000002 predictions_identical=1\nevent=course_warm_complete status=pass warmups=5 runs=101 samples=10000 batch=1024 input_mode=unit\n",
+  "stdout": "7\n2\n1\n0\n4\n1\n4\n9\n5\n9\n0\n6\n9\n0\n1\n5\n9\n7\n3\n4\n9\n6\n6\n5\n4\n0\n7\n4\n0\n1\n3\n1\n3\n4\n7\n2\n7\n1\n2\n1\n1\n7\n4\n2\n3\n5\n1\n2\n4\n4\n6\n3\n5\n5\n6\n0\n4\n1\n9\n5\n7\n8\n9\n3\n7\n4\n6\n4\n3\n0\n7\n0\n2\n9\n1\n7\n3\n2\n9\n7\n7\n6\n2\n7\n8\n4\n7\n3\n6\n1\n3\n6\n9\n3\n1\n4\n1\n7\n6\n9\n6\n0\n5\n4\n9\n9\n2\n1\n9\n4\n8\n7\n3\n9\n7\n9\n4\n4\n9\n2\n5\n4\n7\n6\n7\n9\n0\n5\n8\n5\n6\n6\n5\n7\n8\n1\n0\n1\n6\n4\n6\n7\n3\n1\n7\n1\n8\n2\n0\n2\n9\n9\n5\n5\n1\n5\n6\n0\n3\n4\n4\n6\n5\n4\n6\n5\n4\n5\n1\n4\n4\n7\n2\n3\n2\n7\n1\n8\n1\n8\n1\n8\n5\n0\n8\n9\n2\n5\n0\n1\n1\n1\n0\n9\n0\n3\n1\n6\n4\n2\n3\n6\n1\n1\n1\n3\n9\n5\n2\n9\n4\n5\n9\n3\n9\n0\n3\n6\n5\n5\n7\n2\n2\n7\n1\n2\n8\n4\n1\n7\n3\n3\n8\n8\n7\n9\n2\n2\n4\n1\n5\n9\n8\n7\n2\n3\n0\n6\n4\n2\n4\n1\n9\n5\n7\n7\n2\n8\n2\n6\n8\n5\n7\n7\n9\n1\n8\n1\n8\n0\n3\n0\n1\n9\n9\n4\n1\n8\n2\n1\n2\n9\n7\n5\n9\n2\n6\n4\n1\n5\n8\n2\n9\n2\n0\n4\n0\n0\n2\n8\n4\n7\n1\n2\n4\n0\n2\n7\n4\n3\n3\n0\n0\n3\n1\n9\n6\n5\n2\n5\n9\n2\n9\n3\n0\n4\n2\n0\n7\n1\n1\n2\n1\n5\n3\n3\n9\n7\n8\n6\n5\n6\n1\n3\n8\n1\n0\n5\n1\n3\n1\n5\n5\n6\n1\n8\n5\n1\n7\n8\n4\n6\n2\n2\n5\n0\n6\n5\n6\n3\n7\n2\n0\n8\n8\n5\n4\n1\n1\n4\n0\n3\n3\n7\n6\n1\n6\n2\n1\n9\n2\n8\n6\n1\n9\n5\n2\n5\n4\n4\n2\n8\n3\n8\n2\n4\n5\n0\n3\n1\n7\n7\n5\n7\n9\n7\n1\n9\n2\n1\n4\n2\n9\n2\n0\n4\n9\n1\n4\n8\n1\n8\n4\n5\n9\n8\n8\n3\n7\n6\n0\n0\n3\n0\n2\n0\n6\n4\n8\n3\n3\n3\n2\n3\n9\n1\n2\n6\n8\n0\n5\n6\n6\n6\n3\n8\n8\n2\n7\n5\n8\n9\n6\n1\n8\n4\n1\n2\n5\n9\n1\n9\n7\n5\n4\n0\n8\n9\n9\n1\n4\n5\n2\n3\n7\n8\n9\n4\n0\n6\n3\n9\n5\n2\n1\n3\n1\n3\n6\n5\n7\n4\n2\n2\n6\n3\n2\n6\n5\n4\n8\n9\n7\n1\n3\n0\n3\n8\n3\n1\n9\n3\n4\n4\n6\n4\n2\n1\n8\n2\n5\n4\n8\n8\n4\n0\n0\n2\n3\n2\n7\n9\n0\n8\n7\n4\n4\n7\n9\n6\n9\n0\n9\n8\n0\n4\n6\n0\n6\n3\n5\n4\n8\n3\n3\n9\n3\n3\n3\n7\n8\n0\n2\n2\n1\n7\n0\n6\n5\n4\n3\n8\n0\n9\n6\n3\n8\n0\n9\n9\n6\n8\n6\n8\n5\n7\n8\n6\n0\n2\n4\n0\n2\n2\n3\n1\n9\n7\n5\n1\n0\n8\n4\n6\n2\n6\n7\n9\n3\n2\n9\n8\n2\n2\n9\n2\n7\n3\n5\n9\n1\n8\n0\n2\n0\n5\n4\n1\n3\n7\n6\n7\n1\n2\n5\n8\n0\n3\n7\n2\n4\n0\n9\n1\n8\n6\n7\n7\n4\n3\n4\n9\n1\n9\n3\n1\n7\n3\n9\n7\n6\n9\n1\n3\n7\n8\n3\n3\n6\n7\n2\n8\n5\n8\n5\n1\n1\n4\n4\n3\n1\n0\n7\n7\n0\n7\n9\n4\n4\n8\n5\n5\n4\n0\n8\n2\n1\n0\n8\n4\n5\n0\n4\n0\n6\n1\n4\n3\n2\n6\n7\n2\n6\n9\n3\n1\n4\n6\n2\n5\n4\n2\n0\n6\n2\n1\n7\n3\n4\n1\n0\n5\n4\n3\n1\n1\n7\n4\n9\n9\n4\n8\n4\n0\n2\n4\n5\n1\n1\n6\n4\n7\n1\n9\n4\n2\n4\n1\n5\n5\n3\n8\n3\n1\n4\n5\n6\n8\n9\n4\n1\n5\n3\n8\n0\n3\n2\n5\n1\n2\n8\n3\n4\n4\n0\n8\n8\n3\n3\n1\n7\n3\n5\n8\n6\n3\n2\n6\n1\n3\n6\n0\n7\n2\n1\n7\n1\n4\n2\n4\n2\n1\n7\n9\n6\n1\n1\n2\n4\n8\n1\n7\n7\n4\n8\n0\n7\n3\n1\n3\n1\n0\n7\n7\n0\n3\n5\n5\n2\n7\n6\n6\n9\n2\n8\n3\n5\n2\n2\n5\n6\n0\n8\n2\n9\n2\n8\n8\n8\n8\n7\n4\n9\n3\n0\n6\n6\n3\n2\n1\n3\n2\n2\n9\n3\n0\n0\n5\n7\n8\n1\n4\n4\n6\n0\n2\n9\n1\n4\n7\n4\n7\n3\n9\n8\n8\n4\n7\n1\n2\n1\n2\n2\n3\n2\n3\n2\n3\n9\n1\n7\n4\n0\n3\n5\n5\n8\n6\n5\n2\n6\n7\n6\n6\n3\n2\n7\n9\n1\n1\n7\n5\n6\n4\n9\n5\n1\n3\n2\n4\n7\n8\n9\n1\n1\n6\n9\n1\n4\n4\n5\n4\n0\n6\n2\n2\n3\n1\n5\n1\n2\n0\n3\n8\n1\n2\n6\n7\n1\n6\n2\n3\n9\n0\n1\n2\n2\n0\n8\n9\n9\n0\n2\n5\n1\n9\n7\n8\n1\n0\n4\n1\n7\n9\n5\n4\n2\n6\n8\n1\n3\n7\n5\n4\n4\n1\n8\n1\n3\n8\n1\n2\n5\n8\n0\n6\n2\n1\n1\n7\n1\n5\n3\n4\n8\n9\n5\n0\n9\n2\n2\n4\n8\n2\n1\n7\n2\n4\n9\n4\n4\n0\n3\n9\n2\n2\n3\n3\n8\n3\n5\n7\n3\n5\n8\n1\n2\n4\n4\n6\n4\n9\n5\n1\n0\n6\n9\n5\n9\n5\n9\n7\n3\n8\n0\n3\n7\n1\n3\n6\n7\n8\n5\n9\n7\n9\n6\n9\n6\n3\n7\n4\n6\n5\n3\n5\n4\n7\n8\n7\n8\n0\n7\n6\n8\n8\n7\n3\n3\n1\n9\n5\n2\n7\n3\n5\n1\n1\n2\n1\n4\n7\n4\n7\n5\n4\n5\n4\n0\n8\n3\n6\n9\n6\n0\n2\n7\n4\n4\n4\n4\n6\n6\n4\n7\n9\n3\n4\n5\n5\n8\n7\n3\n7\n2\n7\n0\n2\n4\n1\n1\n6\n6\n9\n2\n8\n7\n2\n0\n1\n5\n0\n9\n1\n7\n0\n6\n0\n8\n6\n8\n1\n8\n0\n3\n3\n7\n2\n3\n6\n2\n1\n6\n1\n1\n3\n7\n9\n0\n8\n0\n5\n4\n0\n2\n8\n2\n2\n9\n8\n4\n0\n4\n5\n8\n5\n1\n2\n1\n3\n1\n7\n4\n5\n7\n2\n0\n9\n8\n8\n6\n2\n5\n4\n1\n9\n2\n1\n5\n8\n7\n0\n2\n4\n4\n3\n6\n8\n8\n2\n4\n0\n5\n0\n4\n4\n7\n9\n3\n4\n1\n5\n9\n7\n3\n5\n8\n8\n0\n5\n5\n3\n6\n6\n0\n1\n6\n0\n3\n7\n4\n4\n1\n2\n9\n1\n4\n6\n9\n9\n3\n9\n8\n4\n4\n3\n1\n3\n1\n8\n8\n7\n9\n4\n8\n8\n7\n9\n7\n1\n4\n5\n6\n0\n5\n2\n2\n2\n1\n5\n5\n2\n4\n9\n6\n2\n7\n7\n2\n2\n1\n1\n2\n8\n3\n7\n2\n4\n1\n7\n1\n7\n6\n7\n8\n2\n7\n3\n1\n7\n5\n8\n2\n6\n2\n2\n5\n6\n5\n0\n9\n2\n4\n3\n3\n9\n7\n6\n6\n8\n0\n4\n1\n3\n8\n2\n9\n1\n8\n0\n6\n7\n2\n1\n0\n5\n5\n2\n0\n2\n2\n0\n2\n4\n9\n8\n0\n9\n9\n4\n6\n5\n4\n9\n1\n8\n3\n4\n9\n9\n1\n2\n2\n8\n1\n9\n6\n4\n0\n9\n4\n8\n3\n8\n6\n0\n2\n5\n1\n9\n6\n2\n9\n4\n0\n9\n6\n0\n6\n3\n5\n4\n2\n3\n8\n4\n5\n5\n0\n3\n8\n5\n3\n5\n8\n6\n5\n7\n6\n3\n3\n9\n6\n1\n1\n2\n9\n0\n4\n3\n3\n6\n9\n5\n7\n3\n7\n7\n7\n8\n7\n9\n8\n3\n0\n7\n2\n7\n9\n4\n5\n4\n9\n3\n2\n1\n4\n0\n2\n3\n7\n5\n9\n8\n8\n5\n0\n3\n1\n4\n8\n3\n9\n0\n0\n0\n6\n6\n2\n3\n7\n8\n4\n7\n7\n9\n2\n4\n1\n4\n5\n2\n4\n9\n9\n1\n8\n4\n0\n9\n8\n4\n8\n7\n7\n0\n7\n8\n8\n6\n0\n4\n8\n8\n2\n4\n7\n6\n6\n6\n4\n7\n1\n8\n8\n2\n3\n6\n3\n0\n0\n3\n7\n6\n9\n7\n9\n9\n5\n4\n3\n3\n6\n1\n2\n3\n7\n3\n3\n2\n0\n3\n3\n8\n4\n3\n6\n3\n5\n0\n2\n6\n9\n0\n7\n4\n6\n9\n3\n5\n1\n9\n6\n1\n4\n5\n4\n5\n0\n5\n9\n5\n2\n1\n2\n9\n1\n9\n9\n4\n0\n8\n4\n5\n3\n9\n2\n1\n2\n1\n7\n3\n6\n8\n8\n4\n9\n1\n9\n8\n5\n7\n5\n1\n1\n8\n6\n5\n7\n4\n4\n7\n2\n3\n5\n6\n8\n8\n6\n2\n3\n1\n0\n5\n8\n9\n2\n9\n6\n7\n0\n4\n8\n7\n1\n7\n4\n1\n0\n9\n7\n2\n0\n0\n9\n1\n7\n8\n7\n8\n4\n7\n2\n0\n4\n6\n0\n3\n1\n1\n3\n3\n9\n6\n7\n4\n1\n3\n3\n0\n8\n7\n3\n9\n6\n9\n3\n5\n0\n2\n7\n4\n5\n1\n7\n5\n8\n0\n8\n8\n1\n5\n0\n3\n0\n3\n1\n4\n0\n3\n7\n2\n7\n1\n8\n0\n7\n0\n4\n3\n1\n9\n8\n7\n7\n1\n4\n9\n9\n3\n3\n1\n7\n9\n0\n2\n0\n3\n3\n7\n6\n9\n2\n3\n3\n7\n7\n0\n0\n7\n5\n2\n9\n8\n7\n4\n4\n2\n6\n6\n1\n9\n6\n8\n2\n9\n0\n8\n3\n1\n1\n6\n3\n5\n1\n1\n1\n3\n1\n2\n3\n0\n2\n0\n1\n3\n5\n5\n7\n4\n8\n9\n6\n9\n6\n8\n3\n6\n6\n8\n5\n1\n4\n2\n4\n4\n5\n1\n1\n9\n0\n2\n4\n9\n5\n7\n1\n8\n8\n5\n6\n9\n8\n7\n1\n1\n6\n7\n6\n3\n2\n2\n0\n8\n9\n2\n5\n1\n0\n8\n4\n4\n5\n7\n9\n6\n9\n0\n6\n1\n5\n5\n8\n3\n8\n2\n6\n5\n0\n7\n4\n6\n1\n3\n4\n7\n3\n2\n3\n4\n2\n5\n2\n7\n1\n7\n2\n6\n4\n1\n5\n7\n8\n6\n0\n1\n8\n2\n5\n7\n7\n6\n9\n3\n5\n8\n4\n2\n4\n0\n8\n8\n3\n4\n9\n2\n7\n5\n8\n6\n5\n6\n0\n8\n6\n7\n3\n6\n4\n9\n4\n6\n6\n3\n2\n4\n1\n0\n1\n4\n6\n2\n9\n1\n1\n0\n6\n3\n9\n5\n6\n5\n6\n5\n8\n4\n6\n4\n3\n9\n1\n3\n4\n1\n9\n1\n7\n1\n1\n9\n3\n5\n4\n0\n7\n3\n6\n1\n7\n5\n5\n3\n3\n0\n1\n3\n7\n5\n8\n6\n5\n1\n0\n4\n2\n3\n4\n6\n7\n9\n8\n1\n8\n4\n9\n2\n8\n6\n2\n7\n0\n0\n6\n7\n5\n8\n6\n0\n9\n3\n7\n1\n3\n5\n4\n3\n3\n5\n5\n6\n3\n0\n2\n3\n4\n2\n3\n0\n9\n9\n4\n7\n2\n8\n4\n7\n0\n6\n2\n8\n5\n2\n8\n5\n7\n3\n0\n8\n2\n3\n2\n8\n2\n5\n5\n7\n6\n4\n6\n8\n4\n8\n2\n7\n4\n5\n2\n0\n3\n8\n9\n6\n7\n2\n5\n1\n1\n1\n2\n3\n6\n7\n8\n7\n6\n4\n8\n9\n4\n8\n6\n3\n8\n3\n1\n0\n6\n2\n2\n5\n6\n9\n5\n8\n1\n4\n1\n7\n8\n4\n6\n1\n8\n4\n3\n1\n2\n8\n0\n8\n5\n9\n7\n4\n2\n0\n2\n7\n0\n9\n0\n2\n5\n7\n6\n7\n9\n4\n2\n6\n2\n4\n4\n8\n0\n4\n4\n5\n8\n0\n6\n8\n9\n8\n5\n6\n9\n0\n4\n8\n7\n1\n3\n4\n5\n8\n0\n9\n1\n3\n3\n6\n9\n8\n7\n1\n0\n5\n7\n1\n7\n5\n2\n7\n9\n1\n8\n5\n2\n4\n9\n4\n7\n2\n2\n3\n4\n9\n1\n9\n2\n1\n7\n9\n4\n4\n3\n6\n7\n2\n7\n8\n8\n1\n9\n7\n1\n1\n7\n5\n3\n3\n5\n1\n3\n7\n6\n1\n3\n8\n7\n5\n9\n4\n0\n0\n2\n8\n8\n2\n3\n7\n1\n3\n0\n3\n4\n4\n3\n8\n9\n2\n3\n9\n7\n1\n1\n7\n0\n4\n9\n6\n5\n9\n1\n7\n0\n2\n0\n0\n4\n6\n7\n0\n7\n1\n4\n6\n4\n5\n4\n9\n9\n1\n7\n9\n5\n3\n3\n8\n2\n3\n6\n2\n2\n1\n1\n1\n1\n1\n6\n9\n8\n4\n3\n7\n1\n6\n4\n5\n0\n4\n7\n4\n2\n4\n0\n7\n0\n1\n9\n8\n8\n6\n0\n0\n4\n9\n6\n8\n2\n2\n3\n8\n4\n8\n2\n2\n1\n7\n5\n4\n4\n0\n4\n3\n9\n7\n3\n1\n0\n1\n2\n5\n9\n2\n1\n0\n1\n8\n9\n1\n4\n8\n3\n8\n9\n3\n6\n2\n8\n3\n2\n2\n1\n0\n4\n2\n9\n2\n4\n3\n7\n9\n1\n5\n2\n4\n9\n0\n3\n8\n5\n3\n6\n0\n9\n4\n6\n2\n5\n0\n0\n7\n4\n6\n6\n8\n6\n6\n8\n6\n9\n1\n7\n2\n5\n9\n9\n0\n7\n2\n7\n6\n7\n0\n6\n5\n2\n4\n7\n2\n0\n9\n9\n2\n2\n9\n4\n4\n2\n3\n3\n2\n1\n7\n0\n7\n6\n4\n1\n3\n8\n7\n4\n5\n9\n2\n5\n1\n8\n7\n3\n7\n1\n5\n5\n0\n9\n1\n4\n0\n6\n3\n3\n6\n0\n4\n9\n7\n5\n1\n6\n8\n9\n5\n5\n7\n9\n3\n8\n3\n8\n1\n5\n3\n5\n0\n5\n5\n3\n8\n6\n7\n7\n7\n3\n7\n0\n5\n9\n0\n2\n5\n5\n3\n1\n7\n7\n8\n6\n5\n9\n3\n8\n9\n5\n3\n7\n9\n1\n7\n0\n0\n3\n7\n2\n3\n8\n1\n8\n6\n2\n9\n5\n7\n5\n7\n8\n6\n2\n5\n1\n4\n8\n4\n5\n8\n3\n0\n6\n2\n7\n3\n3\n2\n1\n0\n7\n3\n4\n0\n3\n9\n3\n2\n8\n9\n0\n3\n8\n0\n7\n6\n5\n4\n7\n3\n9\n0\n8\n6\n2\n5\n1\n1\n0\n0\n4\n4\n0\n1\n2\n3\n2\n7\n7\n8\n5\n2\n5\n7\n6\n9\n1\n4\n1\n6\n4\n2\n4\n3\n5\n4\n3\n9\n5\n0\n1\n5\n3\n8\n9\n1\n9\n7\n9\n5\n5\n2\n7\n4\n6\n0\n1\n1\n1\n0\n4\n4\n7\n6\n3\n0\n0\n4\n3\n0\n6\n1\n9\n6\n1\n3\n8\n1\n2\n5\n6\n2\n7\n3\n6\n0\n1\n9\n7\n6\n6\n8\n9\n2\n9\n5\n8\n3\n1\n0\n0\n7\n6\n6\n2\n1\n6\n9\n3\n1\n8\n6\n9\n0\n6\n0\n0\n0\n6\n3\n5\n9\n3\n4\n5\n5\n8\n5\n3\n0\n4\n0\n2\n9\n6\n8\n2\n3\n1\n2\n1\n1\n5\n6\n9\n8\n0\n6\n6\n5\n5\n3\n8\n6\n2\n1\n4\n5\n4\n3\n7\n8\n5\n0\n9\n3\n5\n1\n1\n0\n4\n4\n7\n0\n1\n7\n0\n1\n6\n1\n4\n5\n6\n6\n5\n7\n8\n4\n4\n7\n2\n5\n3\n7\n0\n7\n7\n9\n6\n4\n2\n8\n5\n7\n8\n3\n9\n5\n8\n9\n9\n8\n6\n2\n8\n9\n2\n3\n6\n1\n1\n8\n9\n3\n4\n0\n7\n9\n6\n4\n1\n4\n1\n3\n4\n9\n3\n1\n4\n7\n7\n4\n7\n2\n9\n3\n0\n8\n8\n8\n4\n0\n4\n4\n1\n5\n2\n8\n3\n4\n9\n5\n2\n8\n1\n5\n3\n3\n9\n4\n2\n5\n6\n3\n5\n9\n3\n5\n9\n3\n1\n9\n5\n3\n0\n6\n9\n8\n4\n0\n4\n9\n2\n9\n0\n1\n0\n3\n1\n6\n5\n8\n1\n5\n3\n3\n0\n3\n5\n5\n9\n2\n8\n7\n0\n4\n9\n1\n9\n7\n7\n5\n5\n2\n0\n9\n1\n8\n6\n2\n3\n9\n6\n2\n1\n9\n1\n3\n5\n5\n0\n3\n8\n3\n3\n7\n6\n8\n0\n1\n4\n0\n6\n9\n8\n1\n2\n9\n9\n5\n9\n7\n3\n7\n8\n0\n1\n3\n0\n4\n6\n1\n0\n2\n5\n8\n4\n4\n1\n1\n5\n4\n6\n6\n0\n6\n9\n2\n6\n2\n7\n1\n7\n9\n4\n0\n0\n3\n8\n2\n2\n3\n1\n6\n0\n5\n7\n7\n9\n2\n6\n7\n9\n7\n8\n6\n8\n8\n4\n6\n8\n4\n1\n2\n8\n1\n3\n9\n4\n0\n3\n7\n3\n2\n3\n3\n7\n3\n4\n0\n6\n2\n0\n8\n1\n5\n3\n5\n4\n1\n7\n1\n5\n7\n5\n7\n3\n2\n2\n7\n3\n7\n3\n7\n8\n5\n4\n5\n2\n5\n6\n5\n3\n6\n7\n4\n1\n7\n1\n5\n2\n3\n6\n3\n1\n4\n2\n6\n7\n4\n3\n8\n0\n6\n2\n1\n6\n5\n3\n9\n1\n9\n3\n2\n1\n8\n4\n4\n6\n5\n8\n6\n9\n7\n7\n8\n6\n9\n7\n3\n9\n4\n0\n5\n4\n6\n4\n1\n2\n3\n0\n0\n2\n6\n6\n5\n7\n0\n8\n6\n4\n7\n9\n0\n7\n3\n4\n2\n1\n8\n8\n5\n9\n2\n7\n1\n8\n8\n8\n2\n7\n6\n0\n1\n2\n7\n1\n0\n8\n3\n6\n0\n5\n3\n6\n2\n8\n9\n0\n1\n4\n2\n1\n1\n4\n4\n4\n4\n7\n1\n6\n2\n9\n9\n0\n0\n1\n8\n8\n4\n3\n4\n2\n0\n6\n1\n6\n1\n2\n2\n2\n1\n2\n3\n7\n8\n1\n0\n0\n2\n1\n6\n6\n0\n1\n6\n2\n5\n1\n7\n4\n8\n2\n1\n4\n3\n8\n3\n9\n9\n4\n8\n3\n4\n7\n2\n7\n5\n7\n0\n4\n3\n3\n2\n6\n7\n6\n0\n0\n6\n7\n7\n0\n5\n5\n8\n1\n0\n7\n0\n2\n8\n1\n5\n0\n8\n8\n0\n3\n2\n7\n7\n2\n6\n4\n7\n5\n5\n5\n2\n9\n2\n8\n4\n6\n8\n6\n5\n0\n0\n8\n7\n6\n1\n7\n1\n1\n2\n7\n4\n0\n0\n7\n7\n6\n3\n8\n6\n4\n2\n0\n9\n4\n0\n5\n7\n8\n2\n7\n4\n7\n1\n1\n3\n6\n6\n2\n9\n1\n9\n4\n8\n3\n6\n9\n5\n9\n6\n2\n4\n6\n7\n7\n0\n6\n6\n9\n4\n8\n3\n5\n3\n4\n9\n0\n0\n5\n2\n5\n0\n7\n1\n1\n1\n6\n7\n6\n7\n9\n6\n6\n4\n1\n4\n3\n1\n1\n2\n2\n4\n1\n0\n8\n7\n6\n3\n4\n0\n0\n6\n3\n3\n0\n7\n1\n7\n1\n1\n3\n1\n0\n9\n9\n7\n5\n4\n1\n4\n8\n9\n5\n3\n5\n1\n9\n8\n2\n3\n3\n9\n9\n0\n1\n0\n2\n9\n3\n9\n3\n3\n6\n2\n4\n9\n8\n3\n7\n4\n0\n4\n7\n8\n4\n9\n8\n9\n9\n7\n5\n9\n2\n8\n2\n2\n0\n2\n2\n3\n8\n4\n6\n8\n6\n8\n2\n4\n6\n7\n9\n3\n3\n9\n4\n3\n1\n4\n8\n7\n0\n5\n9\n6\n0\n4\n4\n4\n4\n6\n1\n2\n3\n3\n6\n4\n5\n9\n6\n8\n5\n6\n5\n8\n6\n4\n1\n8\n6\n5\n2\n8\n4\n5\n5\n4\n7\n7\n0\n7\n8\n2\n2\n3\n7\n0\n1\n8\n0\n7\n1\n9\n8\n7\n5\n5\n9\n1\n7\n5\n4\n9\n1\n2\n2\n1\n6\n6\n7\n1\n1\n4\n0\n7\n4\n2\n4\n0\n6\n4\n7\n6\n9\n5\n3\n4\n6\n5\n0\n1\n8\n8\n2\n8\n3\n5\n7\n8\n0\n8\n5\n7\n1\n1\n0\n1\n3\n7\n8\n5\n0\n7\n1\n1\n0\n1\n1\n4\n5\n2\n7\n6\n2\n3\n0\n2\n8\n5\n9\n6\n9\n7\n2\n1\n3\n6\n4\n1\n8\n2\n4\n0\n5\n1\n0\n2\n2\n6\n4\n4\n3\n9\n6\n1\n6\n5\n7\n9\n2\n0\n2\n6\n0\n1\n4\n3\n5\n2\n8\n8\n0\n8\n8\n9\n0\n9\n6\n7\n6\n3\n9\n3\n4\n7\n7\n7\n4\n9\n0\n6\n4\n8\n4\n2\n9\n2\n8\n1\n0\n0\n7\n8\n3\n3\n3\n1\n3\n7\n6\n1\n3\n1\n6\n6\n5\n7\n4\n7\n5\n9\n5\n8\n4\n9\n9\n1\n8\n5\n0\n1\n3\n7\n0\n3\n4\n8\n2\n2\n0\n2\n5\n1\n5\n1\n4\n8\n8\n9\n1\n2\n1\n3\n5\n1\n0\n9\n4\n4\n8\n3\n2\n5\n9\n7\n6\n6\n2\n0\n0\n0\n5\n8\n8\n1\n5\n2\n3\n8\n5\n1\n8\n2\n0\n4\n9\n9\n6\n2\n3\n3\n5\n6\n4\n8\n0\n9\n2\n8\n3\n6\n7\n5\n7\n2\n9\n4\n9\n1\n2\n8\n6\n0\n7\n0\n9\n1\n1\n6\n7\n5\n9\n9\n1\n9\n5\n9\n2\n5\n0\n4\n1\n0\n8\n4\n0\n8\n9\n8\n9\n4\n2\n5\n7\n9\n8\n9\n8\n0\n9\n9\n6\n8\n9\n9\n5\n9\n8\n5\n1\n0\n3\n3\n5\n2\n1\n6\n5\n0\n2\n8\n1\n5\n6\n2\n3\n0\n2\n2\n6\n4\n3\n5\n5\n1\n7\n2\n1\n6\n9\n1\n9\n9\n5\n5\n1\n6\n2\n2\n8\n6\n7\n1\n4\n6\n0\n6\n0\n3\n3\n2\n2\n3\n6\n8\n9\n2\n5\n3\n8\n5\n4\n5\n2\n0\n5\n6\n3\n2\n8\n3\n9\n9\n5\n7\n9\n4\n6\n7\n1\n3\n7\n3\n6\n6\n0\n9\n0\n1\n9\n4\n2\n8\n8\n0\n1\n6\n9\n7\n5\n3\n4\n7\n4\n9\n9\n4\n3\n6\n3\n1\n1\n3\n6\n9\n1\n8\n4\n1\n1\n9\n9\n4\n3\n6\n8\n1\n6\n0\n4\n1\n3\n7\n7\n4\n9\n5\n1\n0\n0\n1\n1\n6\n2\n1\n9\n8\n4\n0\n3\n6\n4\n9\n0\n7\n1\n6\n5\n7\n5\n2\n5\n1\n8\n5\n4\n7\n0\n6\n7\n6\n2\n5\n8\n1\n0\n4\n5\n7\n1\n8\n5\n1\n3\n0\n0\n6\n0\n7\n3\n1\n8\n3\n9\n7\n0\n0\n8\n9\n5\n9\n8\n3\n2\n7\n2\n9\n7\n2\n1\n1\n3\n7\n5\n3\n1\n9\n8\n2\n2\n2\n8\n8\n5\n7\n3\n8\n9\n8\n8\n6\n8\n2\n3\n9\n7\n5\n6\n2\n9\n2\n8\n8\n1\n6\n8\n8\n7\n9\n1\n8\n0\n1\n7\n2\n0\n7\n5\n1\n9\n0\n2\n0\n9\n8\n6\n2\n3\n9\n3\n8\n0\n2\n1\n1\n1\n1\n4\n2\n9\n7\n2\n5\n1\n1\n2\n1\n9\n9\n9\n1\n0\n2\n0\n2\n1\n1\n4\n6\n4\n1\n5\n4\n9\n7\n7\n1\n5\n6\n2\n2\n2\n8\n0\n6\n9\n6\n1\n9\n7\n7\n1\n4\n8\n5\n3\n4\n3\n4\n9\n7\n5\n0\n7\n4\n8\n8\n1\n5\n3\n9\n5\n9\n3\n6\n9\n0\n3\n6\n3\n9\n8\n2\n2\n1\n2\n8\n6\n8\n5\n5\n3\n9\n4\n9\n2\n5\n1\n5\n1\n4\n4\n1\n4\n4\n3\n5\n9\n1\n2\n2\n3\n3\n0\n2\n9\n0\n0\n9\n5\n6\n0\n9\n3\n2\n8\n4\n1\n9\n9\n7\n2\n7\n9\n9\n5\n9\n5\n1\n1\n8\n3\n5\n1\n9\n5\n3\n5\n4\n9\n5\n9\n3\n1\n9\n0\n9\n7\n5\n4\n9\n2\n0\n1\n0\n5\n1\n4\n9\n3\n3\n6\n1\n5\n2\n5\n2\n2\n0\n9\n2\n6\n6\n0\n1\n2\n0\n3\n0\n2\n5\n5\n7\n9\n5\n5\n0\n8\n9\n5\n0\n3\n2\n5\n9\n0\n8\n8\n4\n5\n8\n8\n4\n5\n4\n8\n5\n4\n9\n2\n2\n1\n2\n6\n8\n8\n7\n0\n3\n6\n6\n4\n3\n8\n8\n7\n2\n2\n0\n0\n9\n3\n9\n9\n1\n9\n8\n6\n6\n4\n2\n6\n9\n2\n8\n5\n4\n5\n7\n9\n9\n9\n2\n1\n8\n3\n4\n0\n7\n8\n3\n9\n3\n4\n6\n5\n6\n2\n3\n9\n2\n6\n0\n0\n6\n1\n2\n8\n7\n9\n8\n2\n0\n4\n7\n7\n5\n0\n5\n6\n4\n6\n7\n4\n3\n0\n7\n5\n0\n7\n4\n2\n0\n8\n9\n9\n4\n2\n4\n6\n7\n8\n7\n6\n9\n4\n1\n3\n7\n3\n0\n8\n8\n7\n6\n9\n3\n9\n2\n2\n9\n2\n1\n8\n3\n2\n9\n6\n8\n4\n0\n1\n2\n8\n4\n5\n2\n7\n8\n1\n1\n3\n0\n3\n5\n7\n0\n3\n1\n9\n3\n6\n3\n1\n7\n7\n3\n0\n8\n4\n8\n2\n6\n5\n2\n9\n7\n3\n9\n0\n9\n9\n6\n4\n2\n9\n7\n2\n1\n1\n6\n7\n4\n7\n5\n9\n6\n8\n2\n1\n4\n4\n5\n9\n6\n1\n3\n2\n5\n9\n9\n3\n6\n1\n1\n4\n6\n9\n7\n2\n1\n5\n1\n4\n6\n3\n8\n1\n1\n0\n3\n1\n6\n8\n4\n9\n0\n7\n3\n0\n2\n9\n0\n6\n6\n6\n3\n6\n7\n7\n2\n8\n6\n0\n8\n3\n0\n2\n9\n8\n3\n2\n5\n3\n8\n8\n0\n0\n1\n9\n5\n1\n3\n9\n6\n0\n1\n4\n1\n7\n1\n2\n3\n7\n9\n7\n4\n9\n9\n3\n9\n2\n8\n2\n7\n1\n8\n0\n9\n1\n0\n1\n7\n7\n9\n6\n9\n9\n9\n2\n1\n6\n1\n3\n5\n7\n1\n9\n7\n6\n4\n5\n7\n6\n6\n9\n9\n6\n3\n6\n2\n9\n8\n1\n2\n2\n5\n5\n2\n3\n7\n2\n1\n0\n1\n0\n4\n5\n2\n8\n2\n8\n3\n5\n1\n7\n3\n1\n1\n2\n9\n7\n8\n4\n0\n3\n0\n7\n8\n8\n4\n7\n7\n8\n5\n8\n4\n9\n8\n1\n3\n8\n0\n3\n1\n7\n9\n5\n5\n1\n6\n5\n7\n4\n9\n3\n5\n4\n7\n1\n2\n0\n8\n1\n6\n0\n7\n3\n9\n7\n3\n9\n6\n0\n8\n6\n4\n8\n7\n7\n9\n3\n8\n6\n9\n7\n2\n3\n4\n0\n2\n1\n8\n3\n5\n5\n7\n2\n4\n6\n7\n2\n8\n3\n0\n8\n7\n8\n4\n0\n8\n4\n4\n5\n8\n5\n6\n6\n3\n0\n9\n3\n7\n6\n8\n9\n3\n4\n9\n5\n8\n9\n1\n2\n8\n8\n6\n8\n1\n3\n7\n9\n0\n1\n1\n4\n7\n0\n8\n1\n7\n4\n5\n7\n1\n2\n1\n1\n3\n9\n6\n2\n1\n2\n8\n0\n7\n6\n6\n9\n3\n7\n0\n5\n2\n8\n0\n5\n4\n3\n8\n4\n6\n6\n2\n7\n9\n5\n1\n3\n2\n4\n3\n6\n1\n9\n4\n4\n7\n6\n5\n4\n1\n9\n9\n2\n7\n8\n0\n1\n3\n6\n1\n3\n4\n1\n1\n1\n5\n6\n0\n7\n0\n7\n2\n3\n2\n5\n8\n2\n9\n4\n9\n8\n1\n2\n1\n6\n1\n2\n7\n8\n0\n0\n0\n8\n2\n2\n9\n2\n2\n7\n9\n9\n2\n7\n5\n1\n3\n4\n9\n4\n1\n8\n5\n6\n2\n8\n3\n1\n2\n8\n4\n9\n9\n3\n7\n0\n7\n7\n2\n3\n2\n4\n0\n3\n9\n9\n8\n4\n1\n0\n6\n0\n9\n6\n8\n6\n1\n1\n9\n8\n9\n2\n3\n5\n5\n9\n4\n2\n1\n9\n4\n3\n9\n6\n0\n4\n0\n6\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n3\n4\n7\n8\n6\n3\n4\n0\n9\n7\n1\n9\n3\n8\n4\n7\n3\n0\n9\n1\n4\n5\n4\n6\n2\n0\n6\n2\n1\n1\n1\n1\n7\n2\n4\n7\n5\n2\n9\n4\n5\n8\n4\n2\n9\n7\n0\n0\n7\n5\n1\n1\n7\n6\n6\n6\n8\n2\n2\n7\n7\n4\n0\n2\n4\n2\n1\n8\n9\n6\n1\n0\n5\n9\n6\n9\n8\n0\n3\n0\n8\n3\n9\n6\n3\n0\n1\n2\n3\n4\n5\n6\n7\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n5\n4\n8\n7\n4\n7\n7\n3\n9\n8\n8\n3\n1\n5\n8\n2\n7\n4\n2\n1\n5\n4\n5\n5\n8\n6\n4\n4\n4\n1\n8\n7\n5\n5\n1\n8\n9\n1\n3\n6\n3\n3\n2\n2\n6\n9\n9\n6\n5\n5\n3\n3\n8\n1\n6\n5\n6\n8\n1\n9\n7\n6\n8\n3\n7\n4\n7\n0\n9\n0\n0\n3\n7\n9\n3\n0\n2\n0\n1\n0\n1\n0\n4\n0\n1\n0\n4\n7\n9\n6\n2\n6\n2\n2\n9\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n0\n5\n6\n6\n0\n8\n0\n2\n3\n7\n9\n4\n7\n1\n9\n1\n7\n1\n4\n0\n0\n4\n1\n7\n5\n7\n1\n3\n3\n3\n1\n6\n9\n7\n4\n3\n0\n2\n5\n2\n6\n0\n8\n9\n4\n3\n5\n4\n8\n1\n5\n9\n0\n6\n4\n3\n6\n3\n3\n8\n1\n4\n7\n5\n7\n2\n2\n0\n0\n1\n7\n7\n9\n5\n9\n8\n9\n6\n8\n8\n2\n3\n6\n1\n2\n9\n8\n9\n5\n2\n6\n2\n4\n8\n4\n6\n5\n0\n1\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n7\n4\n2\n0\n9\n0\n1\n5\n8\n8\n0\n2\n7\n8\n4\n4\n6\n1\n0\n4\n5\n3\n9\n4\n2\n0\n5\n0\n1\n3\n2\n9\n1\n6\n0\n1\n1\n8\n0\n4\n7\n7\n6\n3\n6\n0\n7\n3\n5\n4\n2\n4\n1\n8\n3\n5\n6\n7\n0\n6\n7\n1\n2\n5\n8\n1\n9\n3\n8\n2\n8\n7\n6\n7\n1\n4\n6\n2\n9\n3\n0\n1\n2\n3\n4\n5\n6\n7\n0\n1\n2\n3\n4\n5\n0\n1\n2\n8\n9\n1\n4\n0\n9\n5\n0\n8\n0\n7\n7\n1\n1\n2\n9\n3\n6\n7\n2\n3\n8\n1\n2\n9\n8\n8\n7\n1\n7\n1\n1\n0\n3\n4\n2\n6\n4\n7\n4\n2\n7\n4\n9\n1\n0\n6\n8\n5\n5\n5\n3\n5\n9\n7\n4\n8\n5\n9\n6\n9\n3\n0\n3\n8\n9\n1\n8\n1\n6\n0\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n3\n5\n3\n2\n9\n3\n2\n1\n4\n5\n5\n3\n3\n2\n1\n3\n9\n7\n2\n1\n2\n8\n9\n1\n8\n8\n7\n8\n1\n0\n0\n2\n7\n8\n7\n5\n0\n6\n1\n5\n7\n4\n6\n1\n2\n5\n0\n7\n9\n9\n0\n3\n8\n4\n4\n8\n1\n8\n6\n5\n9\n0\n0\n0\n3\n7\n1\n6\n4\n2\n6\n6\n0\n4\n5\n4\n1\n3\n8\n6\n3\n9\n9\n5\n9\n3\n7\n8\n5\n6\n4\n7\n6\n2\n2\n0\n9\n4\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n5\n6\n0\n1\n2\n3\n4\n5\n6\n8\n7\n1\n3\n2\n8\n0\n7\n5\n9\n9\n6\n0\n9\n4\n1\n3\n2\n1\n2\n3\n8\n3\n2\n6\n5\n6\n8\n2\n7\n4\n8\n1\n8\n0\n5\n3\n9\n4\n1\n9\n2\n1\n9\n6\n7\n9\n0\n4\n6\n1\n7\n3\n8\n7\n2\n9\n6\n5\n8\n3\n9\n0\n5\n7\n1\n6\n1\n0\n9\n3\n3\n4\n4\n0\n6\n2\n5\n4\n2\n3\n4\n6\n0\n0\n2\n0\n1\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n7\n1\n3\n7\n5\n2\n8\n0\n7\n5\n9\n9\n0\n9\n1\n1\n5\n8\n8\n6\n3\n2\n1\n8\n3\n2\n6\n5\n6\n7\n4\n1\n0\n5\n3\n1\n9\n2\n1\n9\n6\n0\n4\n6\n1\n7\n3\n8\n7\n2\n9\n6\n5\n8\n3\n5\n7\n1\n6\n1\n0\n9\n6\n2\n5\n4\n2\n3\n4\n4\n6\n0\n0\n2\n0\n1\n2\n3\n4\n3\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n8\n4\n5\n6\n7\n8\n9\n8\n6\n5\n0\n6\n8\n9\n4\n1\n9\n5\n3\n0\n4\n8\n9\n1\n4\n0\n5\n5\n2\n1\n5\n4\n0\n7\n6\n0\n1\n7\n0\n6\n8\n9\n9\n1\n7\n9\n8\n6\n0\n8\n1\n7\n7\n1\n3\n2\n3\n1\n4\n2\n0\n0\n7\n8\n4\n6\n4\n9\n3\n8\n4\n7\n2\n5\n6\n3\n6\n9\n6\n3\n2\n2\n4\n6\n9\n0\n2\n5\n5\n1\n3\n3\n9\n7\n8\n7\n2\n2\n5\n7\n9\n8\n2\n1\n3\n1\n3\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n1\n2\n6\n5\n3\n0\n7\n0\n4\n1\n4\n3\n6\n7\n2\n3\n1\n2\n1\n2\n9\n6\n0\n1\n3\n0\n2\n7\n5\n7\n6\n2\n9\n1\n9\n0\n6\n0\n6\n0\n2\n0\n6\n1\n5\n8\n4\n3\n0\n1\n5\n4\n4\n8\n5\n7\n5\n7\n8\n3\n4\n8\n8\n5\n2\n9\n7\n1\n3\n8\n1\n0\n7\n5\n9\n6\n9\n4\n7\n7\n9\n9\n3\n4\n4\n3\n8\n6\n2\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n8\n3\n9\n5\n5\n2\n6\n8\n4\n9\n1\n7\n1\n2\n3\n5\n9\n6\n9\n1\n1\n1\n2\n9\n5\n6\n8\n1\n2\n0\n7\n7\n5\n8\n2\n9\n8\n9\n0\n4\n6\n7\n1\n3\n4\n5\n6\n0\n3\n6\n8\n7\n0\n4\n2\n7\n4\n7\n5\n4\n3\n4\n2\n8\n1\n5\n1\n2\n0\n2\n5\n6\n4\n3\n0\n0\n0\n3\n3\n5\n7\n0\n6\n4\n8\n8\n6\n3\n4\n6\n9\n9\n8\n2\n7\n7\n1\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n0\n1\n2\n3\n4\n5\n6\n7\n8\n2\n1\n7\n2\n5\n0\n8\n0\n2\n7\n8\n8\n3\n6\n0\n2\n7\n6\n6\n1\n2\n8\n8\n7\n7\n4\n7\n7\n3\n7\n4\n5\n4\n3\n3\n8\n4\n1\n1\n9\n7\n4\n3\n7\n3\n3\n0\n2\n5\n5\n6\n6\n3\n5\n2\n5\n9\n9\n8\n4\n1\n0\n6\n0\n9\n6\n8\n8\n5\n6\n1\n1\n9\n8\n9\n2\n3\n5\n5\n9\n4\n2\n1\n9\n3\n9\n2\n0\n6\n0\n4\n0\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n7\n3\n0\n3\n1\n8\n7\n6\n4\n0\n2\n6\n8\n3\n2\n8\n1\n2\n0\n7\n1\n0\n4\n4\n5\n8\n0\n6\n2\n3\n1\n5\n1\n8\n5\n9\n4\n0\n7\n5\n8\n8\n3\n8\n9\n2\n6\n2\n5\n3\n1\n7\n3\n9\n1\n9\n9\n6\n0\n3\n9\n2\n8\n1\n4\n3\n5\n2\n9\n2\n5\n8\n9\n5\n0\n1\n2\n4\n5\n6\n0\n1\n2\n3\n4\n5\n6\n7\n1\n2\n3\n4\n5\n1\n0\n4\n5\n6\n6\n3\n4\n4\n2\n8\n1\n0\n6\n4\n9\n7\n2\n3\n3\n9\n2\n0\n9\n3\n3\n7\n7\n5\n2\n3\n1\n7\n8\n4\n0\n2\n4\n0\n2\n4\n7\n8\n0\n7\n0\n6\n9\n3\n2\n8\n6\n7\n5\n7\n5\n1\n0\n8\n1\n6\n7\n2\n9\n7\n9\n5\n8\n6\n2\n6\n2\n8\n1\n7\n5\n0\n1\n1\n3\n2\n4\n9\n1\n8\n6\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n7\n8\n9\n9\n8\n9\n8\n4\n1\n7\n7\n3\n3\n7\n6\n6\n6\n1\n9\n0\n1\n7\n6\n3\n2\n1\n7\n1\n3\n9\n1\n7\n6\n8\n4\n1\n4\n3\n6\n9\n6\n1\n4\n4\n7\n2\n4\n4\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n8\n0\n1\n2\n3\n4\n7\n8\n1\n3\n5\n1\n7\n7\n2\n1\n4\n8\n3\n4\n4\n3\n9\n7\n4\n1\n2\n3\n5\n9\n1\n6\n0\n1\n0\n0\n2\n8\n7\n1\n1\n4\n0\n4\n7\n3\n6\n8\n0\n3\n7\n4\n0\n6\n9\n2\n6\n5\n8\n6\n9\n0\n4\n0\n6\n6\n9\n2\n0\n9\n5\n1\n3\n7\n6\n9\n3\n0\n2\n2\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n2\n1\n7\n2\n5\n0\n8\n0\n2\n7\n8\n8\n3\n0\n6\n0\n2\n7\n6\n4\n1\n2\n8\n8\n7\n7\n4\n7\n7\n3\n7\n4\n5\n4\n3\n3\n8\n4\n5\n4\n1\n1\n9\n7\n4\n3\n7\n3\n3\n0\n2\n5\n5\n6\n3\n1\n5\n2\n5\n9\n9\n8\n4\n1\n0\n6\n0\n9\n6\n8\n8\n5\n6\n1\n1\n9\n8\n9\n2\n3\n5\n5\n9\n4\n2\n1\n9\n4\n9\n1\n3\n9\n2\n0\n6\n0\n4\n0\n6\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n3\n8\n0\n7\n1\n0\n7\n5\n5\n6\n9\n0\n1\n0\n0\n8\n3\n4\n3\n1\n5\n0\n0\n9\n5\n3\n4\n9\n3\n7\n6\n9\n2\n4\n5\n7\n2\n6\n4\n9\n4\n9\n4\n1\n2\n2\n5\n8\n1\n3\n2\n9\n4\n3\n8\n2\n2\n1\n2\n8\n6\n5\n1\n6\n7\n2\n1\n3\n9\n3\n8\n7\n5\n7\n0\n7\n4\n8\n8\n5\n0\n6\n6\n3\n7\n6\n9\n9\n4\n8\n4\n1\n0\n6\n6\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n7\n4\n0\n4\n0\n1\n7\n9\n5\n1\n4\n2\n8\n9\n4\n3\n7\n8\n2\n4\n4\n3\n3\n6\n9\n9\n5\n8\n6\n7\n0\n6\n8\n2\n6\n3\n9\n3\n2\n8\n6\n1\n7\n4\n8\n8\n9\n0\n3\n3\n9\n0\n5\n2\n9\n4\n1\n0\n3\n7\n5\n8\n7\n7\n8\n2\n9\n7\n1\n2\n6\n4\n2\n5\n2\n3\n6\n6\n5\n0\n0\n2\n8\n1\n6\n1\n0\n4\n3\n1\n6\n1\n9\n0\n1\n4\n5\n6\n7\n8\n9\n1\n2\n3\n4\n5\n6\n7\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n4\n0\n0\n7\n2\n4\n3\n8\n6\n6\n3\n2\n6\n3\n3\n6\n1\n4\n7\n8\n0\n3\n1\n9\n0\n1\n9\n1\n2\n7\n0\n1\n3\n8\n2\n9\n2\n7\n6\n5\n5\n9\n9\n8\n2\n9\n1\n3\n2\n3\n4\n3\n1\n9\n0\n9\n3\n6\n8\n7\n0\n1\n0\n5\n8\n2\n7\n7\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n1\n7\n4\n8\n1\n5\n6\n5\n7\n2\n8\n6\n3\n3\n8\n6\n5\n4\n0\n9\n1\n7\n2\n9\n1\n5\n1\n3\n2\n2\n3\n0\n6\n4\n3\n7\n6\n9\n0\n4\n8\n1\n4\n0\n6\n1\n2\n6\n9\n2\n2\n3\n5\n5\n1\n0\n7\n7\n9\n6\n2\n9\n4\n7\n0\n2\n3\n4\n0\n0\n8\n8\n8\n5\n1\n3\n7\n4\n9\n8\n8\n9\n0\n9\n8\n9\n0\n2\n6\n5\n6\n7\n4\n7\n5\n4\n1\n3\n5\n3\n1\n2\n3\n4\n5\n6\n1\n2\n3\n4\n6\n0\n1\n2\n4\n5\n6\n7\n8\n1\n7\n2\n4\n1\n4\n1\n4\n9\n6\n8\n4\n5\n3\n7\n8\n4\n3\n3\n5\n6\n7\n0\n6\n1\n6\n8\n7\n0\n1\n5\n0\n8\n5\n0\n1\n5\n8\n4\n2\n3\n9\n7\n6\n9\n1\n9\n0\n6\n7\n1\n2\n3\n9\n2\n4\n5\n5\n3\n7\n5\n3\n1\n8\n2\n2\n3\n0\n2\n9\n4\n9\n7\n0\n2\n7\n4\n9\n9\n2\n5\n9\n8\n3\n8\n6\n7\n0\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n0\n7\n2\n6\n5\n5\n3\n7\n8\n6\n6\n6\n6\n4\n3\n8\n8\n3\n0\n1\n9\n0\n5\n4\n1\n9\n1\n2\n7\n0\n1\n3\n8\n2\n9\n2\n7\n4\n2\n6\n5\n5\n9\n9\n1\n1\n5\n7\n6\n8\n2\n9\n4\n3\n1\n9\n0\n9\n3\n6\n8\n7\n0\n1\n0\n5\n8\n2\n7\n7\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n2\n1\n2\n1\n3\n9\n9\n8\n5\n3\n7\n0\n7\n7\n5\n7\n9\n9\n4\n7\n0\n3\n4\n1\n5\n8\n1\n4\n8\n4\n1\n8\n6\n6\n4\n6\n0\n5\n5\n3\n3\n5\n7\n2\n5\n9\n6\n9\n2\n6\n2\n1\n2\n0\n8\n3\n8\n3\n0\n8\n7\n4\n9\n5\n0\n9\n7\n0\n0\n4\n6\n0\n9\n1\n6\n2\n7\n6\n8\n3\n5\n2\n1\n8\n3\n8\n6\n1\n0\n2\n1\n4\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n7\n6\n4\n7\n6\n2\n3\n4\n8\n7\n8\n6\n9\n8\n3\n2\n2\n8\n4\n8\n5\n6\n5\n0\n2\n0\n1\n1\n2\n9\n6\n8\n2\n1\n0\n6\n5\n2\n9\n7\n5\n3\n9\n3\n7\n1\n8\n3\n8\n1\n9\n5\n5\n0\n1\n1\n9\n8\n2\n6\n0\n4\n5\n0\n3\n1\n8\n6\n7\n5\n9\n9\n3\n0\n3\n1\n4\n4\n0\n4\n9\n0\n1\n2\n3\n5\n6\n7\n8\n0\n1\n2\n3\n5\n6\n7\n8\n9\n0\n1\n2\n3\n5\n6\n7\n8\n9\n9\n7\n0\n9\n0\n1\n5\n8\n8\n0\n9\n3\n2\n7\n8\n4\n6\n1\n0\n4\n9\n4\n2\n0\n5\n0\n1\n6\n9\n3\n2\n9\n1\n6\n0\n1\n1\n8\n7\n7\n6\n3\n6\n0\n7\n2\n4\n1\n7\n0\n6\n7\n1\n2\n5\n8\n1\n8\n2\n8\n7\n6\n8\n7\n0\n6\n2\n9\n3\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n9\n5\n7\n0\n3\n1\n6\n8\n4\n1\n5\n6\n4\n2\n7\n8\n1\n3\n4\n3\n4\n7\n2\n0\n5\n0\n1\n9\n2\n3\n2\n3\n5\n5\n7\n8\n4\n9\n9\n7\n1\n1\n9\n0\n7\n8\n3\n4\n8\n6\n3\n8\n0\n9\n6\n2\n1\n0\n1\n0\n6\n2\n3\n8\n9\n0\n7\n2\n3\n4\n5\n5\n2\n8\n5\n4\n6\n6\n6\n7\n9\n1\n8\n2\n1\n5\n3\n4\n7\n9\n4\n0\n0\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n9\n0\n1\n3\n1\n5\n1\n2\n4\n9\n2\n4\n6\n8\n0\n1\n1\n9\n2\n6\n6\n8\n7\n4\n2\n9\n7\n0\n2\n1\n0\n3\n6\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n8\n6\n5\n9\n7\n0\n2\n3\n4\n3\n8\n5\n1\n5\n2\n3\n0\n1\n2\n1\n3\n2\n6\n5\n3\n0\n7\n2\n7\n4\n6\n4\n0\n5\n9\n9\n8\n9\n5\n3\n1\n7\n4\n7\n6\n5\n4\n0\n0\n6\n6\n2\n0\n6\n3\n7\n7\n4\n4\n3\n9\n2\n8\n9\n6\n0\n9\n5\n3\n8\n8\n7\n1\n4\n0\n4\n8\n5\n2\n3\n9\n0\n1\n9\n1\n5\n1\n7\n4\n8\n6\n2\n1\n6\n8\n8\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n6\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n1\n4\n5\n3\n3\n0\n9\n5\n4\n3\n0\n8\n4\n6\n7\n0\n7\n7\n1\n6\n9\n1\n3\n6\n2\n3\n8\n2\n3\n8\n9\n5\n8\n8\n7\n1\n7\n1\n1\n0\n3\n4\n2\n6\n4\n7\n4\n2\n7\n4\n2\n9\n2\n7\n9\n2\n1\n0\n6\n5\n3\n4\n8\n5\n9\n6\n9\n0\n6\n3\n0\n8\n1\n6\n0\n0\n1\n2\n3\n4\n5\n6\n7\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n7\n2\n5\n1\n6\n4\n3\n9\n9\n0\n9\n7\n1\n6\n4\n3\n6\n2\n2\n9\n8\n6\n5\n7\n0\n0\n1\n7\n4\n3\n2\n4\n1\n3\n7\n6\n4\n7\n7\n7\n9\n8\n4\n3\n5\n2\n8\n3\n5\n8\n0\n5\n4\n7\n1\n3\n1\n7\n9\n6\n2\n0\n9\n1\n7\n3\n3\n9\n1\n6\n4\n3\n9\n8\n2\n1\n8\n6\n4\n1\n5\n5\n6\n5\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n6\n9\n7\n0\n2\n3\n4\n3\n8\n5\n1\n3\n0\n1\n2\n1\n3\n2\n0\n7\n2\n6\n4\n0\n5\n9\n9\n8\n9\n5\n3\n1\n7\n4\n7\n0\n0\n6\n6\n6\n3\n7\n4\n2\n8\n9\n8\n7\n1\n9\n0\n4\n8\n5\n2\n3\n9\n0\n1\n9\n1\n5\n1\n7\n6\n1\n2\n1\n6\n8\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n0\n1\n2\n3\n5\n6\n7\n8\n1\n0\n4\n5\n6\n6\n3\n4\n4\n2\n8\n1\n0\n6\n4\n9\n7\n2\n9\n2\n0\n9\n3\n3\n9\n1\n5\n2\n3\n1\n6\n7\n3\n7\n8\n4\n0\n2\n4\n0\n2\n4\n7\n8\n0\n7\n0\n6\n9\n3\n2\n4\n8\n6\n0\n5\n7\n5\n1\n0\n8\n1\n6\n7\n2\n9\n7\n9\n5\n6\n5\n2\n6\n2\n8\n1\n7\n5\n5\n7\n3\n5\n0\n1\n1\n3\n8\n4\n9\n4\n5\n1\n8\n6\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n3\n5\n3\n2\n9\n3\n2\n1\n4\n5\n5\n2\n3\n2\n1\n3\n9\n7\n2\n1\n2\n8\n9\n1\n8\n8\n7\n8\n1\n0\n0\n6\n7\n7\n8\n7\n5\n0\n6\n1\n5\n7\n4\n6\n1\n2\n5\n0\n7\n9\n9\n0\n3\n4\n4\n8\n4\n1\n8\n6\n5\n9\n0\n0\n0\n3\n7\n1\n6\n4\n6\n0\n4\n5\n4\n1\n3\n8\n6\n3\n9\n9\n5\n9\n3\n7\n8\n5\n6\n4\n7\n6\n2\n2\n0\n9\n4\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n6\n4\n2\n6\n4\n7\n5\n5\n4\n7\n2\n9\n3\n9\n3\n8\n2\n0\n9\n5\n6\n0\n1\n0\n6\n5\n3\n5\n3\n8\n0\n0\n3\n4\n1\n5\n3\n0\n8\n3\n0\n6\n2\n7\n8\n1\n7\n1\n3\n8\n5\n4\n2\n0\n9\n7\n6\n7\n4\n1\n6\n2\n6\n7\n1\n9\n8\n0\n6\n9\n4\n9\n9\n6\n2\n3\n7\n1\n9\n2\n2\n5\n3\n7\n8\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n7\n8\n9\n8\n9\n2\n6\n1\n3\n5\n4\n8\n2\n6\n4\n3\n4\n5\n9\n2\n0\n3\n9\n4\n9\n7\n3\n8\n7\n4\n4\n9\n8\n5\n8\n2\n6\n6\n2\n3\n1\n3\n2\n7\n3\n1\n9\n0\n1\n1\n3\n5\n0\n7\n8\n1\n5\n1\n4\n6\n0\n0\n4\n9\n1\n6\n6\n9\n0\n7\n6\n1\n1\n0\n1\n2\n3\n4\n2\n2\n3\n4\n5\n6\n7\n0\n1\n2\n7\n8\n6\n3\n9\n7\n1\n9\n3\n9\n6\n1\n7\n2\n4\n4\n5\n7\n0\n0\n1\n6\n6\n8\n2\n7\n7\n2\n4\n2\n1\n6\n1\n0\n6\n9\n8\n3\n9\n6\n3\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n1\n6\n8\n9\n9\n0\n1\n2\n4\n4\n3\n7\n4\n4\n4\n0\n3\n8\n7\n5\n8\n2\n1\n7\n5\n3\n8\n5\n2\n5\n1\n1\n6\n2\n1\n3\n8\n6\n4\n2\n6\n2\n5\n5\n0\n2\n8\n0\n6\n8\n1\n7\n9\n1\n9\n2\n6\n7\n6\n6\n8\n7\n4\n9\n2\n1\n3\n3\n0\n5\n5\n8\n0\n3\n7\n9\n7\n0\n2\n7\n9\n1\n7\n8\n0\n3\n5\n3\n6\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n7\n8\n9\n6\n4\n2\n6\n4\n7\n8\n9\n2\n9\n3\n9\n3\n0\n0\n1\n0\n4\n2\n6\n3\n5\n3\n0\n3\n4\n1\n5\n3\n0\n8\n3\n0\n6\n1\n7\n8\n0\n9\n2\n6\n7\n1\n9\n6\n9\n4\n9\n9\n6\n7\n1\n2\n5\n3\n7\n8\n0\n1\n2\n4\n5\n6\n7\n8\n9\n0\n1\n3\n4\n5\n6\n7\n8\n0\n1\n3\n4\n7\n8\n9\n7\n5\n5\n1\n9\n9\n7\n1\n0\n0\n5\n9\n7\n1\n7\n2\n2\n3\n6\n8\n3\n2\n0\n0\n6\n1\n7\n5\n8\n6\n2\n9\n4\n8\n8\n7\n1\n0\n8\n7\n7\n5\n8\n5\n3\n4\n6\n1\n1\n5\n5\n0\n7\n2\n3\n6\n4\n1\n2\n4\n1\n5\n4\n2\n0\n4\n8\n6\n1\n9\n0\n2\n5\n6\n9\n3\n6\n3\n6\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n5\n6\n7\n8\n1\n0\n9\n5\n7\n5\n1\n8\n6\n9\n0\n4\n1\n9\n3\n8\n4\n4\n7\n0\n1\n9\n2\n8\n7\n8\n2\n5\n9\n6\n0\n6\n5\n5\n3\n3\n3\n9\n8\n1\n1\n0\n6\n1\n0\n0\n6\n2\n1\n1\n3\n2\n7\n7\n8\n8\n7\n8\n4\n6\n0\n2\n0\n7\n0\n3\n6\n8\n7\n1\n5\n9\n9\n3\n7\n2\n4\n9\n4\n3\n6\n2\n2\n5\n3\n2\n5\n5\n9\n4\n1\n7\n2\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n1\n0\n1\n2\n7\n5\n3\n4\n4\n0\n0\n6\n8\n6\n6\n5\n7\n2\n3\n4\n4\n9\n1\n4\n0\n7\n9\n5\n7\n2\n3\n1\n4\n4\n0\n9\n9\n6\n1\n8\n3\n3\n7\n3\n9\n8\n8\n4\n7\n7\n6\n2\n1\n9\n8\n7\n8\n8\n7\n2\n2\n3\n9\n3\n3\n5\n5\n0\n7\n9\n5\n6\n5\n1\n4\n1\n1\n2\n8\n2\n6\n1\n5\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n8\n0\n6\n0\n0\n2\n3\n7\n9\n4\n7\n1\n9\n1\n7\n1\n4\n0\n0\n1\n7\n5\n7\n1\n3\n3\n3\n1\n6\n9\n7\n1\n3\n0\n2\n6\n0\n8\n9\n4\n3\n5\n4\n8\n1\n5\n9\n0\n6\n6\n3\n8\n1\n4\n7\n5\n2\n0\n0\n1\n7\n8\n9\n6\n8\n8\n2\n3\n6\n1\n2\n9\n5\n2\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n6\n6\n7\n8\n9\n7\n4\n6\n1\n4\n0\n9\n9\n3\n7\n8\n4\n7\n5\n8\n5\n3\n2\n2\n0\n5\n8\n6\n0\n3\n8\n1\n0\n3\n0\n4\n7\n4\n9\n2\n9\n5\n7\n1\n7\n1\n6\n6\n5\n6\n2\n8\n7\n6\n4\n9\n9\n5\n3\n7\n4\n3\n0\n9\n6\n6\n1\n1\n3\n2\n1\n0\n0\n1\n2\n3\n4\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n0\n1\n2\n3\n4\n7\n8\n9\n0\n8\n3\n9\n5\n5\n2\n6\n8\n4\n1\n7\n1\n2\n3\n5\n6\n9\n1\n1\n1\n2\n1\n2\n6\n7\n7\n5\n8\n2\n9\n8\n6\n7\n3\n4\n6\n8\n7\n0\n4\n2\n7\n7\n5\n4\n3\n4\n2\n8\n1\n5\n1\n0\n2\n3\n3\n5\n7\n0\n6\n8\n6\n3\n9\n9\n8\n2\n7\n7\n1\n0\n1\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n7\n8\n0\n1\n2\n3\n4\n7\n8\n9\n7\n8\n6\n4\n1\n9\n3\n8\n4\n4\n7\n0\n1\n9\n2\n8\n7\n8\n2\n6\n0\n6\n5\n3\n3\n3\n9\n1\n4\n0\n6\n1\n0\n0\n6\n2\n1\n1\n7\n7\n8\n4\n6\n0\n7\n0\n3\n6\n8\n7\n1\n5\n2\n4\n9\n4\n3\n6\n4\n1\n7\n2\n6\n5\n0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\n1\n2\n3\n4\n5\n6\n",
+  "summary": {
+    "accuracy": 0.9911,
+    "accuracy_pass": true,
+    "correct": 9911,
+    "max_ms": 638.715843,
+    "mean_below_100ms": true,
+    "mean_ms": 67.82692348514851,
+    "median_below_100ms": true,
+    "median_ms": 57.752155,
+    "min_ms": 7.550677
+  },
+  "timing_scope": "warm_full_request_h2d_prepare_forward_argmax_d2h_validation",
+  "warmup_records": [
+    {
+      "iteration": 1,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 93.895522
+    },
+    {
+      "iteration": 2,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 113.087978
+    },
+    {
+      "iteration": 3,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 57.724755
+    },
+    {
+      "iteration": 4,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 132.007085
+    },
+    {
+      "iteration": 5,
+      "predictions_identical": true,
+      "samples": 10000,
+      "wall_ms": 108.231758
+    }
+  ],
+  "warmups": 5
+}

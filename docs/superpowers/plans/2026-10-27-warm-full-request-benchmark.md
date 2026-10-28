@@ -52,6 +52,10 @@ existing development Pillow only for PNG generation.
 
 ### Task 1: Optional GPU full-request repetition tool
 
+**Status:** Complete; independentSpec/QualityApproved, H20all5CTest48/8/9/15/7
+PASS, defaultminimalbuild/link/sinkchecksPASS; backup `61c9e14` /
+`backup/warm-benchmark-task-1-20261028`. ActualfullW5R101series belongsTask2.
+
 **Files:** Create `course/tools/warm_benchmark.cu`,
 `course/tests/warm_benchmark_tests.cu`; modify only optional part of `CMakeLists.txt`.
 

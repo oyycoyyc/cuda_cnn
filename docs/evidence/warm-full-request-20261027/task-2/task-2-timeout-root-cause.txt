@@ -1,0 +1,12 @@
+{
+  "run_timeout": {
+    "stdout": "None",
+    "stderr": "None"
+  },
+  "popen_kill_communicate": {
+    "stdout": "b''",
+    "stderr": "b'event=course_warm_iteration proof=partial\\n'",
+    "returncode": -9
+  }
+}
+failure_reproduced_in_stdlib_run_timeout_after_pipe_EOF=1 no_actual_W5R101_series_started=1
