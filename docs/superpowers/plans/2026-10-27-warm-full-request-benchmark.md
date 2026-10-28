@@ -121,6 +121,12 @@ median_below_100ms. Round records carry iteration/samples/wall_ms/predictions_id
 
 ### Task 3: Warm result packaging and final acceptance
 
+**Status:** Task review and actual publication/extracted acceptance complete;
+backup `27876af`.148helpers/all5CUDAgroups pass,37-member warm ZIP/defaultbuild/
+boundedtrain-infer/final10000infer pass. Whole-amendment review and its scoped
+docs-only correction are approved; final backup ref is
+`backup/warm-benchmark-final-20261028`.
+
 **Files:** Create `scripts/course_warm_package.py`,
 `tests/test_course_warm_package.py`; add minimal schema dispatch to
 `scripts/course_package.py`; update docs and regenerate root artifacts after gates.

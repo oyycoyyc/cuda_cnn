@@ -93,5 +93,11 @@ were version-preserved first, locally and on H20.
   CTest groups48/8/9/15/7 pass. No valid sanitizer pass is claimed; the unrelated
   old MNIST-preparation test still lacks pyarrow. No dependency/platform changes.
 
-Whole-amendment review, final integrity reconciliation and backup remain the
-closing controller gates; no push, merge, upload or deployment was performed.
+Whole-amendment code/spec review is approved; its only Important finding was
+the historical cold document's current-final wording. That two-document fix
+passed scoped re-review without changing any source, measurement or artifact.
+The final current-hash/backup records are indexed in
+`docs/evidence/warm-full-request-20261027/README.md`. Backup reference:
+`backup/warm-benchmark-final-20261028`. The externally managed detached
+workspace, real HEAD/index and old evidence are retained; no push, merge,
+course-platform submission or deployment was performed.

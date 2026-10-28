@@ -1,0 +1,10 @@
+{
+  "measured_count": 101,
+  "measured_ge100ms_count": 8,
+  "mean_ms": 67.82692348514851,
+  "median_ms": 57.752155,
+  "max_ms": 638.715843,
+  "all101_times_retained": true,
+  "root_artifacts_unchanged_after_whole_review": true,
+  "archive_sha256": "c91d680fad2ba4bed3731aef77ffa8d4e638ead1a2f8fc001f8527e0d5e17a19"
+}

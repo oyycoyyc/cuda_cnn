@@ -192,8 +192,14 @@ low accuracy, stale hashes, profiled/inconsistent data or unsafe members fail
 before publication. Pillow is required only in the development environment to
 generate the PNG; no auto-install is performed, and neither Python nor Pillow
 is included or required by the submitted CMake runtime. Model weights, datasets,
-tests, helpers and private evidence are excluded from the ZIP. Actual final
-metrics and known environmental limits are in `docs/course-interface-results.md`.
+tests, helpers and private evidence are excluded from the ZIP. The current warm
+final metrics (mean67.83ms / median57.75ms, 5 warmups/101 measured full10000
+requests, 99.11% accuracy) and current root artifacts are in
+[`docs/course-warm-benchmark-results.md`](course-warm-benchmark-results.md).
+The preserved historical cold record (1657.41ms cold-process median, FAILED
+under that separate scope) and known environmental limits are in
+[`docs/course-interface-results.md`](course-interface-results.md); it is cold
+evidence, not the current timing claim.
 
 ## Current warm full-request protocol
 
