@@ -1,0 +1,34 @@
+{
+  "schema": "warm-package-main-acceptance-v1",
+  "cold_versions_preserved": true,
+  "archive_sha256": "c91d680fad2ba4bed3731aef77ffa8d4e638ead1a2f8fc001f8527e0d5e17a19",
+  "archive_bytes": 129468,
+  "unpacked_bytes": 354330,
+  "members": 37,
+  "png_dimensions": [
+    1200,
+    620
+  ],
+  "png_bytes": 41824,
+  "all101_report_times_match_raw": true,
+  "outlier_retained_ms": 638.715843,
+  "mean_ms": 67.82692348514851,
+  "median_ms": 57.752155,
+  "extracted_default_build": "pass",
+  "build_warnings": 0,
+  "default_build_without_helpers_tests_python": true,
+  "infer_link_forward_only": true,
+  "cpp14_O2_no_fast_math": true,
+  "bounded_official_train32_epoch1_infer32": "pass",
+  "final_model_infer10000_original_label_correct": 9911,
+  "final_model_infer_stdout_equals_original_warm_stdout": true,
+  "inference_working_directories_images_only": true,
+  "official_success_stderr_validated_not_silenced": true,
+  "rebuilt_infer_sha256": "25515e8d09fc32ee2a43a2ac3040a33d3717cae9f4fe3bc1327988cb090d8c59",
+  "rebuilt_infer_is_not_the_measured_warm_tool": true,
+  "root_artifact_sha256": {
+    "evaluation.json": "6d0a18a1588af8356b26867ed80266e978df9684d09ba04a336eb4e0993a542a",
+    "report": "df08e6fba0d4c3e5d5f17ba25bd3caa87634652319e808aebfca63b2086a072f",
+    "result.png": "679bcd4c2ddacb7d1ec0738ef952716d5aa6b6f3e5bea84108ece9fb0120956d"
+  }
+}

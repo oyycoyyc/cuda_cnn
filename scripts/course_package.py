@@ -27,6 +27,7 @@ EVALUATION_CONTENT = {
 EVALUATION_JSON_TEXT = (
     '{"mode":"image","image_origin":"archive","result_image":"result.png"}\n')
 BENCHMARK_SCHEMA = "course-benchmark-v1"
+_WARM_BENCHMARK_SCHEMA = "course-warm-benchmark-v1"
 REQUIRED_N = 10000
 REQUIRED_RUNS = 5
 REQUIRED_EPOCHS = 20
@@ -885,9 +886,34 @@ def _publish(root, contents, output_zip):
         raise
 
 
+def _warm_package_module():
+    try:
+        from scripts import course_warm_package as module
+    except ImportError:  # pragma: no cover - direct script execution
+        import course_warm_package as module
+    return module
+
+
 def run_package(benchmark_json, training_log, output_zip, root=None):
     repository_root = _repository_root() if root is None else root
     _check_output_paths(repository_root, output_zip)
+    # The preexisting-output refusal above always precedes this warm-schema
+    # probe. Only a warm document is delegated; every cold schema and path
+    # continues through the original helper unchanged.
+    detected = _load_json_strict(benchmark_json)
+    if (isinstance(detected, dict) and
+            detected.get("schema") == _WARM_BENCHMARK_SCHEMA):
+        warm_package = _warm_package_module()
+        try:
+            return warm_package.run_warm_package(
+                benchmark_json, training_log, output_zip,
+                root=repository_root)
+        except warm_package.PackageError as error:
+            # Direct-script execution may load a separate sibling copy of this
+            # module, so normalize only the warm helper's public provenance
+            # error into this dispatcher's class. FileExistsError/OSError keep
+            # their existing behavior.
+            raise PackageError(str(error))
     source_files = _validate_whitelist(repository_root)
     training = _parse_training_log(training_log)
     validated = _validate_benchmark(benchmark_json, training)

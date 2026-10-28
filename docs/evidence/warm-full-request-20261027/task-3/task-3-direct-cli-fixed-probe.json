@@ -1,0 +1,8 @@
+{
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "course_package: warm benchmark must contain exactly the 26 reviewed fields (missing=['batch', 'errors', 'executable', 'hashes_stable', 'images_path', 'input_mode', 'labels_path', 'measured_records', 'model_dir', 'model_source', 'n', 'official_infer', 'predictions_identical_all', 'process_wall_ms', 'returncode', 'runs', 'sha256', 'sha256_after', 'status', 'stderr', 'stdout', 'summary', 'timing_scope', 'warmup_records', 'warmups'], extra=[])\n",
+  "has_traceback": false,
+  "root_artifacts_created": false,
+  "scope": "fixed owned invalid warmJSON direct-script CLI integration probe"
+}

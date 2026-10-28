@@ -87,6 +87,10 @@ Use classiclocale/17significantdigits; retain warmup records too.
 
 ### Task 2: Warm external collector, raw schema and actual101-round measurement
 
+**Status:** Complete; reviewedbackup `0dc50a2`, Linux97helpersPASS. Actual
+N10000/B1024/W5/R101: mean67.82692348514851ms,median57.752155ms,9911correct;
+max638.715843msretained, bothrequestedstatisticgatesPASS. Task3updatesartifacts.
+
 **Files:** Create `scripts/course_warm_benchmark.py`,
 `tests/test_course_warm_benchmark.py`; update usage/results with actual data only.
 

@@ -1,0 +1,7 @@
+{
+  "returncode": 0,
+  "stdout_lines": 32,
+  "stdout_is_canonical32": true,
+  "stderr": "event=course_infer status=pass samples=32 batches=1 input_mode=unit\n",
+  "cause": "controller acceptance incorrectly required empty stderr; reviewed official runtime always emits course_infer success diagnostic"
+}

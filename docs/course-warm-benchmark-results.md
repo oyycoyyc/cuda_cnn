@@ -61,6 +61,37 @@ timing boundary, not this newly requested metric and not a paired speedup
 claim. The actual course training completed20epochs, bestepoch15, CRCf473014f;
 no retraining occurred for this timing amendment. Unit input remains the
 user-approved project assumption, not confirmed official preprocessing;
-official leaderboard timing remains unknown. Collector review and updated
-warm report/PNG/archive acceptance remain pending; currentrootartifacts still
-show the historicalcoldscope until version-preserving regeneration.
+official leaderboard timing remains unknown. Collector and warm packager reviews
+are approved. Root `report`, `result.png`, `evaluation.json` and
+`course-submission.zip` now contain the actual warm result; old cold artifacts
+were version-preserved first, locally and on H20.
+
+## Submission acceptance
+
+- ZIP:37 members,129468 bytes compressed,354330 bytes unpacked; SHA256
+  `c91d680fad2ba4bed3731aef77ffa8d4e638ead1a2f8fc001f8527e0d5e17a19`.
+- PNG:1200x620,41824 bytes; mean67.83ms/median57.75ms,5warmups/101measured
+  full10000 requests, range7.55–638.72ms and full per-request boundary visible.
+- Every101 report duration matches the measured raw series (report rounded to
+  three decimals; original JSON retains full precision). All5warmup times are
+  separate. Exact evaluation JSON and the original37-member whitelist verified;
+  no helpers/tests/Python/model/data/symlink are included.
+- Fresh extracted source-only default `train`/`infer` build:PASS,0warnings,
+  C++14/O2/architecture90, no fast-math; no development files required.
+- Fresh extracted official bounded train32/epoch1→infer32:PASS. This is only
+  an interface smoke test; actual model provenance remains the earlier default
+  20epoch training, not this bounded run.
+- Fresh extracted official infer with actual20epoch model:9911/10000 against
+  original test labels; stdout exactly matches the measured warm tool's vector.
+  Both inference working directories contained only caller-supplied images.
+  The documented success diagnostic on stderr was checked, not suppressed.
+- Rebuilt officialinfer SHA256
+  `25515e8d09fc32ee2a43a2ac3040a33d3717cae9f4fe3bc1327988cb090d8c59`
+  is a separate verification identity. The67.83/57.75ms timing belongs only to
+  the actual measured warm-tool identity above, not to this rebuilt binary.
+- Fresh final regressions:148 Python helper tests, no skips, plus all5CUDA
+  CTest groups48/8/9/15/7 pass. No valid sanitizer pass is claimed; the unrelated
+  old MNIST-preparation test still lacks pyarrow. No dependency/platform changes.
+
+Whole-amendment review, final integrity reconciliation and backup remain the
+closing controller gates; no push, merge, upload or deployment was performed.

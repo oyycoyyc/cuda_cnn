@@ -151,6 +151,13 @@ No warmup run is substituted for the measured request, and a full-process wall
 time of `>= 100 ms` means the performance target failed even if an internal GPU
 stage looks fast. Report full-process and internal timings separately.
 
+The paragraph above describes the original **cold-process** diagnostic scope.
+The user subsequently clarified the primary acceptance scope: warmup followed
+by more than100 complete inference requests, reporting both arithmetic mean
+and median, including every round's transfers/preprocessing/readback. Under
+that amended scope, cold-process wall and GPU events remain separate diagnostics;
+neither replaces the warm request statistics described below.
+
 ## Operational notes
 
 - Use arbitrary caller-owned absolute or relative paths. Do not point the
@@ -166,9 +173,10 @@ stage looks fast. Report full-process and internal timings separately.
 
 ## Development-only final artifacts
 
-After actual default20epoch training and five successful unprofiled full10000
-test processes with at least96% accuracy, the development helper validates the
-saved training completion CRC and the current measured binary/model/input hashes:
+After actual default20epoch training and measured full10000 accuracy>=96%, the
+development helper validates the training completion CRC, raw measurements and
+current measured identities. It dispatches by explicit benchmark schema: legacy
+cold `course-benchmark-v1` or current warm `course-warm-benchmark-v1`.
 
 ```sh
 python3 scripts/course_package.py --benchmark final-benchmark.json \
@@ -177,11 +185,40 @@ python3 scripts/course_package.py --benchmark final-benchmark.json \
 
 It creates `evaluation.json`, `report`, `result.png` exclusively in the source
 root and an explicit-whitelist ZIP; existing output files are never overwritten.
-The PNG uses one accuracy/time group and the five-run full-process median. A
-missed100ms target is labelled FAILED, not suppressed. Incomplete training,
+The cold schema keeps its five-process median for historical reproducibility;
+the warm schema shows one accuracy/time group containing both mean and median.
+A missed applicable100ms target is labelled FAILED, not suppressed. Incomplete training,
 low accuracy, stale hashes, profiled/inconsistent data or unsafe members fail
 before publication. Pillow is required only in the development environment to
 generate the PNG; no auto-install is performed, and neither Python nor Pillow
 is included or required by the submitted CMake runtime. Model weights, datasets,
 tests, helpers and private evidence are excluded from the ZIP. Actual final
 metrics and known environmental limits are in `docs/course-interface-results.md`.
+
+## Current warm full-request protocol
+
+Build optional development tools with `COURSE_BUILD_TESTS=ON`, then collect:
+
+```sh
+python3 scripts/course_warm_benchmark.py build/course_warm_benchmark build/infer \
+  test-images.f32 external-test-labels.i32 trained-model warm-results.json \
+  --count 10000 --batch 1024 --warmups 5 --runs 101 --model-source course_train
+```
+
+Only the external collector receives labels. Its one CUDA child repeatedly
+executes all10000 images using the same GPU input/forward/argmax components as
+officialinfer. Each host-clock sample starts before flag reset and ends after
+H2D, GPU preprocessing/forward/argmax, D2H, stream synchronization and host
+prediction checks. No cached predictions or GPU-only-event substitution.
+Model/image disk loading, CUDA initialization, allocation, weight upload and
+final stdout formatting occur outside the measured intervals and are disclosed.
+
+All5warmup and101measured records are retained. Mean/median/min/max use all101
+measured samples only; warmups are excluded, slow outliers are not discarded.
+The warm target requires both mean<100ms and median<100ms, not every individual
+round<100ms. Process wall remains a separate diagnostic. Strict warm packaging
+requires N10000, at least101 measured rounds, actual20epochtraining provenance,
+stable/current six identities and independently reparsed raw predictions/times.
+The GPU tool, collectors and package tools are development-only and excluded
+from the source-only ZIP; the official interfaces are unchanged. Actual results
+and the retained638.715843ms outlier are in `docs/course-warm-benchmark-results.md`.

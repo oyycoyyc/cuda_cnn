@@ -1,0 +1,40 @@
+[  3%] Building CXX object CMakeFiles/course_parameters.dir/src/parameters.cpp.o
+[  6%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/activation.cu.o
+[ 10%] Linking CXX static library libcourse_parameters.a
+[ 10%] Built target course_parameters
+[ 13%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/pooling.cu.o
+[ 16%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/linear.cu.o
+[ 20%] Building CUDA object CMakeFiles/course_reference_forward.dir/src/kernels/convolution.cu.o
+[ 23%] Building CXX object CMakeFiles/course_checkpoint.dir/src/checkpoint.cpp.o
+[ 26%] Linking CXX static library libcourse_checkpoint.a
+[ 30%] Linking CUDA static library libcourse_reference_forward.a
+[ 30%] Built target course_checkpoint
+[ 33%] Building CXX object CMakeFiles/course_host.dir/course/io.cpp.o
+[ 33%] Built target course_reference_forward
+[ 36%] Building CXX object CMakeFiles/course_host.dir/course/model_io.cpp.o
+[ 40%] Building CUDA object CMakeFiles/course_forward.dir/course/gpu_ops.cu.o
+[ 43%] Linking CXX static library libcourse_host.a
+[ 43%] Built target course_host
+[ 46%] Building CUDA object CMakeFiles/course_reference_training.dir/src/lenet.cu.o
+[ 50%] Building CUDA object CMakeFiles/course_forward.dir/course/inference.cu.o
+[ 53%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/input.cu.o
+[ 56%] Linking CXX static library libcourse_forward.a
+[ 56%] Built target course_forward
+[ 60%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/loss.cu.o
+[ 63%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/metrics.cu.o
+[ 66%] Building CUDA object CMakeFiles/course_reference_training.dir/src/kernels/adam.cu.o
+[ 70%] Building CUDA object CMakeFiles/course_runtime.dir/course/runtime.cu.o
+[ 73%] Linking CXX static library libcourse_reference_training.a
+[ 73%] Built target course_reference_training
+[ 76%] Building CUDA object CMakeFiles/course_training.dir/course/training.cu.o
+[ 80%] Linking CXX static library libcourse_runtime.a
+[ 80%] Built target course_runtime
+[ 83%] Building CXX object CMakeFiles/course_training.dir/src/random.cpp.o
+[ 86%] Building CUDA object CMakeFiles/infer.dir/main.cu.o
+[ 90%] Linking CXX static library libcourse_training.a
+[ 90%] Built target course_training
+[ 93%] Linking CXX executable infer
+[ 96%] Building CUDA object CMakeFiles/train.dir/main.cu.o
+[ 96%] Built target infer
+[100%] Linking CXX executable train
+[100%] Built target train
